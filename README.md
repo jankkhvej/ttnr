@@ -23,6 +23,11 @@ Homebrew, Claude Code CLI, git, Rust (https://rustup.rs), and
 `brew install mpv pkgconf ffmpeg`. Later `cargo-deny` is needed for the
 licence gate (`cargo install --locked cargo-deny`).
 
+Recommended: `./scripts/build-libmpv.zsh` builds a fixed libmpv into
+`third_party/mpv/` (no system changes, ~20 s). Homebrew's mpv 0.41.0 has a
+CoreAudio bug on macOS 27; without the local build ttnr falls back to
+AVFoundation (volume/mute react up to ~2 s late). See docs/DECISIONS.md ADR-015.
+
 Claude works milestone by milestone and **stops at the end of each one** for
 you to try it — the exact commands will be in its last message and in
 `docs/PROGRESS.md`. Run `./start.zsh` again to continue.

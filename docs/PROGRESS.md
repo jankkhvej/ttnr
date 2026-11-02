@@ -2,6 +2,14 @@
 
 Newest entry on top. Each entry: date · milestone/task · what changed · how to try it · next step · open questions for the owner.
 
+## 2026-11-02 · M1 review follow-up (owner feedback)
+- Owner heard Icecast MP3 and HLS AAC fine. Channel check on a stereo headset: L, R, C, gap, quieter L/R… – exactly the FFmpeg downmix (LFE dropped, centre/surround −3 dB); explained in RESEARCH.md.
+- DASH deferred (owner OK; 0 of 62,042 radio-browser stations use it) – ADR-016.
+- AVFoundation judged a significant regression (volume/mute lag up to ~2 s, no hotplug) → `scripts/build-libmpv.zsh` builds Homebrew's mpv 0.41.0 recipe + upstream fix #18679 into `third_party/mpv/` (no system changes); engine prefers it (ADR-015). CoreAudio now opens for all formats; AVFoundation remains a safety net.
+- Engine errors now name the failing option and use mpv's error text; `ttnr play` logs the active audio output.
+- Try it: `./scripts/build-libmpv.zsh && cargo build && ./target/debug/ttnr play https://ice6.somafm.com/groovesalad-128-mp3`; log line `audio output ao="coreaudio"` in `~/.local/state/ttnr/`.
+- Next: M2 – Sources & in-stream metadata (after owner's go).
+
 ## 2026-11-02 · M1 · Format matrix – **M1 complete, waiting for owner review**
 - `scripts/gen-fixtures.zsh` (19 fixtures + DASH sample, incl. by-ear `channel_check_51/71.flac`) and `format_matrix` test (ADR-013).
 - Found and fixed/worked around: mpv observer not re-notifying across AAC files (re-read on load/restart/reconfig); mpv 0.41.0 CoreAudio failing planar/mono sources on macOS 27 (upstream #18384, fixed unreleased) → `ao=coreaudio,avfoundation` (ADR-014); measured-bitrate churn (ADR-014).

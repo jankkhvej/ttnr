@@ -95,6 +95,7 @@ Every resolution records a `ResolverTrace` (visible with `--debug`).
 
 ## Engine: libmpv configuration (audio-only)
 
+libmpv: locally built by `scripts/build-libmpv.zsh` (preferred, ADR-015) or Homebrew's.
 `vid=no`, `ao=coreaudio,avfoundation` (ADR-014), `audio-display=no`, `ytdl=no`,
 `terminal=no`, `input-default-bindings=no`, `osc=no`, cache/readahead
 tuned for live streams, `audio-channels=auto-safe` (system's preferred device layout; ADR-009),

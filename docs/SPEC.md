@@ -22,6 +22,8 @@ track and programme information — which the BBC streams themselves do not carr
 - F1.1 Play any **URL** the user enters: Icecast/Shoutcast (ICY), plain HTTP
   audio files/streams, **HLS** (`.m3u8`), **MPEG-DASH** (`.mpd`), and playlist
   files (`.m3u`, `.pls`, `.xspf`, `.asx`) that resolve to streams.
+  *DASH is deferred* (owner, 2026-11-02; ADR-016): 0 of 62,042 radio-browser
+  stations use it and Homebrew's FFmpeg has no DASH demuxer.
 - F1.2 A **source plugin system**: each source (generic URL, BBC, radio
   directories, …) implements one Rust trait and is registered in one place.
   Adding a new source must not require touching the engine or the TUI.

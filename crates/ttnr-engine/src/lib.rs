@@ -14,15 +14,36 @@ use ttnr_core::StreamDescriptor;
 /// Errors raised by the playback engine.
 #[derive(Debug, thiserror::Error)]
 pub enum EngineError {
-    /// libmpv rejected a call (init, option, property or command).
-    #[error("libmpv: {0}")]
+    /// libmpv rejected a call (init, property or command).
+    #[error("libmpv: {}", mpv_error_text(.0))]
     Mpv(#[from] libmpv2::Error),
+    /// libmpv rejected an option while creating the player.
+    #[error("libmpv option `{name}`: {}", mpv_error_text(.source))]
+    Option {
+        /// The mpv option name.
+        name: &'static str,
+        /// The libmpv error.
+        source: libmpv2::Error,
+    },
     /// The stream descriptor contained no URL to play.
     #[error("stream descriptor has no URL")]
     NoStreamUrl,
     /// The engine's event thread could not be started.
     #[error("cannot start engine thread: {0}")]
     Thread(#[source] std::io::Error),
+}
+
+/// Human-readable text for a libmpv2 error (`mpv_error_string` for codes).
+fn mpv_error_text(e: &libmpv2::Error) -> String {
+    match e {
+        libmpv2::Error::Raw(code) => {
+            // SAFETY: mpv_error_string accepts any int and returns a pointer
+            // to a static NUL-terminated string (client.h).
+            let text = unsafe { std::ffi::CStr::from_ptr(libmpv2_sys::mpv_error_string(*code)) };
+            format!("{} ({code})", text.to_string_lossy())
+        }
+        other => format!("{other:?}"),
+    }
 }
 
 /// A playback backend. Implemented by [`MpvPlayer`].
@@ -41,4 +62,21 @@ pub trait Player {
     fn set_device(&mut self, dev: Option<&str>) -> Result<(), EngineError>;
     /// Take the event receiver. Returns `Some` once; later calls `None`.
     fn take_events(&mut self) -> Option<EngineEvents>;
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn errors_read_well() {
+        let e = EngineError::Option {
+            name: "load-console",
+            source: libmpv2::Error::Raw(libmpv2::mpv_error::OptionNotFound),
+        };
+        assert_eq!(
+            e.to_string(),
+            "libmpv option `load-console`: option not found (-5)"
+        );
+    }
 }

@@ -18,11 +18,23 @@ const AUDIO_ONLY_OPTIONS: &[(&str, &str)] = &[
     ("vid", "no"),
     ("audio-display", "no"),
     ("force-window", "no"),
-    ("ytdl", "no"),
     ("config", "no"),
     ("load-scripts", "no"),
-    // mpv's built-in Lua/JS scripts: none is useful headless; auto_profiles
-    // even logs a warning on every file when it exits mid-hook.
+    ("terminal", "no"),
+    ("input-default-bindings", "no"),
+    ("input-vo-keyboard", "no"),
+    ("input-media-keys", "no"),
+    ("idle", "yes"),
+    ("audio-client-name", "ttnr"),
+];
+
+/// Switches for mpv's built-in Lua/JS scripts (none is useful headless;
+/// `auto_profiles` even warns on every file). A libmpv built without Lua
+/// (e.g. `scripts/build-libmpv.zsh`) has no such options – then there is
+/// nothing to switch off, so "option not found" is fine.
+const SCRIPT_OPTIONS: &[(&str, &str)] = &[
+    ("ytdl", "no"),
+    ("osc", "no"),
     ("load-auto-profiles", "no"),
     ("load-commands", "no"),
     ("load-console", "no"),
@@ -30,13 +42,6 @@ const AUDIO_ONLY_OPTIONS: &[(&str, &str)] = &[
     ("load-positioning", "no"),
     ("load-select", "no"),
     ("load-stats-overlay", "no"),
-    ("terminal", "no"),
-    ("osc", "no"),
-    ("input-default-bindings", "no"),
-    ("input-vo-keyboard", "no"),
-    ("input-media-keys", "no"),
-    ("idle", "yes"),
-    ("audio-client-name", "ttnr"),
 ];
 
 /// Properties observed for events: (name, format, reply id).
@@ -95,14 +100,31 @@ pub struct MpvPlayer {
 impl MpvPlayer {
     /// Create an mpv core configured by `cfg` and start its event thread.
     pub fn new(cfg: &EngineConfig) -> Result<Self, EngineError> {
-        let mpv = Mpv::with_initializer(|init| {
+        // `with_initializer` only passes libmpv2 errors through, so remember
+        // which option failed for the error message.
+        let mut failed = None;
+        let init_result = Mpv::with_initializer(|init| {
+            let mut set = |name: &'static str, value: &str| {
+                init.set_option(name, value)
+                    .inspect_err(|_| failed = Some(name))
+            };
             for (name, value) in AUDIO_ONLY_OPTIONS {
-                init.set_option(name, *value)?;
+                set(name, value)?;
             }
-            init.set_option("ao", cfg.audio_output.mpv_name())?;
-            init.set_option("audio-channels", cfg.audio_channels.as_str())?;
-            init.set_option("volume", f64::from(clamp_volume(cfg.volume)))?;
+            set("ao", cfg.audio_output.mpv_name())?;
+            set("audio-channels", &cfg.audio_channels)?;
+            set("volume", &clamp_volume(cfg.volume).to_string())?;
+            for (name, value) in SCRIPT_OPTIONS {
+                match init.set_option(name, *value) {
+                    Err(libmpv2::Error::Raw(libmpv2::mpv_error::OptionNotFound)) => {}
+                    other => other.inspect_err(|_| failed = Some(name))?,
+                }
+            }
             Ok(())
+        });
+        let mpv = init_result.map_err(|source| match failed {
+            Some(name) => EngineError::Option { name, source },
+            None => EngineError::Mpv(source),
         })?;
         request_log_messages(&mpv, c"warn")?;
         for (name, format, id) in OBSERVED {

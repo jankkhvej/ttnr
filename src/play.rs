@@ -24,6 +24,10 @@ pub async fn run(url: &str, cfg: &EngineConfig) -> Result<()> {
                     println!("{line}");
                 }
                 match event {
+                    EngineEvent::Playing => tracing::info!(
+                        ao = player.property_string("current-ao").as_deref().unwrap_or("?"),
+                        "audio output"
+                    ),
                     EngineEvent::Eof => return Ok(()),
                     EngineEvent::Error { kind, detail } => match detail {
                         Some(detail) => bail!("{kind} ({detail})"),
