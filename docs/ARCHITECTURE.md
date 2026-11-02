@@ -2,18 +2,22 @@
 
 ## Overview
 
-```
- ┌──────────────┐   commands    ┌──────────────┐   mpv commands   ┌─────────────┐
- │  ttnr-tui    │ ────────────▶ │  ttnr-core   │ ───────────────▶ │ ttnr-engine │──▶ libmpv ──▶ CoreAudio
- │ (ratatui UI) │ ◀──────────── │  (app state, │ ◀─────────────── │ (playback)  │
- └──────────────┘   AppEvents   │   registry)  │   EngineEvents   └─────────────┘
-        ▲                       └──────┬───────┘
-        │ theme                        │ resolve / metadata
- ┌──────┴───────┐               ┌──────▼───────────────────────────┐
- │ ttnr-themes  │               │ ttnr-sources: url · stations ·   │
- └──────────────┘               │ bbc · radio-browser · exec       │
-                                └──────────────────────────────────┘
-        ttnr-platform (macOS: Now Playing, media keys, device changes)
+```mermaid
+flowchart LR
+    tui["ttnr-tui<br/>(ratatui UI)"]
+    core["ttnr-core<br/>(app state, registry)"]
+    engine["ttnr-engine<br/>(playback)"]
+    themes["ttnr-themes"]
+    sources["ttnr-sources<br/>url · stations · bbc · radio-browser · exec"]
+    platform["ttnr-platform<br/>(macOS: Now Playing, media keys, device changes)"]
+
+    tui -- commands --> core
+    core -- AppEvents --> tui
+    core -- mpv commands --> engine
+    engine -- EngineEvents --> core
+    engine --> libmpv --> CoreAudio
+    themes -- theme --> tui
+    core -- resolve / metadata --> sources
 ```
 
 One async runtime (tokio). Components talk through typed channels; the UI

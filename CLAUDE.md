@@ -67,6 +67,7 @@ Read these before doing anything, every session:
 - Public traits and modules get rustdoc comments.
 - Snapshot-test TUI rendering with ratatui's `TestBackend` (+ `insta`).
 - Prefer small, boring, well-maintained crates; record why in DECISIONS.md.
+- Diagrams in Markdown docs are Mermaid (```mermaid), never ASCII art.
 
 ## Communicating with the owner
 
