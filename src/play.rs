@@ -6,7 +6,8 @@ use std::time::SystemTime;
 use anyhow::{Context, Result, bail};
 use tokio::sync::mpsc;
 use ttnr_core::{
-    Merger, NowPlaying, ResolveCache, ResolveCtx, SourceRegistry, Station, StreamDescriptor,
+    Action, Failover, Merger, NowPlaying, ResolveCache, ResolveCtx, SourceRegistry, Station,
+    StreamDescriptor,
 };
 use ttnr_engine::{EngineConfig, EngineEvent, ErrorKind, MpvPlayer, Player};
 use ttnr_sources::{ReqwestHttp, StationsSource, UrlSource};
@@ -33,22 +34,20 @@ pub async fn run(target: &str, cfg: &EngineConfig) -> Result<()> {
         println!("playlist: {} streams", resolved.urls.len());
     }
     let own_url = station.url.clone().unwrap_or_default();
-    let mut candidates = resolved.urls.iter();
-    let mut play_next = |player: &mut MpvPlayer| -> Result<bool> {
-        let Some(next) = candidates.next() else {
-            return Ok(false);
-        };
-        if *next != own_url {
-            println!("stream: {next}");
+    let mut failover = Failover::new(&resolved);
+    let start = |player: &mut MpvPlayer, failover: &Failover, url: String| -> Result<()> {
+        if url != own_url {
+            println!("stream: {url}");
         }
         player.play(&StreamDescriptor {
-            urls: vec![next.clone()],
-            headers: resolved.headers.clone(),
+            urls: vec![url],
+            headers: failover.headers().to_vec(),
             ..StreamDescriptor::default()
         })?;
-        Ok(true)
+        Ok(())
     };
-    play_next(&mut player)?;
+    let first = failover.next_url().context("nothing to play")?;
+    start(&mut player, &failover, first)?;
 
     // The provider stops by itself when `np_rx` is dropped.
     let (np_tx, mut np_rx) = mpsc::channel::<NowPlaying>(8);
@@ -90,14 +89,35 @@ pub async fn run(target: &str, cfg: &EngineConfig) -> Result<()> {
                         }
                     }
                     EngineEvent::Eof => return Ok(()),
-                    EngineEvent::Error { kind, .. } if is_stream_failure(kind) && play_next(&mut player)? => {
+                    EngineEvent::Error { kind, detail } => {
+                        let action = if is_stream_failure(kind) {
+                            failover.on_failure(is_stale_hint(kind))
+                        } else {
+                            Action::GiveUp
+                        };
+                        let url = match action {
+                            Action::Play(url) => {
+                                println!("[{kind}; trying the next stream]");
+                                url
+                            }
+                            Action::Refresh => {
+                                println!("[{kind}; re-resolving the station]");
+                                let fresh = registry.refresh(&station, &ctx).await.with_context(|| {
+                                    format!("{kind}, and re-resolving failed")
+                                })?;
+                                tracing::info!(trace = %fresh.trace, urls = ?fresh.urls, "refreshed");
+                                failover.refreshed(&fresh).with_context(|| {
+                                    format!("{kind}, and re-resolving found no stream")
+                                })?
+                            }
+                            Action::GiveUp => match detail {
+                                Some(detail) => bail!("{kind} ({detail})"),
+                                None => bail!("{kind}"),
+                            },
+                        };
                         merger.clear();
-                        println!("[{kind}; trying the next stream]");
+                        start(&mut player, &failover, url)?;
                     }
-                    EngineEvent::Error { kind, detail } => match detail {
-                        Some(detail) => bail!("{kind} ({detail})"),
-                        None => bail!("{kind}"),
-                    },
                     EngineEvent::Shutdown => bail!("audio engine shut down"),
                     _ => {}
                 }
@@ -139,6 +159,40 @@ fn looks_like_url_or_path(target: &str) -> bool {
         || std::path::Path::new(target).exists()
 }
 
+/// `ttnr refresh [target]`: re-discover stream URLs (bypassing and updating
+/// the cache) for one station / URL, or for every configured station.
+pub async fn refresh(target: Option<&str>) -> Result<()> {
+    let stations = match target {
+        Some(t) => vec![station_for(t)?],
+        None => stations::load()?.stations().to_vec(),
+    };
+    if stations.is_empty() {
+        println!("no stations to refresh");
+        return Ok(());
+    }
+    let (registry, ctx) = setup()?;
+    let mut failed = 0;
+    for st in &stations {
+        match registry.refresh(st, &ctx).await {
+            Ok(d) => {
+                println!("{}: {}", st.id, d.urls.join(" | "));
+                println!("  {}", d.trace);
+            }
+            Err(e) => {
+                failed += 1;
+                println!("{}: error: {e}", st.id);
+            }
+        }
+    }
+    if failed > 0 {
+        bail!(
+            "{failed} of {} station(s) could not be resolved",
+            stations.len()
+        );
+    }
+    Ok(())
+}
+
 /// The source registry and the resolve context (HTTP client, URL cache).
 fn setup() -> Result<(SourceRegistry, ResolveCtx)> {
     let cache = match paths::cache_dir() {
@@ -168,6 +222,15 @@ async fn resolve(
     })?;
     tracing::info!(trace = %d.trace, urls = ?d.urls, "resolved");
     Ok(d)
+}
+
+/// Failures that suggest the URL itself is stale: re-resolve once
+/// (ARCHITECTURE.md, ADR-004).
+fn is_stale_hint(kind: ErrorKind) -> bool {
+    matches!(
+        kind,
+        ErrorKind::Http403 | ErrorKind::Http404 | ErrorKind::Unreachable
+    )
 }
 
 /// Failures where another mirror may well work.

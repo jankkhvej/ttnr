@@ -24,7 +24,7 @@ Work top to bottom. Tick `[x]` when a task meets its acceptance criteria and
 - [x] `url` source: direct URLs and playlist files (`m3u`, `m3u8` master/media, `pls`, `xspf`, `asx`) with fixtures.
 - [x] `stations` source from `stations.toml` (sample file in `examples/`).
 - [x] ICY and HLS timed-ID3 metadata surfaced as `NowPlaying`.
-- [ ] Auto re-resolve once on 403/404; `ttnr refresh [station]`.
+- [x] Auto re-resolve once on 403/404; `ttnr refresh [station]`.
 **Acceptance:** `ttnr play` with a `.pls` URL shows ICY titles; refresh path covered by tests.
 
 ## M3 — Minimal TUI + theme engine

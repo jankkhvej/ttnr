@@ -2,6 +2,12 @@
 
 Newest entry on top. Each entry: date · milestone/task · what changed · how to try it · next step · open questions for the owner.
 
+## 2026-11-02 · M2 · Re-resolve on 403/404, `ttnr refresh` – **M2 complete, waiting for owner review**
+- `ttnr_core::Failover` (next mirror → one refresh → give up), used by `ttnr play`; `ttnr refresh [id|url]` (ADR-021).
+- Tests: failover units; CLI `stale_cache_self_heals` (cached URL 404 → re-resolve → plays, cache healed), `refresh_command`, and the M2 acceptance offline: `.pls` → ICY stream → `now:` line.
+- M2 summary: source traits + registry + resolver chain + cache; `url` source (PLS/M3U/XSPF/ASX, HLS pass-through, mirror fail-over); `stations` source + `ttnr stations`; ICY and HLS-ID3 now-playing; re-resolve once + `ttnr refresh`.
+- Next after review: M3 – minimal TUI + theme engine.
+
 ## 2026-11-02 · M2 · ICY and HLS ID3 now-playing
 - Engine `EngineEvent::Tags` (ICY title/name, tags); core `StreamTags`, `NowPlaying::from_tags`, `Merger`; sources `id3` parser + `HlsId3Provider` (segment-head poller, because mpv/FFmpeg drop packed-audio ID3 updates); `ttnr play` prints `now: Artist – Title` (ADR-020).
 - Tests: ICY titles from a loopback Icecast-style server, translator/merger/ICY-split units, ID3 parser (encodings, consecutive tags, garbage) + real recorded segment head, poller with virtual time (variant selection, change-only, stop without ID3, non-HLS), sized media read.

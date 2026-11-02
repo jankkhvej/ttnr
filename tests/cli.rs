@@ -145,47 +145,7 @@ fn volume_out_of_range_is_rejected() {
 #[test]
 fn playlist_falls_over_to_the_next_stream() {
     let dir = tempfile::tempdir().unwrap();
-    let wav_path = dir.path().join("silence.wav");
-    write_wav(&wav_path);
-    let wav = std::fs::read(&wav_path).unwrap();
-    let listener = TcpListener::bind("127.0.0.1:0").unwrap();
-    let addr = listener.local_addr().unwrap();
-    std::thread::spawn(move || {
-        for stream in listener.incoming() {
-            let Ok(mut s) = stream else { continue };
-            let mut buf = [0u8; 4096];
-            let n = s.read(&mut buf).unwrap_or(0);
-            let req = String::from_utf8_lossy(&buf[..n]);
-            let path = req.split_whitespace().nth(1).unwrap_or("/").to_owned();
-            let (head, body): (String, Vec<u8>) = match path.as_str() {
-                "/list.pls" => {
-                    let pls = format!(
-                        "[playlist]\nFile1=http://{addr}/gone\nFile2=http://{addr}/ok.wav\n"
-                    );
-                    (
-                        format!(
-                            "HTTP/1.1 200 OK\r\nContent-Type: audio/x-scpls\r\nContent-Length: {}\r\n",
-                            pls.len()
-                        ),
-                        pls.into_bytes(),
-                    )
-                }
-                "/ok.wav" => (
-                    format!(
-                        "HTTP/1.1 200 OK\r\nContent-Type: audio/x-wav\r\nContent-Length: {}\r\n",
-                        wav.len()
-                    ),
-                    wav.clone(),
-                ),
-                _ => (
-                    "HTTP/1.1 404 Not Found\r\nContent-Length: 0\r\n".to_owned(),
-                    Vec::new(),
-                ),
-            };
-            let _ = s.write_all(format!("{head}Connection: close\r\n\r\n").as_bytes());
-            let _ = s.write_all(&body);
-        }
-    });
+    let addr = playlist_server(dir.path());
     let url = format!("http://{addr}/list.pls");
     let out = ttnr(dir.path(), &["play", &url, "--audio-output", "null"]);
     let stdout = text(&out.stdout);
@@ -298,4 +258,200 @@ fn broken_stations_file_is_reported() {
         stderr.contains("stations.toml") && stderr.contains("needs a url"),
         "{stderr}"
     );
+}
+
+/// Loopback server: `/list.pls` lists `/gone` (404) then `/ok.wav` (a
+/// 1-second WAV); everything else is 404. Returns the address.
+fn playlist_server(dir: &Path) -> std::net::SocketAddr {
+    let wav_path = dir.join("served.wav");
+    write_wav(&wav_path);
+    let wav = std::fs::read(&wav_path).unwrap();
+    let listener = TcpListener::bind("127.0.0.1:0").unwrap();
+    let addr = listener.local_addr().unwrap();
+    std::thread::spawn(move || {
+        for stream in listener.incoming() {
+            let Ok(mut s) = stream else { continue };
+            let mut buf = [0u8; 4096];
+            let n = s.read(&mut buf).unwrap_or(0);
+            let req = String::from_utf8_lossy(&buf[..n]);
+            let path = req.split_whitespace().nth(1).unwrap_or("/").to_owned();
+            let (head, body): (String, Vec<u8>) = match path.as_str() {
+                "/list.pls" => {
+                    let pls = format!(
+                        "[playlist]\nFile1=http://{addr}/gone\nFile2=http://{addr}/ok.wav\n"
+                    );
+                    (
+                        format!(
+                            "HTTP/1.1 200 OK\r\nContent-Type: audio/x-scpls\r\nContent-Length: {}\r\n",
+                            pls.len()
+                        ),
+                        pls.into_bytes(),
+                    )
+                }
+                "/ok.wav" => (
+                    format!(
+                        "HTTP/1.1 200 OK\r\nContent-Type: audio/x-wav\r\nContent-Length: {}\r\n",
+                        wav.len()
+                    ),
+                    wav.clone(),
+                ),
+                _ => (
+                    "HTTP/1.1 404 Not Found\r\nContent-Length: 0\r\n".to_owned(),
+                    Vec::new(),
+                ),
+            };
+            let _ = s.write_all(format!("{head}Connection: close\r\n\r\n").as_bytes());
+            let _ = s.write_all(&body);
+        }
+    });
+    addr
+}
+
+/// A stale cached URL (the stream "moved"): playback hits 404, re-resolves
+/// the station once, plays the fresh URL, and the cache is healed.
+#[test]
+fn stale_cache_self_heals() {
+    let dir = tempfile::tempdir().unwrap();
+    let addr = playlist_server(dir.path());
+    write_stations(
+        dir.path(),
+        &format!(
+            "[[station]]\nid='loop'\nname='Loop FM'\nsource='url'\nurl='http://{addr}/list.pls'\n"
+        ),
+    );
+    let now = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .unwrap()
+        .as_secs();
+    std::fs::write(
+        dir.path().join("ttnr/resolve.json"),
+        format!(
+            r#"{{"url:loop": {{"urls": ["http://{addr}/moved-away"], "resolved_at": {now}, "ttl_secs": 3600, "strategy": "discovery"}}}}"#
+        ),
+    )
+    .unwrap();
+
+    let out = ttnr(dir.path(), &["play", "loop", "--audio-output", "null"]);
+    let stdout = text(&out.stdout);
+    assert!(
+        out.status.success(),
+        "stdout: {stdout}\nstderr: {}",
+        text(&out.stderr)
+    );
+    let wanted = [
+        "stream: http://".to_owned() + &addr.to_string() + "/moved-away",
+        "[HTTP 404 Not Found; re-resolving the station]".to_owned(),
+        "[HTTP 404 Not Found; trying the next stream]".to_owned(),
+        format!("stream: http://{addr}/ok.wav"),
+        "[end of stream]".to_owned(),
+    ];
+    let mut rest = stdout.as_str();
+    for w in &wanted {
+        let i = rest
+            .find(w.as_str())
+            .unwrap_or_else(|| panic!("missing/out of order {w:?} in:\n{stdout}"));
+        rest = &rest[i + w.len()..];
+    }
+    let cache = std::fs::read_to_string(dir.path().join("ttnr/resolve.json")).unwrap();
+    assert!(
+        !cache.contains("moved-away") && cache.contains("/ok.wav"),
+        "{cache}"
+    );
+}
+
+#[test]
+fn refresh_command() {
+    let dir = tempfile::tempdir().unwrap();
+    let addr = playlist_server(dir.path());
+    write_stations(
+        dir.path(),
+        &format!(
+            "[[station]]\nid='loop'\nname='Loop FM'\nsource='url'\nurl='http://{addr}/list.pls'\n\
+             [[station]]\nid='bbc_6music'\nname='BBC Radio 6 Music'\nsource='bbc'\n"
+        ),
+    );
+    let out = ttnr(dir.path(), &["refresh", "loop"]);
+    let stdout = text(&out.stdout);
+    assert!(out.status.success(), "{stdout}{}", text(&out.stderr));
+    assert!(
+        stdout.starts_with(&format!(
+            "loop: http://{addr}/gone | http://{addr}/ok.wav\n"
+        )),
+        "{stdout}"
+    );
+    assert!(
+        stdout.contains("Cache: bypassed (refresh) → Discovery: ok"),
+        "{stdout}"
+    );
+
+    let out = ttnr(dir.path(), &["refresh"]);
+    assert!(!out.status.success());
+    let stdout = text(&out.stdout);
+    assert!(
+        stdout.contains("loop: http://")
+            && stdout.contains("bbc_6music: error: unknown source `bbc`"),
+        "{stdout}"
+    );
+    assert!(
+        text(&out.stderr).contains("1 of 2 station(s)"),
+        "{}",
+        text(&out.stderr)
+    );
+}
+
+/// M2 acceptance, offline: a `.pls` URL whose stream carries ICY titles
+/// shows them as `now:` lines.
+#[test]
+fn pls_with_icy_titles() {
+    let mp3 = std::fs::read(
+        std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+            .join("tests/fixtures/generated/icy_stream.mp3"),
+    )
+    .expect("run scripts/gen-fixtures.zsh");
+    let listener = TcpListener::bind("127.0.0.1:0").unwrap();
+    let addr = listener.local_addr().unwrap();
+    std::thread::spawn(move || {
+        for stream in listener.incoming() {
+            let Ok(mut s) = stream else { continue };
+            let mut buf = [0u8; 4096];
+            let n = s.read(&mut buf).unwrap_or(0);
+            let req = String::from_utf8_lossy(&buf[..n]).to_ascii_lowercase();
+            if req.starts_with("get /radio.pls") {
+                let pls = format!("[playlist]\nFile1=http://{addr}/live\n");
+                let _ = write!(
+                    s,
+                    "HTTP/1.1 200 OK\r\nContent-Type: audio/x-scpls\r\nContent-Length: {}\r\n\r\n{pls}",
+                    pls.len()
+                );
+                continue;
+            }
+            let icy = req.contains("icy-metadata: 1");
+            let _ = write!(
+                s,
+                "HTTP/1.1 200 OK\r\nContent-Type: audio/mpeg\r\nicy-name: Loop FM\r\n{}\r\n",
+                if icy { "icy-metaint: 8000\r\n" } else { "" }
+            );
+            // ~3 s of audio, then close (end of stream).
+            for (i, chunk) in mp3.chunks(8000).take(3).enumerate() {
+                let _ = s.write_all(chunk);
+                if icy {
+                    let block = if i == 0 {
+                        let mut t = b"StreamTitle='Artist One - Song A';".to_vec();
+                        let n = t.len().div_ceil(16);
+                        t.resize(n * 16, 0);
+                        std::iter::once(u8::try_from(n).unwrap()).chain(t).collect()
+                    } else {
+                        vec![0]
+                    };
+                    let _ = s.write_all(&block);
+                }
+            }
+        }
+    });
+    let state = tempfile::tempdir().unwrap();
+    let url = format!("http://{addr}/radio.pls");
+    let out = ttnr(state.path(), &["play", &url, "--audio-output", "null"]);
+    let stdout = text(&out.stdout);
+    assert!(out.status.success(), "{stdout}{}", text(&out.stderr));
+    assert!(stdout.contains("now: Artist One – Song A"), "{stdout}");
 }

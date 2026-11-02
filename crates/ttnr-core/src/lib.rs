@@ -4,6 +4,7 @@
 //! offset and recent-tracks history.
 
 pub mod cache;
+pub mod failover;
 pub mod http;
 pub mod merge;
 pub mod nowplaying;
@@ -14,6 +15,7 @@ pub mod station;
 pub mod stream;
 
 pub use cache::ResolveCache;
+pub use failover::{Action, Failover};
 pub use http::{Http, HttpError, HttpResponse};
 pub use merge::Merger;
 pub use nowplaying::{InfoSource, NowPlaying, StreamTags, split_icy_title};

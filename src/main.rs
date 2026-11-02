@@ -23,6 +23,12 @@ struct Cli {
 enum Command {
     /// Play a URL, file or station id with plain status output (Ctrl-C stops).
     Play(PlayArgs),
+    /// Re-discover stream URLs (bypassing the cache) for a station or URL,
+    /// or for all configured stations.
+    Refresh {
+        /// Station id or URL; all stations if omitted.
+        target: Option<String>,
+    },
     /// List the stations from stations.toml.
     Stations {
         /// Only stations whose id or name contains this text.
@@ -88,6 +94,7 @@ fn run(cli: Cli) -> Result<()> {
             };
             runtime.block_on(play::run(&args.target, &cfg))
         }
+        Command::Refresh { target } => runtime.block_on(play::refresh(target.as_deref())),
         Command::Stations { search } => stations::print(search),
     }
 }
