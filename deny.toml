@@ -44,6 +44,11 @@ license-files = [{ path = "LICENSE", hash = 0x13b834cd }]
 
 [bans]
 multiple-versions = "warn"
+skip = [
+    # Proc-macro only: crossterm 0.29 (latest) → derive_more → syn 2, while
+    # our other macros use syn 3. Remove when crossterm moves on.
+    { crate = "syn@2", reason = "crossterm 0.29 via derive_more; compile-time only" },
+]
 wildcards = "deny"
 allow-wildcard-paths = true
 
