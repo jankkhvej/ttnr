@@ -68,3 +68,19 @@ anything older than ~3 months before relying on it.
 | `ttnr` | No crates.io/PyPI/npm package, no Homebrew formula/cask, no Debian source package, not on local `PATH`/`man`; GitHub: only tiny unrelated repos (≤1 star) | VERIFIED 2026-11-02 |
 | `tuner` | No crates.io crate, no Homebrew formula; npm `tuner` = "play a roster of internet radio stations" (same domain); PyPI `tuner` = Kivy instrument tuner | VERIFIED 2026-11-02 |
 
+### 2026-11-02 · mpv 0.41.0 options and commands used by `MpvPlayer`
+
+| Fact | Source | Status |
+|---|---|---|
+| All options set by `MpvPlayer` exist in the installed mpv 0.41.0: `vid` (`video` is an alias), `audio-display`, `force-window`, `ytdl`, `config`, `load-scripts`, `terminal`, `osc`, `input-default-bindings`, `input-vo-keyboard`, `input-media-keys`, `idle`, `audio-client-name`, `ao`, `audio-channels`, `volume`, `audio-device`, `http-header-fields` | `mpv --list-options` (local, 0.41.0) | VERIFIED 2026-11-02 |
+| libmpv's built-in profile already sets `config=no idle=yes terminal=no input-terminal=no osc=no input-default-bindings=no input-vo-keyboard=no input-media-keys=no media-controls=no` (ttnr sets them explicitly anyway) | `mpv --show-profile=libmpv` | VERIFIED 2026-11-02 |
+| `--vid=no` disables video playback; `--audio-display=no` disables cover-art display (which would otherwise appear as a video track) | https://github.com/mpv-player/mpv/blob/v0.41.0/DOCS/man/options.rst | VERIFIED 2026-11-02 |
+| `--audio-channels`: default `auto-safe` = system's preferred layout (stereo if none); `auto` = whatever the device accepts, preferring the source layout, with a warning about HDMI issues | same | VERIFIED 2026-11-02 |
+| `--volume` always controls mpv's internal (software) mixer since 0.18.1 → app volume independent of system volume (SPEC F3.6); `volume-max` default 130 | same; `mpv --list-options` | VERIFIED 2026-11-02 |
+| `--audio-device=auto` follows the default device; names come from the `audio-device-list` property | same | VERIFIED 2026-11-02 |
+| `--load-scripts` / `--config` can only be set before `mpv_initialize` | `libmpv2` docs for `Mpv::with_initializer` | VERIFIED 2026-11-02 |
+| String-list options: `-append` adds one item verbatim (no escaping, may contain `,`); `-clr` clears; via API: `change-list <name> <op> <value>` (value `""` for ops without one) | https://github.com/mpv-player/mpv/blob/v0.41.0/DOCS/man/mpv.rst (List Options) · https://github.com/mpv-player/mpv/blob/v0.41.0/DOCS/man/input.rst | VERIFIED 2026-11-02 (and by test `headers_are_passed_verbatim_and_replaced_per_play`) |
+| `loadfile <url> replace` stops the current file and starts the new one; returns before loading completes | input.rst | VERIFIED 2026-11-02 |
+| `--media-controls` is Windows-only | options.rst | VERIFIED 2026-11-02 |
+| Lead for M6: `--input-media-keys` (macOS/Windows) lets mpv receive media keys; whether this works in libmpv inside a windowless terminal app is unknown | options.rst | UNVERIFIED |
+| `ao=coreaudio` opens on the owner's Mac (`current-ao` = `coreaudio`) | ignored test `coreaudio_output_opens` | VERIFIED 2026-11-02 |

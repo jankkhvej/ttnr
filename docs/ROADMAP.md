@@ -12,7 +12,7 @@ Work top to bottom. Tick `[x]` when a task meets its acceptance criteria and
 **Acceptance:** clean clone → `./scripts/check.zsh` green.
 
 ## M1 — Playback engine (headless)
-- [ ] `MpvPlayer`: audio-only config, play/stop/pause/volume via CoreAudio.
+- [x] `MpvPlayer`: audio-only config, play/stop/pause/volume via CoreAudio.
 - [ ] Engine events: buffering, playing, error kinds (incl. HTTP 403/404), EOF.
 - [ ] `StreamInfo` from mpv properties (codec, rate, format, channels, bitrate).
 - [ ] `ttnr play <url>` plays in the terminal (plain log output, Ctrl-C stops).

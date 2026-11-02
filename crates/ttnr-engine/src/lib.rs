@@ -1,35 +1,37 @@
-//! Playback engine for ttnr: the `Player` trait and its libmpv-backed
-//! implementation, configured for audio only (video is never decoded).
-//!
-//! M0 only verifies that libmpv links and initialises; playback arrives in
-//! M1 (see `docs/ROADMAP.md`).
+//! Playback engine for ttnr: the [`Player`] trait and its libmpv-backed
+//! implementation [`MpvPlayer`], configured for audio only (video is never
+//! decoded).
 
-use libmpv2::Mpv;
+mod config;
+mod mpv;
+
+pub use config::{AudioOutput, EngineConfig};
+pub use mpv::{MpvPlayer, libmpv_version};
+use ttnr_core::StreamDescriptor;
 
 /// Errors raised by the playback engine.
 #[derive(Debug, thiserror::Error)]
 pub enum EngineError {
-    /// libmpv refused to create or initialise a player instance.
+    /// libmpv rejected a call (init, option, property or command).
     #[error("libmpv: {0}")]
     Mpv(#[from] libmpv2::Error),
+    /// The stream descriptor contained no URL to play.
+    #[error("stream descriptor has no URL")]
+    NoStreamUrl,
 }
 
-/// Version string of the linked libmpv, e.g. `"mpv 0.41.0"`.
-///
-/// Creates and drops a throw-away mpv core (no file loaded, no audio
-/// output opened).
-pub fn libmpv_version() -> Result<String, EngineError> {
-    let mpv = Mpv::new()?;
-    Ok(mpv.get_property::<String>("mpv-version")?)
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn libmpv_links_and_reports_version() {
-        let v = libmpv_version().unwrap();
-        assert!(v.starts_with("mpv "), "unexpected mpv-version: {v}");
-    }
+/// A playback backend. Implemented by [`MpvPlayer`].
+pub trait Player {
+    /// Start playing the first URL of `d`, replacing whatever is playing.
+    fn play(&mut self, d: &StreamDescriptor) -> Result<(), EngineError>;
+    /// Stop playback; the player stays ready for the next [`Player::play`].
+    fn stop(&mut self) -> Result<(), EngineError>;
+    /// Pause (`true`) or resume (`false`).
+    fn pause(&mut self, on: bool) -> Result<(), EngineError>;
+    /// App volume in percent, clamped to `0.0..=100.0`. Independent of the
+    /// system volume (SPEC F3.6).
+    fn set_volume(&mut self, pct: f32) -> Result<(), EngineError>;
+    /// Pin an output device by its mpv name (`audio-device-list`), or follow
+    /// the system default with `None`.
+    fn set_device(&mut self, dev: Option<&str>) -> Result<(), EngineError>;
 }

@@ -97,7 +97,7 @@ Every resolution records a `ResolverTrace` (visible with `--debug`).
 
 `vid=no`, `video=no`, `ao=coreaudio`, `audio-display=no`, `ytdl=no`,
 `terminal=no`, `input-default-bindings=no`, `osc=no`, cache/readahead
-tuned for live streams, `audio-channels=auto` (respect device layout),
+tuned for live streams, `audio-channels=auto-safe` (system's preferred device layout; ADR-009),
 optional `audio-exclusive` / sample-rate matching from config.
 Observe properties: `metadata`, `media-title`, `audio-codec-name`,
 `audio-params`, `audio-bitrate`, `demuxer-cache-state`, `paused-for-cache`,

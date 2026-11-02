@@ -10,6 +10,10 @@ publish = false
 [dependencies]
 libmpv2.workspace = true
 thiserror.workspace = true
+ttnr-core.workspace = true
+
+[dev-dependencies]
+tempfile.workspace = true
 
 [lints]
 workspace = true
