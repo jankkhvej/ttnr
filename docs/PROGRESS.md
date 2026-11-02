@@ -2,6 +2,12 @@
 
 Newest entry on top. Each entry: date · milestone/task · what changed · how to try it · next step · open questions for the owner.
 
+## 2026-11-02 · M2 · `stations` source
+- `StationsSource` (load/validate/list/find), `ttnr play <station-id>`, `ttnr stations [--search]`; `examples/stations.toml` now has real, checked SomaFM/FIP entries plus BBC placeholders (ADR-019).
+- Tests: parser/validation units, example file validity, CLI (list, search, play by id, BBC-before-M4 message, unknown id, broken file).
+- Try it: `mkdir -p ~/.config/ttnr && cp examples/stations.toml ~/.config/ttnr/ && cargo run -q -- stations && cargo run -q -- play fip`.
+- Next: M2 task 4 – ICY and HLS timed-ID3 metadata as `NowPlaying`.
+
 ## 2026-11-02 · M2 · `url` source + playlists + HTTP client
 - `ttnr-sources`: `playlist` (detect/parse M3U, HLS pass-through, PLS, XSPF, ASX), `ReqwestHttp` (native TLS, stream-aware, capped), `UrlSource` (ADR-018). `ttnr play` now resolves via the registry, caches in `~/.cache/ttnr/resolve.json`, and fails over between playlist mirrors.
 - Fixtures: 10 real playlists recorded from popular stations. Tests: parser units, real-playlist table, HTTP client vs loopback (endless stream, redirect, cap, ICY status), `UrlSource` through the chain, CLI fail-over (404 mirror → next).

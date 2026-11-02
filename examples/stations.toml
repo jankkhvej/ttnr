@@ -1,7 +1,28 @@
-# Sample stations file. Copy to ~/.config/ttnr/stations.toml and edit.
-# `source` picks the plugin that resolves the station at play time.
-# `url` on a BBC station is an optional manual override (last resort in the resolver chain).
+# Sample stations file. Copy to ~/.config/ttnr/stations.toml
+# (or $XDG_CONFIG_HOME/ttnr/stations.toml) and edit.
+#
+# Each [[station]] needs `id` (unique), `name` and `source`, the plugin that
+# resolves it at play time. Play one with `ttnr play <id>`; list them with
+# `ttnr stations`.
+#
+# `url`: for source "url" it is the stream or playlist itself; for other
+# sources an optional manual override (last resort of the resolver chain).
+# `params`: optional source-specific settings, e.g. params = { region = "uk" }.
 
+[[station]]
+id     = "groovesalad"
+name   = "SomaFM Groove Salad"
+source = "url"
+url    = "https://somafm.com/groovesalad.pls"    # PLS with 3 mirrors (checked 2026-11-02)
+
+[[station]]
+id     = "fip"
+name   = "FIP (Radio France)"
+source = "url"
+url    = "https://stream.radiofrance.fr/fip/fip.m3u8?id=radiofrance"   # HLS AAC (checked 2026-11-02)
+
+# BBC stations need the `bbc` source (milestone M4). The ids follow BBC's
+# service ids seen in community tools – UNVERIFIED until M4 research.
 [[station]]
 id     = "bbc_6music"
 name   = "BBC Radio 6 Music"
@@ -11,9 +32,3 @@ source = "bbc"
 id     = "bbc_radio_three"
 name   = "BBC Radio 3"
 source = "bbc"
-
-[[station]]
-id     = "example-icecast"
-name   = "Any Icecast/Shoutcast/HLS URL"
-source = "url"
-url    = "https://example.org/stream.m3u8"   # replace with a real stream

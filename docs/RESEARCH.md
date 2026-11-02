@@ -176,3 +176,10 @@ anything older than ~3 months before relying on it.
 | HEAD is unreliable on Icecast mounts → probe with GET and drop after the headers | research subagent (general knowledge, not from a primary source) | UNVERIFIED (GET+drop used regardless) |
 | With all targets, `native-tls` pulls `openssl` (+ `openssl-macros` → duplicate `syn` 2) for Linux; on macOS it uses security-framework only | `cargo tree -d --target all` | VERIFIED 2026-11-02 |
 | `ttnr play` resolves and plays SomaFM `.pls`, WDVX `.xspf`, TranceBase `.asx`, 101 Smooth Jazz `.m3u` | manual run 2026-11-02 | seen 2026-11-02 |
+
+### 2026-11-02 · stations.toml
+
+| Fact | Source | Status |
+|---|---|---|
+| `toml` 1.1.8 implements TOML spec 1.1.0 (crate version suffix `+spec-1.1.0`) | https://crates.io/crates/toml | VERIFIED 2026-11-02 |
+| BBC service ids `bbc_6music`, `bbc_radio_three` in `examples/stations.toml` come from community tools | planning notes | UNVERIFIED (M4) |

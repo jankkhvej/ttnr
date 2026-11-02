@@ -110,3 +110,8 @@ Decision:
 - `ttnr play` resolves through the registry with the on-disk cache (`$XDG_CACHE_HOME/ttnr/resolve.json`) and fails over to the next candidate on HTTP/unreachable/load errors.
 - `cargo deny` graph restricted to `aarch64-apple-darwin` and `x86_64-apple-darwin` (the shipped platforms); avoids judging Linux-only branches like native-tls → openssl.
 Consequences: nested playlists (a playlist entry that is itself a PLS/M3U) are left to mpv, which parses M3U/PLS itself. Extend the deny targets if Linux becomes a goal.
+
+## ADR-019 · 2026-11-02 · `stations` source is a catalogue
+Context: M2 task 3. Stations in `stations.toml` belong to different resolving sources (`url`, `bbc`, …).
+Decision: `StationsSource` loads `$XDG_CONFIG_HOME/ttnr/stations.toml` (default `~/.config/ttnr/`), validates it (unique non-empty ids, name, source; `url` required for source `url`; `source = "stations"` rejected; unknown top-level keys rejected) and only lists/looks up; each station resolves through its own `source` via the registry. Missing file = empty list. `params` is an explicit inline table (no flattening magic). CLI: `ttnr play <url|path|station-id>` (URL/path detection: `://`, leading `/ . ~`, or an existing path), `ttnr stations [--search]`. A broken `stations.toml` does not block playing a plain URL.
+Consequences: stations of sources not yet built (e.g. `bbc` before M4) fail with "needs the `bbc` source, which is not available yet".

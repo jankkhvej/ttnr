@@ -13,6 +13,15 @@ pub fn state_dir() -> Option<PathBuf> {
     )
 }
 
+/// `$XDG_CONFIG_HOME/ttnr`, else `$HOME/.config/ttnr` (config, stations).
+pub fn config_dir() -> Option<PathBuf> {
+    xdg_dir(
+        std::env::var_os("XDG_CONFIG_HOME"),
+        std::env::var_os("HOME"),
+        ".config",
+    )
+}
+
 /// `$XDG_CACHE_HOME/ttnr`, else `$HOME/.cache/ttnr` (resolve cache).
 pub fn cache_dir() -> Option<PathBuf> {
     xdg_dir(

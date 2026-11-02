@@ -3,6 +3,7 @@
 mod logging;
 mod paths;
 mod play;
+mod stations;
 
 use std::process::ExitCode;
 
@@ -20,14 +21,21 @@ struct Cli {
 
 #[derive(Debug, Subcommand)]
 enum Command {
-    /// Play a stream URL or local file with plain status output (Ctrl-C stops).
+    /// Play a URL, file or station id with plain status output (Ctrl-C stops).
     Play(PlayArgs),
+    /// List the stations from stations.toml.
+    Stations {
+        /// Only stations whose id or name contains this text.
+        #[arg(long, short)]
+        search: Option<String>,
+    },
 }
 
 #[derive(Debug, Args)]
 struct PlayArgs {
-    /// Icecast/Shoutcast, HTTP, HLS (.m3u8) or DASH (.mpd) URL, or a file.
-    url: String,
+    /// Stream or playlist URL (Icecast/Shoutcast, HLS, .pls, .m3u, .xspf,
+    /// .asx), a local file, or a station id from stations.toml.
+    target: String,
     /// App volume in percent (0–100), independent of the system volume.
     #[arg(long, default_value_t = 100.0, value_parser = parse_volume)]
     volume: f32,
@@ -78,8 +86,9 @@ fn run(cli: Cli) -> Result<()> {
                 volume: args.volume,
                 ..EngineConfig::default()
             };
-            runtime.block_on(play::run(&args.url, &cfg))
+            runtime.block_on(play::run(&args.target, &cfg))
         }
+        Command::Stations { search } => stations::print(search),
     }
 }
 

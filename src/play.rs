@@ -3,24 +3,27 @@
 use std::sync::Arc;
 
 use anyhow::{Context, Result, bail};
-use ttnr_core::{ResolveCache, ResolveCtx, SourceRegistry, StreamDescriptor};
+use ttnr_core::{ResolveCache, ResolveCtx, SourceRegistry, Station, StreamDescriptor};
 use ttnr_engine::{EngineConfig, EngineEvent, ErrorKind, MpvPlayer, Player};
-use ttnr_sources::{ReqwestHttp, UrlSource};
+use ttnr_sources::{ReqwestHttp, StationsSource, UrlSource};
 
-use crate::paths;
+use crate::{paths, stations};
 
-/// Resolve `url` (expanding playlists), then play it until it ends, fails,
-/// or Ctrl-C is pressed. If a playlist lists several streams and one fails,
-/// the next is tried.
-pub async fn run(url: &str, cfg: &EngineConfig) -> Result<()> {
+/// Play `target` – a URL, a file path or a station id from
+/// `stations.toml` – until it ends, fails, or Ctrl-C is pressed. Playlists
+/// are expanded; if one of several streams fails, the next is tried.
+pub async fn run(target: &str, cfg: &EngineConfig) -> Result<()> {
+    let station = station_for(target)?;
+    let url = station.url.clone().unwrap_or_default();
+    let url = url.as_str();
     let mut player = MpvPlayer::new(cfg).context("cannot start the audio engine")?;
     let mut events = player
         .take_events()
         .context("engine events already taken")?;
-    tracing::info!(url, "play");
-    println!("ttnr: {url}");
+    tracing::info!(station = %station.key(), "play");
+    println!("ttnr: {}", station.name);
 
-    let resolved = resolve(url).await?;
+    let resolved = resolve(&station).await?;
     if resolved.urls.len() > 1 {
         println!("playlist: {} streams", resolved.urls.len());
     }
@@ -77,8 +80,32 @@ pub async fn run(url: &str, cfg: &EngineConfig) -> Result<()> {
     }
 }
 
-/// Resolve through the source registry (only the `url` source so far).
-async fn resolve(url: &str) -> Result<StreamDescriptor> {
+/// A URL or path plays as is; anything else must be a station id.
+fn station_for(target: &str) -> Result<Station> {
+    if looks_like_url_or_path(target) {
+        return Ok(UrlSource::station(target));
+    }
+    let list = stations::load()?;
+    match list.find(target) {
+        Some(st) => Ok(st.clone()),
+        None if list.stations().is_empty() => bail!(
+            "{target:?} is neither a URL nor a station id (no stations configured; see examples/stations.toml)"
+        ),
+        None => {
+            let ids: Vec<_> = list.stations().iter().map(|s| s.id.as_str()).collect();
+            bail!("unknown station {target:?}; known: {}", ids.join(", "))
+        }
+    }
+}
+
+fn looks_like_url_or_path(target: &str) -> bool {
+    target.contains("://")
+        || target.starts_with(['/', '.', '~'])
+        || std::path::Path::new(target).exists()
+}
+
+/// Resolve through the source registry.
+async fn resolve(station: &Station) -> Result<StreamDescriptor> {
     let cache = match paths::cache_dir() {
         Some(dir) => ResolveCache::load(dir.join("resolve.json")),
         None => ResolveCache::in_memory(),
@@ -87,7 +114,16 @@ async fn resolve(url: &str) -> Result<StreamDescriptor> {
     let ctx = ResolveCtx::new(Arc::new(http), Arc::new(cache));
     let mut registry = SourceRegistry::new();
     registry.register(Arc::new(UrlSource));
-    let d = registry.resolve(&UrlSource::station(url), &ctx).await?;
+    registry.register(Arc::new(StationsSource::default()));
+    let d = registry.resolve(station, &ctx).await.map_err(|e| match e {
+        ttnr_core::ResolveError::UnknownSource(id) => {
+            anyhow::anyhow!(
+                "station {:?} needs the `{id}` source, which is not available yet",
+                station.id
+            )
+        }
+        other => other.into(),
+    })?;
     tracing::info!(trace = %d.trace, urls = ?d.urls, "resolved");
     Ok(d)
 }

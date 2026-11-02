@@ -36,6 +36,7 @@ fn ttnr(state: &Path, args: &[&str]) -> Output {
         .args(args)
         .env("XDG_STATE_HOME", state)
         .env("XDG_CACHE_HOME", state)
+        .env("XDG_CONFIG_HOME", state)
         .env_remove("TTNR_LOG")
         .output()
         .unwrap()
@@ -209,4 +210,92 @@ fn playlist_falls_over_to_the_next_stream() {
     );
     // The expansion was cached under $XDG_CACHE_HOME/ttnr.
     assert!(dir.path().join("ttnr/resolve.json").is_file());
+}
+
+/// Write `$XDG_CONFIG_HOME/ttnr/stations.toml` in `dir`.
+fn write_stations(dir: &Path, toml: &str) {
+    std::fs::create_dir_all(dir.join("ttnr")).unwrap();
+    std::fs::write(dir.join("ttnr/stations.toml"), toml).unwrap();
+}
+
+#[test]
+fn stations_list_and_search() {
+    let dir = tempfile::tempdir().unwrap();
+    let out = ttnr(dir.path(), &["stations"]);
+    assert!(out.status.success());
+    assert!(
+        text(&out.stdout).starts_with("no stations"),
+        "{}",
+        text(&out.stdout)
+    );
+
+    write_stations(
+        dir.path(),
+        "[[station]]\nid='gs'\nname='Groove Salad'\nsource='url'\nurl='https://somafm.com/groovesalad.pls'\n\
+         [[station]]\nid='bbc_6music'\nname='BBC Radio 6 Music'\nsource='bbc'\n",
+    );
+    let out = ttnr(dir.path(), &["stations"]);
+    let stdout = text(&out.stdout);
+    assert_eq!(
+        stdout.lines().collect::<Vec<_>>(),
+        [
+            "gs          url  Groove Salad",
+            "bbc_6music  bbc  BBC Radio 6 Music"
+        ],
+        "{stdout}"
+    );
+    let out = ttnr(dir.path(), &["stations", "--search", "radio 6"]);
+    assert_eq!(text(&out.stdout).lines().count(), 1);
+}
+
+#[test]
+fn play_by_station_id() {
+    let dir = tempfile::tempdir().unwrap();
+    let wav = dir.path().join("silence.wav");
+    write_wav(&wav);
+    write_stations(
+        dir.path(),
+        &format!(
+            "[[station]]\nid='local'\nname='Local Silence'\nsource='url'\nurl='{}'\n\
+             [[station]]\nid='bbc_6music'\nname='BBC Radio 6 Music'\nsource='bbc'\n",
+            wav.display()
+        ),
+    );
+    let out = ttnr(dir.path(), &["play", "local", "--audio-output", "null"]);
+    let stdout = text(&out.stdout);
+    assert!(out.status.success(), "{stdout}{}", text(&out.stderr));
+    assert!(stdout.starts_with("ttnr: Local Silence\n"), "{stdout}");
+    assert!(stdout.contains("[end of stream]"), "{stdout}");
+
+    let out = ttnr(
+        dir.path(),
+        &["play", "bbc_6music", "--audio-output", "null"],
+    );
+    assert!(!out.status.success());
+    assert!(
+        text(&out.stderr).contains("needs the `bbc` source"),
+        "{}",
+        text(&out.stderr)
+    );
+
+    let out = ttnr(dir.path(), &["play", "nope", "--audio-output", "null"]);
+    assert!(!out.status.success());
+    assert!(
+        text(&out.stderr).contains("unknown station \"nope\"; known: local, bbc_6music"),
+        "{}",
+        text(&out.stderr)
+    );
+}
+
+#[test]
+fn broken_stations_file_is_reported() {
+    let dir = tempfile::tempdir().unwrap();
+    write_stations(dir.path(), "[[station]]\nid='a'\nname='A'\nsource='url'\n");
+    let out = ttnr(dir.path(), &["stations"]);
+    assert!(!out.status.success());
+    let stderr = text(&out.stderr);
+    assert!(
+        stderr.contains("stations.toml") && stderr.contains("needs a url"),
+        "{stderr}"
+    );
 }
