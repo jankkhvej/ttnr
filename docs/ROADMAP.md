@@ -6,7 +6,7 @@ Work top to bottom. Tick `[x]` when a task meets its acceptance criteria and
 ## M0 — Bootstrap
 - [x] Verify toolchain: Rust stable, libmpv via Homebrew (`pkg-config --modversion mpv`), ffmpeg. Log versions in RESEARCH.md.
 - [x] Choose and verify the libmpv Rust binding (maintenance, licence, mpv version compatibility) → ADR.
-- [x] Cargo workspace with the crates in ARCHITECTURE.md (empty but compiling), `rust-toolchain.toml`, `LICENSE` (GPL-3.0-or-later), `deny.toml`.
+- [x] Cargo workspace with the crates in ARCHITECTURE.md (empty but compiling), `rust-toolchain.toml`, `LICENSE` (BSD-2-Clause, ADR-007), `deny.toml`.
 - [x] `scripts/check.zsh` gate (fmt, clippy -D warnings, test, deny) passes.
 - [x] `tuner --version` and `tuner --help` work.
 **Acceptance:** clean clone → `./scripts/check.zsh` green.

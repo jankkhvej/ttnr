@@ -95,8 +95,9 @@ track and programme information — which the BBC streams themselves do not carr
 
 ## Non-functional requirements
 
-- **Licence:** project GPL-3.0-or-later (compatible with Homebrew's libmpv,
-  which is GPL-2.0-or-later AND LGPL-2.1-or-later). All deps OSI-approved,
+- **Licence:** project source BSD-2-Clause (GPL-compatible). A binary linked
+  against Homebrew's libmpv/FFmpeg (GPL builds) is, as a combined work,
+  distributed under GPL-3.0-or-later terms (ADR-007). All deps OSI-approved,
   enforced by `cargo deny`.
 - **Privacy:** no telemetry, no accounts, no analytics.
 - **Resources:** idle CPU near zero while playing; TUI redraws only on change.

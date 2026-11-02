@@ -49,3 +49,22 @@ anything older than ~3 months before relying on it.
 | `libmpv` 2.0.1 / `libmpv-sys` 3.1.0 (ParadoxSpiral) last released 2020 – unmaintained, predates libmpv API 2.x | https://crates.io/api/v1/crates/libmpv | VERIFIED 2026-11-02 |
 | `mpv-client-dyn` 0.5.0 (2023-11-16) is for writing mpv *plugins* (cplugins), not embedding | https://crates.io/api/v1/crates/mpv-client-dyn | VERIFIED 2026-11-02 |
 | Linking + init verified by test `tuner-engine::tests::libmpv_links_and_reports_version` (`mpv-version` property starts with `mpv `) | `cargo test` | VERIFIED 2026-11-02 |
+
+### 2026-11-02 · Licensing (for ADR-007)
+
+| Fact | Source | Status |
+|---|---|---|
+| mpv's meson option `gpl` defaults to `true` ("GPL (version 2 or later) build"); without GPL-only files mpv/libmpv is LGPLv2.1+, but `-Dgpl=false` "does not in itself create a LGPLv2.1+ license grant" | https://raw.githubusercontent.com/mpv-player/mpv/v0.41.0/meson.options · https://raw.githubusercontent.com/mpv-player/mpv/v0.41.0/Copyright | VERIFIED 2026-11-02 |
+| Homebrew `mpv` formula passes no `-Dgpl=false` (→ GPL build); licence `all_of: GPL-2.0-or-later, LGPL-2.1-or-later` | https://github.com/Homebrew/homebrew-core/blob/HEAD/Formula/m/mpv.rb | VERIFIED 2026-11-02 |
+| Homebrew `ffmpeg` is built with `--enable-gpl --enable-version3` (plus libx264/libx265) → GPL-3.0-or-later | https://github.com/Homebrew/homebrew-core/blob/HEAD/Formula/f/ffmpeg.rb | VERIFIED 2026-11-02 |
+| FSF: FreeBSD licence (2-clause BSD), Modified BSD (3-clause) and ISC are lax permissive licences, compatible with the GNU GPL | https://www.gnu.org/licenses/license-list.html#FreeBSD | VERIFIED 2026-11-02 |
+| FreeBSD project licence is the 2-clause BSD licence; licence text taken from SPDX `BSD-2-Clause` | https://www.freebsd.org/copyright/freebsd-license/ · https://github.com/spdx/license-list-data/blob/main/text/BSD-2-Clause.txt | VERIFIED 2026-11-02 |
+
+### 2026-11-02 · Project name collisions (crates.io, PyPI, npm, Homebrew, Debian, GitHub, local `man`/`PATH`)
+
+| Name | Finding | Status |
+|---|---|---|
+| `tnr` | **Taken on macOS:** Thunder Compute's official GPU-cloud CLI is the `tnr` command (Go binary, macOS `.pkg`, Homebrew tap `Thunder-Compute/tnr`); also crates.io `tnr` 0.2.0 = macOS notification CLI; PyPI `tnr` (deprecated Thunder CLI); npm `tnr` "Thunder command line utility" | VERIFIED 2026-11-02 · https://github.com/Thunder-Compute/thunder-cli · https://crates.io/crates/tnr |
+| `ttnr` | No crates.io/PyPI/npm package, no Homebrew formula/cask, no Debian source package, not on local `PATH`/`man`; GitHub: only tiny unrelated repos (≤1 star) | VERIFIED 2026-11-02 |
+| `tuner` | No crates.io crate, no Homebrew formula; npm `tuner` = "play a roster of internet radio stations" (same domain); PyPI `tuner` = Kivy instrument tuner | VERIFIED 2026-11-02 |
+

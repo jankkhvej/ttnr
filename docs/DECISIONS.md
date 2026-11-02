@@ -12,7 +12,7 @@ Context: requirement to play "any format", any channel layout, HLS/DASH/ICY, wit
 Decision: embed libmpv (from Homebrew `mpv`), audio-only configuration.
 Consequences: broad codec support (incl. HE-AAC, AC-3, multichannel) and robust HLS; native dependency on Homebrew mpv; project licence must be GPL-compatible.
 
-## ADR-003 · 2026-11-02 · Licence GPL-3.0-or-later (proposed — owner to confirm in M0)
+## ADR-003 · 2026-11-02 · Licence GPL-3.0-or-later (superseded by ADR-007)
 Context: linking libmpv built as GPL.
 Decision: GPL-3.0-or-later for the project.
 
@@ -31,3 +31,10 @@ Consequences: unsafe code stays inside the binding; `MpvPlayer` wraps `libmpv2::
 Context: ARCHITECTURE.md lists one binary and six library crates; M8 wants `cargo install --path .`.
 Decision: the repo root is the `tuner` binary package *and* the workspace root; libraries live in `crates/tuner-*`. Shared versions/lints in `[workspace.*]`. Edition 2024, resolver 3. `rust-toolchain.toml` pins `1.99.1` (current stable) with rustfmt + clippy. Workspace lints: `missing_docs` and clippy `unwrap_used`/`expect_used` warn (→ errors under `-D warnings`), allowed in tests via `clippy.toml`.
 Consequences: `cargo install --path .` works as-is; bumping Rust is an explicit one-line change.
+
+## ADR-007 · 2026-11-02 · Licence BSD-2-Clause for the project source (supersedes ADR-003)
+Context: owner prefers a modern FreeBSD-style licence. We link libmpv; Homebrew builds mpv with its default `-Dgpl=true` and FFmpeg with `--enable-gpl --enable-version3`, so the libraries we run against are effectively GPL-3.0-or-later. The FSF lists the 2-clause ("FreeBSD") licence as GPL-compatible.
+Decision: all tuner source is BSD-2-Clause (`LICENSE`, `license = "BSD-2-Clause"` in the workspace). We distribute source only; a compiled binary linked against GPL libmpv/FFmpeg is, as a combined work, redistributable under GPL-3.0-or-later terms – stated in README. `GPL-3.0-or-later` removed from the `cargo deny` allow-list (no Rust dependency needs it).
+Rejected: GPL-3.0-or-later for the source (not required by our dependencies, against owner preference); an LGPL-only libmpv/FFmpeg build to make even binaries non-GPL (custom native build outside Homebrew – revisit only if binary redistribution under BSD terms becomes a goal).
+Consequences: anyone can reuse tuner code under BSD terms. A future Homebrew bottle / release binary must ship GPL-3.0 text and offer corresponding source of the GPL parts (M8 third-party notices).
+

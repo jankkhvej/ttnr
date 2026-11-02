@@ -45,5 +45,13 @@ you to try it — the exact commands will be in its last message and in
 
 ## Decisions waiting for you
 
-- Licence: GPL-3.0-or-later (proposed; needed because libmpv is GPL).
 - Name: "tuner" is a working name — rename before M8 if you like.
+
+## Licence
+
+The source code is under the **BSD 2-Clause** licence (see `LICENSE`).
+`tuner` links at runtime to libmpv and FFmpeg from Homebrew, which are built
+as GPL (FFmpeg `--enable-gpl --enable-version3`). A compiled `tuner` binary
+is therefore, as a combined work, redistributable only under
+GPL-3.0-or-later terms. Building from source for your own use is unaffected.
+

@@ -15,7 +15,6 @@ allow = [
     "Apache-2.0 WITH LLVM-exception",
     "BSD-2-Clause",
     "BSD-3-Clause",
-    "GPL-3.0-or-later",
     "ISC",
     "LGPL-2.1-only",      # libmpv2 / libmpv2-sys, see [[licenses.clarify]]
     "MIT",
