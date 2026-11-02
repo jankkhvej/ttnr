@@ -92,3 +92,11 @@ Rejected: forcing `audio-format=s16`/`audio-samplerate` (precision loss/resampli
 Context: Homebrew FFmpeg 9.0.2 has no DASH demuxer (no libxml2); mpv has none of its own. Owner asked whether DASH can be skipped.
 Decision: defer DASH (SPEC F1.1 annotated). Evidence: radio-browser.info, 62,042 non-broken stations on 2026-11-02 – 0 with `.mpd` URLs, 4,086 HLS (6.6 %), the rest direct Icecast/Shoutcast/HTTP. BBC offers HLS as well (M4 research will confirm).
 Consequences: `.mpd` URLs fail with "no playable audio" for now. The DASH fixture stays in `gen-fixtures.zsh` for when support arrives (FFmpeg built with libxml2 – could be added to the local build in the future).
+
+## ADR-017 · 2026-11-02 · Source traits: hooks + one shared resolver chain
+Context: M2 task 1. ARCHITECTURE sketched `Source::resolve/refresh` per source; the chain (cache → discovery → patterns → override) must behave the same for every source and be testable without network.
+Decision:
+- `Source` (async-trait) offers hooks: `id`, `capabilities`, `list`, `discover` (authoritative lookup, `Ok(None)` if n/a), `patterns` (templates, probed in order), `metadata` (optional `MetadataProvider`). `ttnr_core::resolve_chain` / `SourceRegistry::{resolve, refresh}` run the chain, record a `ResolverTrace`, and cache discovery/pattern hits in `ResolveCache` (JSON, atomic write, default TTL 24 h, corrupt file = empty). The user override (`Station::url`) is last and never cached, so a recovered discovery wins again. `Mode::Refresh` deletes the cached entry first, so a failed refresh cannot resurrect a known-bad URL.
+- Network behind `ttnr_core::Http` (`get`, `probe`); the real client comes with the `url` source; tests use fakes. `ResolveCtx` carries HTTP, cache and an injectable clock.
+- `Station` {id, name, source, url override, params}; `StreamDescriptor` gains `resolved_at`, `ttl`, `trace`; `NowPlaying` + `InfoSource` (priority External > TimedId3 > Icy) defined for the metadata tasks.
+Consequences: a source with fully custom resolution implements it inside `discover`. Adding a source = implement hooks + one `register` call.

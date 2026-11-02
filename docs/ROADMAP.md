@@ -20,7 +20,7 @@ Work top to bottom. Tick `[x]` when a task meets its acceptance criteria and
 **Acceptance:** owner hears an Icecast MP3 stream, an HLS AAC stream and a local 5.1 file correctly.
 
 ## M2 — Sources & in-stream metadata
-- [ ] `Source` / `MetadataProvider` traits, `SourceRegistry`, `ResolveCtx`, resolver chain + cache (cache/discovery/patterns/override).
+- [x] `Source` / `MetadataProvider` traits, `SourceRegistry`, `ResolveCtx`, resolver chain + cache (cache/discovery/patterns/override).
 - [ ] `url` source: direct URLs and playlist files (`m3u`, `m3u8` master/media, `pls`, `xspf`, `asx`) with fixtures.
 - [ ] `stations` source from `stations.toml` (sample file in `examples/`).
 - [ ] ICY and HLS timed-ID3 metadata surfaced as `NowPlaying`.

@@ -2,6 +2,11 @@
 
 Newest entry on top. Each entry: date · milestone/task · what changed · how to try it · next step · open questions for the owner.
 
+## 2026-11-02 · M2 · Source traits, registry, resolver chain + cache
+- `ttnr-core`: `Station`, `NowPlaying`/`InfoSource`, extended `StreamDescriptor` (+`ResolverTrace`), `Http` trait, `Source`/`MetadataProvider` (async-trait), `ResolveCtx`, `ResolveCache` (JSON, TTL), `resolve_chain`, `SourceRegistry` (ADR-017).
+- Tests: cache (TTL, persistence, corrupt file), chain (cache hit/miss, expiry, pattern probing order, override last and uncached, exhausted trace, refresh replaces stale URL, failed refresh does not resurrect it, unknown source).
+- Next: M2 task 2 – `url` source with playlist parsers + real HTTP client.
+
 ## 2026-11-02 · M1 review follow-up (owner feedback)
 - Owner heard Icecast MP3 and HLS AAC fine. Channel check on a stereo headset: L, R, C, gap, quieter L/R… – exactly the FFmpeg downmix (LFE dropped, centre/surround −3 dB); explained in RESEARCH.md.
 - DASH deferred (owner OK; 0 of 62,042 radio-browser stations use it) – ADR-016.

@@ -40,18 +40,19 @@ never blocks on network or audio.
 ```rust
 /// A place stations come from (generic URL, BBC, a directory, a script…).
 #[async_trait]
-pub trait Source: Send + Sync {
+pub trait Source: Send + Sync {          // hooks; the chain is shared (ADR-017)
     fn id(&self) -> &'static str;                       // "bbc", "url", …
     fn capabilities(&self) -> SourceCaps;               // browse? search? metadata?
-    async fn list(&self, q: &ListQuery) -> Result<Vec<Station>>;
-    /// Turn a station into something playable *now*. Called at play time,
-    /// never cached forever: stream URLs change.
-    async fn resolve(&self, st: &Station, ctx: &ResolveCtx) -> Result<StreamDescriptor>;
-    /// Force re-discovery (bypass caches), e.g. after a 403/404 or `ttnr refresh`.
-    async fn refresh(&self, st: &Station) -> Result<StreamDescriptor> { … }
+    async fn list(&self, q: &ListQuery, ctx: &ResolveCtx) -> Result<Vec<Station>>;
+    /// Authoritative lookup of a playable descriptor now (None = n/a).
+    async fn discover(&self, st: &Station, ctx: &ResolveCtx) -> Result<Option<StreamDescriptor>>;
+    /// Known URL templates, best first; the chain probes them in order.
+    fn patterns(&self, st: &Station) -> Vec<StreamDescriptor>;
     /// Optional external now-playing provider for this station.
     fn metadata(&self, st: &Station) -> Option<Box<dyn MetadataProvider>> { None }
 }
+// SourceRegistry::resolve(st, ctx) / ::refresh(st, ctx) run
+// cache → discover → patterns → override via ttnr_core::resolve_chain.
 
 pub struct StreamDescriptor {
     pub urls: Vec<StreamUrl>,        // ordered candidates (quality / region fallbacks)

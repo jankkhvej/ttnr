@@ -157,3 +157,9 @@ anything older than ~3 months before relying on it.
 | With the patched local libmpv, MP3/Vorbis/AAC 44.1 kHz, mono and AC-3 5.1 open `ao=coreaudio` on the owner's Mac (log `audio output ao="coreaudio"`) | local runs | VERIFIED 2026-11-02 |
 | Without Lua, the options `load-auto-profiles`, `load-console`, … do not exist (`MPV_ERROR_OPTION_NOT_FOUND`, −5) | local build | VERIFIED 2026-11-02 |
 | `git apply` run inside a subdirectory of another git repo silently skips patch paths outside that subdirectory (reported success, applied nothing) → use `patch -p1` | observed 2026-11-02 | VERIFIED 2026-11-02 |
+
+### 2026-11-02 · M2 source traits
+
+| Fact | Source | Status |
+|---|---|---|
+| Rust 1.99.1: a trait with `async fn` is still not dyn-compatible (`E0038 … because method is async`) → `async-trait` 0.1.92 for `dyn Source` / `dyn Http` / `dyn MetadataProvider` | `rustc --edition 2024` on a minimal example | VERIFIED 2026-11-02 |

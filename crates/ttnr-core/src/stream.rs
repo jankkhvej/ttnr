@@ -1,16 +1,23 @@
 //! Stream-level domain types: what to play ([`StreamDescriptor`]) and
 //! what is actually playing ([`StreamInfo`]).
 
+use std::time::{Duration, SystemTime};
+
+use serde::{Deserialize, Serialize};
+
 /// Something playable *now*, produced by a source at play time.
-///
-/// Minimal M1 shape; resolution metadata (`resolved_at`, `ttl`, resolver
-/// trace) is added with the resolver chain in M2 (see ARCHITECTURE.md).
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub struct StreamDescriptor {
     /// Ordered candidate URLs (quality / region fallbacks), best first.
     pub urls: Vec<String>,
     /// Extra HTTP request headers as `(name, value)` pairs.
     pub headers: Vec<(String, String)>,
+    /// When this was resolved (`None` for ad-hoc descriptors).
+    pub resolved_at: Option<SystemTime>,
+    /// How long the URLs may be reused from the cache (`None` = default).
+    pub ttl: Option<Duration>,
+    /// Which resolution steps were tried and how they ended (`--debug`).
+    pub trace: ResolverTrace,
 }
 
 impl StreamDescriptor {
@@ -18,8 +25,57 @@ impl StreamDescriptor {
     pub fn direct(url: impl Into<String>) -> Self {
         Self {
             urls: vec![url.into()],
-            headers: Vec::new(),
+            ..Self::default()
         }
+    }
+}
+
+/// A resolution strategy of the resolver chain (ARCHITECTURE.md).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum Strategy {
+    /// Last good URL from the on-disk cache.
+    Cache,
+    /// The source's authoritative lookup.
+    Discovery,
+    /// Known URL templates, probed in order.
+    Patterns,
+    /// A URL pinned by the user in `stations.toml`.
+    Override,
+}
+
+/// One step of a resolution attempt.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct TraceStep {
+    /// The strategy tried.
+    pub strategy: Strategy,
+    /// What happened, human-readable (e.g. `hit`, `HTTP 404 for …`).
+    pub outcome: String,
+}
+
+/// Ordered record of a resolution attempt.
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
+pub struct ResolverTrace(pub Vec<TraceStep>);
+
+impl ResolverTrace {
+    /// Append a step.
+    pub fn push(&mut self, strategy: Strategy, outcome: impl Into<String>) {
+        self.0.push(TraceStep {
+            strategy,
+            outcome: outcome.into(),
+        });
+    }
+}
+
+impl std::fmt::Display for ResolverTrace {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        for (i, step) in self.0.iter().enumerate() {
+            if i > 0 {
+                f.write_str(" → ")?;
+            }
+            write!(f, "{:?}: {}", step.strategy, step.outcome)?;
+        }
+        Ok(())
     }
 }
 
