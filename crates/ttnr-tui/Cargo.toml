@@ -8,8 +8,12 @@ license.workspace = true
 publish = false
 
 [dependencies]
+ratatui.workspace = true
 ttnr-core.workspace = true
 ttnr-themes.workspace = true
+
+[dev-dependencies]
+insta.workspace = true
 
 [lints]
 workspace = true

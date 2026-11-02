@@ -4,6 +4,7 @@ mod logging;
 mod paths;
 mod play;
 mod stations;
+mod tui;
 
 use std::process::ExitCode;
 
@@ -13,10 +14,11 @@ use ttnr_engine::{AudioOutput, EngineConfig};
 
 /// Minimal, themeable terminal player for network music streams.
 #[derive(Debug, Parser)]
-#[command(name = "ttnr", version, about, long_about = None, arg_required_else_help = true)]
+#[command(name = "ttnr", version, about, long_about = None)]
 struct Cli {
+    /// Without a subcommand, the interactive terminal UI starts.
     #[command(subcommand)]
-    command: Command,
+    command: Option<Command>,
 }
 
 #[derive(Debug, Subcommand)]
@@ -83,7 +85,8 @@ fn run(cli: Cli) -> Result<()> {
         .enable_all()
         .build()?;
     match cli.command {
-        Command::Play(args) => {
+        None => runtime.block_on(tui::run(&EngineConfig::default())),
+        Some(Command::Play(args)) => {
             let cfg = EngineConfig {
                 audio_output: match args.audio_output {
                     Output::Coreaudio => AudioOutput::CoreAudio,
@@ -94,8 +97,8 @@ fn run(cli: Cli) -> Result<()> {
             };
             runtime.block_on(play::run(&args.target, &cfg))
         }
-        Command::Refresh { target } => runtime.block_on(play::refresh(target.as_deref())),
-        Command::Stations { search } => stations::print(search),
+        Some(Command::Refresh { target }) => runtime.block_on(play::refresh(target.as_deref())),
+        Some(Command::Stations { search }) => stations::print(search),
     }
 }
 

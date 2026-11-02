@@ -73,7 +73,7 @@ fn local_file_loading_playing_eof() {
     let seen = collect_until(&mut rx, |e| *e == EngineEvent::Eof);
     let lifecycle: Vec<_> = seen
         .iter()
-        .filter(|e| !matches!(e, EngineEvent::StreamInfo(_)))
+        .filter(|e| !matches!(e, EngineEvent::StreamInfo(_) | EngineEvent::Devices(_)))
         .collect();
     assert_eq!(
         lifecycle,
@@ -83,7 +83,10 @@ fn local_file_loading_playing_eof() {
             &EngineEvent::Eof
         ]
     );
-    let infos = seen.len() - lifecycle.len();
+    let infos = seen
+        .iter()
+        .filter(|e| matches!(e, EngineEvent::StreamInfo(_)))
+        .count();
     assert!(
         (1..=4).contains(&infos),
         "stream info should be coalesced, got {infos} events"

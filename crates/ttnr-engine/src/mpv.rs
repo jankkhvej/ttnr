@@ -53,6 +53,8 @@ const OBSERVED: &[(&str, Format, u64)] = &[
     // sub-properties) on ICY/tag updates; read as a string because libmpv2
     // cannot decode `Format::Node` events (ADR-020).
     ("metadata", Format::String, 4),
+    // A node too; as a string mpv gives JSON. Notified on hotplug.
+    ("audio-device-list", Format::String, 5),
 ];
 
 /// Tag keys read on every `metadata` change and at file load.
@@ -422,6 +424,7 @@ fn to_raw(event: Event<'_>) -> Option<RawEvent> {
             ("pause", PropertyData::Flag(on)) => RawEvent::Pause(on),
             ("paused-for-cache", PropertyData::Flag(on)) => RawEvent::PausedForCache(on),
             ("metadata", _) => RawEvent::MetadataChanged,
+            ("audio-device-list", PropertyData::Str(json)) => RawEvent::DeviceList(json.to_owned()),
             ("cache-buffering-state", PropertyData::Int64(p)) => RawEvent::CacheBufferingState(p),
             _ => return None,
         },

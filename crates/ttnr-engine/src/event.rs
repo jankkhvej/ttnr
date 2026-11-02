@@ -25,6 +25,8 @@ pub enum EngineEvent {
     StreamInfo(StreamInfo),
     /// In-stream metadata (ICY title, tags) changed.
     Tags(StreamTags),
+    /// The list of audio output devices (CoreAudio) changed.
+    Devices(Vec<AudioDevice>),
     /// The stream ended normally (finite file or a live stream that closed).
     Eof,
     /// Playback was stopped by a command (stop, or replaced by a new play).
@@ -38,6 +40,25 @@ pub enum EngineEvent {
     },
     /// The mpv core shut down; no further events follow.
     Shutdown,
+}
+
+/// An audio output device as listed by mpv (`audio-device-list`).
+#[derive(Debug, Clone, PartialEq, Eq, serde::Deserialize)]
+pub struct AudioDevice {
+    /// mpv device name for `audio-device`, e.g. `coreaudio/BuiltInSpeakerDevice`.
+    pub name: String,
+    /// Human-readable name, e.g. `MacBook Air Speakers`.
+    pub description: String,
+}
+
+/// Parse mpv's `audio-device-list` (JSON when read as a string); keeps the
+/// CoreAudio devices, drops `auto` and the AVFoundation duplicates.
+pub(crate) fn parse_devices(json: &str) -> Vec<AudioDevice> {
+    serde_json::from_str::<Vec<AudioDevice>>(json)
+        .unwrap_or_default()
+        .into_iter()
+        .filter(|d| d.name.starts_with("coreaudio/"))
+        .collect()
 }
 
 /// Why a stream failed.
@@ -59,6 +80,21 @@ pub enum ErrorKind {
     LoadFailed,
     /// Any other mpv error code.
     Other(i32),
+}
+
+impl ErrorKind {
+    /// Another URL (mirror, re-resolved URL) may well work.
+    pub fn is_retryable(self) -> bool {
+        matches!(
+            self,
+            Self::Http403 | Self::Http404 | Self::Http(_) | Self::Unreachable | Self::LoadFailed
+        )
+    }
+
+    /// The URL itself is probably stale: re-resolve once (ADR-004).
+    pub fn is_stale_hint(self) -> bool {
+        matches!(self, Self::Http403 | Self::Http404 | Self::Unreachable)
+    }
 }
 
 impl std::fmt::Display for ErrorKind {
@@ -128,6 +164,8 @@ pub(crate) enum RawEvent {
     /// mpv's `metadata` changed; the tag keys must be re-read (mpv does not
     /// notify `metadata/by-key/…` sub-properties).
     MetadataChanged,
+    /// `audio-device-list` as JSON.
+    DeviceList(String),
     /// A stream-format property (see `STREAM_INFO_PROPS` in `mpv.rs`).
     Prop {
         name: String,
@@ -259,6 +297,7 @@ impl Translator {
                 vec![]
             }
             RawEvent::AudioReconfig | RawEvent::MetadataChanged => vec![],
+            RawEvent::DeviceList(json) => vec![EngineEvent::Devices(parse_devices(&json))],
             RawEvent::Shutdown => vec![EngineEvent::Shutdown],
         }
     }
@@ -772,6 +811,21 @@ mod tests {
         assert_eq!(tags.icy_title, None, "empty StreamTitle clears");
         t.translate(RawEvent::StartFile);
         assert_eq!(t.tags, StreamTags::default());
+    }
+
+    #[test]
+    fn device_list_keeps_coreaudio_only() {
+        let json = r#"[{"name":"auto","description":"Autoselect device"},
+            {"name":"coreaudio/BuiltInSpeakerDevice","description":"MacBook Air Speakers"},
+            {"name":"avfoundation/BuiltInSpeakerDevice","description":"MacBook Air Speakers"}]"#;
+        assert_eq!(
+            parse_devices(json),
+            [AudioDevice {
+                name: "coreaudio/BuiltInSpeakerDevice".into(),
+                description: "MacBook Air Speakers".into()
+            }]
+        );
+        assert!(parse_devices("not json").is_empty());
     }
 
     #[test]

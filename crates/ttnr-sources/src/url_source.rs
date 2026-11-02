@@ -14,7 +14,7 @@ use crate::hls_id3::HlsId3Provider;
 use crate::playlist::{self, Kind};
 
 /// Source id.
-pub const ID: &str = "url";
+pub const ID: &str = ttnr_core::station::URL_SOURCE;
 
 /// How long an expanded playlist may be reused from the cache.
 const PLAYLIST_TTL: Duration = Duration::from_secs(60 * 60);
@@ -26,13 +26,7 @@ pub struct UrlSource;
 impl UrlSource {
     /// An ad-hoc station for a URL typed by the user (`ttnr play <url>`).
     pub fn station(url: &str) -> Station {
-        Station {
-            id: url.to_owned(),
-            name: url.to_owned(),
-            source: ID.to_owned(),
-            url: Some(url.to_owned()),
-            params: Default::default(),
-        }
+        Station::from_url(url)
     }
 }
 

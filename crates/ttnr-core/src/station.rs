@@ -24,7 +24,21 @@ pub struct Station {
     pub params: BTreeMap<String, String>,
 }
 
+/// Id of the source that plays plain URLs (`ttnr-sources::url_source`).
+pub const URL_SOURCE: &str = "url";
+
 impl Station {
+    /// An ad-hoc station for a URL or file typed by the user.
+    pub fn from_url(url: &str) -> Self {
+        Self {
+            id: url.to_owned(),
+            name: url.to_owned(),
+            source: URL_SOURCE.to_owned(),
+            url: Some(url.to_owned()),
+            params: BTreeMap::new(),
+        }
+    }
+
     /// Key identifying this station across sources (`source:id`).
     pub fn key(&self) -> String {
         format!("{}:{}", self.source, self.id)

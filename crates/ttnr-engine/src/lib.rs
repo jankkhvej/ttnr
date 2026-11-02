@@ -7,7 +7,7 @@ mod event;
 mod mpv;
 
 pub use config::{AudioOutput, EngineConfig};
-pub use event::{EngineEvent, EngineEvents, ErrorKind};
+pub use event::{AudioDevice, EngineEvent, EngineEvents, ErrorKind};
 pub use mpv::{MpvPlayer, libmpv_version};
 use ttnr_core::StreamDescriptor;
 

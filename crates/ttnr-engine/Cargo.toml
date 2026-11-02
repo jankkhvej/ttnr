@@ -10,6 +10,8 @@ publish = false
 [dependencies]
 libmpv2.workspace = true
 libmpv2-sys.workspace = true
+serde.workspace = true
+serde_json.workspace = true
 thiserror.workspace = true
 tokio = { workspace = true, features = ["sync"] }
 tracing.workspace = true

@@ -9,7 +9,7 @@ use ttnr_core::{
     Action, Failover, Merger, NowPlaying, ResolveCache, ResolveCtx, SourceRegistry, Station,
     StreamDescriptor,
 };
-use ttnr_engine::{EngineConfig, EngineEvent, ErrorKind, MpvPlayer, Player};
+use ttnr_engine::{EngineConfig, EngineEvent, MpvPlayer, Player};
 use ttnr_sources::{ReqwestHttp, StationsSource, UrlSource};
 
 use crate::{paths, stations};
@@ -90,8 +90,8 @@ pub async fn run(target: &str, cfg: &EngineConfig) -> Result<()> {
                     }
                     EngineEvent::Eof => return Ok(()),
                     EngineEvent::Error { kind, detail } => {
-                        let action = if is_stream_failure(kind) {
-                            failover.on_failure(is_stale_hint(kind))
+                        let action = if kind.is_retryable() {
+                            failover.on_failure(kind.is_stale_hint())
                         } else {
                             Action::GiveUp
                         };
@@ -194,7 +194,7 @@ pub async fn refresh(target: Option<&str>) -> Result<()> {
 }
 
 /// The source registry and the resolve context (HTTP client, URL cache).
-fn setup() -> Result<(SourceRegistry, ResolveCtx)> {
+pub fn setup() -> Result<(SourceRegistry, ResolveCtx)> {
     let cache = match paths::cache_dir() {
         Some(dir) => ResolveCache::load(dir.join("resolve.json")),
         None => ResolveCache::in_memory(),
@@ -222,27 +222,6 @@ async fn resolve(
     })?;
     tracing::info!(trace = %d.trace, urls = ?d.urls, "resolved");
     Ok(d)
-}
-
-/// Failures that suggest the URL itself is stale: re-resolve once
-/// (ARCHITECTURE.md, ADR-004).
-fn is_stale_hint(kind: ErrorKind) -> bool {
-    matches!(
-        kind,
-        ErrorKind::Http403 | ErrorKind::Http404 | ErrorKind::Unreachable
-    )
-}
-
-/// Failures where another mirror may well work.
-fn is_stream_failure(kind: ErrorKind) -> bool {
-    matches!(
-        kind,
-        ErrorKind::Http403
-            | ErrorKind::Http404
-            | ErrorKind::Http(_)
-            | ErrorKind::Unreachable
-            | ErrorKind::LoadFailed
-    )
 }
 
 /// `now: Artist – Title` (or just the title).
@@ -274,6 +253,7 @@ fn describe(event: &EngineEvent) -> Option<String> {
         }
         EngineEvent::Eof => "[end of stream]".into(),
         EngineEvent::Tags(_)
+        | EngineEvent::Devices(_)
         | EngineEvent::Stopped
         | EngineEvent::Error { .. }
         | EngineEvent::Shutdown => return None,

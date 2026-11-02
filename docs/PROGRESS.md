@@ -2,6 +2,13 @@
 
 Newest entry on top. Each entry: date · milestone/task · what changed · how to try it · next step · open questions for the owner.
 
+## 2026-11-02 · M3 · App state machine + TUI runtime
+- `ttnr_core::app` (Elm-style `App::update(Msg) -> Vec<Effect>`), `ttnr-tui` (`command_for` keymap, minimal `draw`), binary `src/tui.rs` runtime (ADR-022). `ttnr` alone now starts the TUI (station list opens if stations exist).
+- Engine: device list events; error classification on `ErrorKind`.
+- Tests: 11 state-machine tests (resolve/start, mirror → refresh → error, late answers, history + priority, volume/mute/pause, next/prev, lists, URL prompt, devices, help/quit), keymap tests, engine-event mapping, device JSON parsing; manual pty run (start, select, play, quit, terminal restored).
+- Try it: `cargo run -q` (with `~/.config/ttnr/stations.toml`), Enter to play, `+`/`-`, `m`, space, `q`.
+- Next: M3 task 2 – full views: main per SPEC F5.1, station list, open-URL prompt, help overlay, device picker.
+
 ## 2026-11-02 · M2 · Re-resolve on 403/404, `ttnr refresh` – **M2 complete, waiting for owner review**
 - `ttnr_core::Failover` (next mirror → one refresh → give up), used by `ttnr play`; `ttnr refresh [id|url]` (ADR-021).
 - Tests: failover units; CLI `stale_cache_self_heals` (cached URL 404 → re-resolve → plays, cache healed), `refresh_command`, and the M2 acceptance offline: `.pls` → ICY stream → `now:` line.

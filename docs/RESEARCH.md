@@ -197,3 +197,16 @@ anything older than ~3 months before relying on it.
 | FIP (Radio France) HLS uses MPEG-TS segments with an AAC stream and a `timed_id3` data stream, but the ID3 packets are empty (10-byte header, no frames) → no now-playing via ID3 | ffprobe/ffmpeg on a live segment | VERIFIED 2026-11-02 |
 | A TS timed-ID3 stream with real frames reaching mpv's `metadata` is untested (no public example found) | – | UNVERIFIED |
 | ID3v2.4 / v2.3 structure (syncsafe sizes in v2.4 frames, text encodings 0–3, WXXX layout) | https://id3.org/id3v2.4.0-structure · https://id3.org/id3v2.3.0 | from spec knowledge; pinned by unit tests | 
+
+### 2026-11-02 · TUI stack (M3)
+
+| Fact | Source | Status |
+|---|---|---|
+| ratatui 0.30.2 (MIT, MSRV 1.88) – apps depend on the `ratatui` facade (split into ratatui-core/-widgets/-crossterm internally); default `crossterm` feature uses crossterm 0.29; `TestBackend` re-exported without extra features | https://crates.io/api/v1/crates/ratatui · https://docs.rs/ratatui/0.30.2 | VERIFIED 2026-11-02 |
+| crossterm 0.29.0 (MIT); `EventStream` needs feature `event-stream` (+ `futures`); same version unifies with ratatui's re-export `ratatui::crossterm` | https://crates.io/api/v1/crates/crossterm · https://ratatui.rs/tutorials/counter-async-app/async-event-stream/ | VERIFIED 2026-11-02 (builds) |
+| insta 1.49.0 (Apache-2.0); futures 0.3.34 (MIT OR Apache-2.0) | crates.io API | VERIFIED 2026-11-02 |
+| `ratatui::init/try_init` enter raw mode + alternate screen and install a panic hook that restores the terminal; `restore()` must be called on normal exit; Ctrl-C arrives as a key in raw mode; SIGTERM is the app's job | https://github.com/ratatui/ratatui/blob/main/ratatui/src/init.rs (via research subagent) | VERIFIED 2026-11-02 (pty run shows `?1049h`/`?1049l`) |
+| No built-in redraw-on-change; ratatui diffs buffers so a redraw only writes changed cells (observed: "Local Test" drawn over "no station" writes only changed letters) | research subagent; pty run | VERIFIED 2026-11-02 |
+| `TestBackend` Display (used by insta snapshots) contains symbols only, no colours/styles | https://ratatui.rs/recipes/testing/snapshots/ | VERIFIED 2026-11-02 (subagent, docs) |
+| No colour-depth detection in crossterm/ratatui; convention: `NO_COLOR` → mono, `COLORTERM=truecolor|24bit` → truecolor, `TERM=*256color*` → 256, else 16; Terminal.app gained 24-bit colour in macOS 26 but is not known to set `COLORTERM` | https://no-color.org · https://www.macrumors.com/2025/06/16/apples-terminal-app-macos-tahoe/ | partly UNVERIFIED (Terminal.app env to be checked on the owner's Mac in task 4) |
+| mpv `audio-device-list` read as a string is JSON `[{"name":"coreaudio/…","description":"…"}, …]` incl. `auto` and `avfoundation/…` duplicates | engine scratch run on the owner's Mac | VERIFIED 2026-11-02 |

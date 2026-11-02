@@ -3,6 +3,7 @@
 //! resolver chain; later the app state machine, metadata merging, sync
 //! offset and recent-tracks history.
 
+pub mod app;
 pub mod cache;
 pub mod failover;
 pub mod http;
