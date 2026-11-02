@@ -56,6 +56,9 @@ fn cases() -> Vec<Case> {
     vec![
         case("mp3.mp3", "mp3", 44_100, "stereo", 2, "mp3"),
         case("mono.mp3", "mp3", 22_050, "mono", 1, "mp3"),
+        // Keep aac_lc → aac_adts → he_aac → he_aac_v2 adjacent: AAC after
+        // AAC is the regression case for mpv not re-notifying properties
+        // across files (ADR-013).
         Case {
             profile: Some("LC"),
             ..case("aac_lc.m4a", "aac", 48_000, "stereo", 2, MP4)
@@ -89,6 +92,21 @@ fn cases() -> Vec<Case> {
             ..case("aac_71.m4a", "aac", 48_000, "7.1", 8, MP4)
         },
         case("opus_71.opus", "opus", 48_000, "7.1", 8, "ogg"),
+        Case {
+            bit_depth: Some(16),
+            ..case(
+                "channel_check_51.flac",
+                "flac",
+                48_000,
+                "5.1(side)",
+                6,
+                "flac",
+            )
+        },
+        Case {
+            bit_depth: Some(16),
+            ..case("channel_check_71.flac", "flac", 48_000, "7.1", 8, "flac")
+        },
         Case {
             profile: Some("LC"),
             ..case("hls/index.m3u8", "aac", 48_000, "stereo", 2, "hls")

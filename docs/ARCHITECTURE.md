@@ -95,7 +95,7 @@ Every resolution records a `ResolverTrace` (visible with `--debug`).
 
 ## Engine: libmpv configuration (audio-only)
 
-`vid=no`, `video=no`, `ao=coreaudio`, `audio-display=no`, `ytdl=no`,
+`vid=no`, `ao=coreaudio,avfoundation` (ADR-014), `audio-display=no`, `ytdl=no`,
 `terminal=no`, `input-default-bindings=no`, `osc=no`, cache/readahead
 tuned for live streams, `audio-channels=auto-safe` (system's preferred device layout; ADR-009),
 optional `audio-exclusive` / sample-rate matching from config.

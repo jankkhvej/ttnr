@@ -16,7 +16,7 @@ Work top to bottom. Tick `[x]` when a task meets its acceptance criteria and
 - [x] Engine events: buffering, playing, error kinds (incl. HTTP 403/404), EOF.
 - [x] `StreamInfo` from mpv properties (codec, rate, format, channels, bitrate).
 - [x] `ttnr play <url>` plays in the terminal (plain log output, Ctrl-C stops).
-- [ ] `scripts/gen-fixtures.zsh` + format-matrix test (see ARCHITECTURE.md) incl. 5.1 and 7.1.
+- [x] `scripts/gen-fixtures.zsh` + format-matrix test (see ARCHITECTURE.md) incl. 5.1 and 7.1.
 **Acceptance:** owner hears an Icecast MP3 stream, an HLS AAC stream and a local 5.1 file correctly.
 
 ## M2 — Sources & in-stream metadata

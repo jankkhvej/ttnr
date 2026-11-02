@@ -2,6 +2,13 @@
 
 Newest entry on top. Each entry: date · milestone/task · what changed · how to try it · next step · open questions for the owner.
 
+## 2026-11-02 · M1 · Format matrix – **M1 complete, waiting for owner review**
+- `scripts/gen-fixtures.zsh` (19 fixtures + DASH sample, incl. by-ear `channel_check_51/71.flac`) and `format_matrix` test (ADR-013).
+- Found and fixed/worked around: mpv observer not re-notifying across AAC files (re-read on load/restart/reconfig); mpv 0.41.0 CoreAudio failing planar/mono sources on macOS 27 (upstream #18384, fixed unreleased) → `ao=coreaudio,avfoundation` (ADR-014); measured-bitrate churn (ADR-014).
+- Research delegated to a lighter-model subagent where useful (owner request); facts re-verified before logging.
+- Open questions for the owner: (1) DASH `.mpd` needs FFmpeg with libxml2 – Homebrew's has no DASH demuxer; defer or change the FFmpeg build? (2) Keep the AVFoundation fallback until Homebrew ships mpv 0.42, or try `brew install --HEAD mpv`?
+- Next after review: M2 – Sources & in-stream metadata.
+
 ## 2026-11-02 · M1 · `ttnr play <url>`
 - `ttnr play <url|file> [--volume N]`: plain status lines, Ctrl-C stops (exit 0), errors to stderr (exit 1). File logging via `tracing` to `~/.local/state/ttnr/` (ADR-012). mpv built-in scripts disabled (removed a warning on every file).
 - Tests: CLI end-to-end (WAV to EOF with format line, HTTP 404 via loopback, volume validation, log file lands in `$XDG_STATE_HOME`); unit tests for paths and status lines.

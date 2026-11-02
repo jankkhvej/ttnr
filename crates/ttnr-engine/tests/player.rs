@@ -132,3 +132,25 @@ fn coreaudio_output_opens() {
         p.property_string("current-ao").as_deref() == Some("coreaudio")
     });
 }
+
+/// A 44.1 kHz MP3 (float planar) through the real output: must open
+/// CoreAudio or the AVFoundation fallback, never fail. Ignored by default:
+/// needs an audio device and generated fixtures.
+#[test]
+#[ignore = "needs an audio device and scripts/gen-fixtures.zsh output"]
+fn real_output_opens_for_44k_mp3() {
+    let mp3 = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+        .join("../../tests/fixtures/generated/mp3.mp3");
+    let mut p = MpvPlayer::new(&EngineConfig {
+        volume: 0.0,
+        ..EngineConfig::default()
+    })
+    .unwrap();
+    start(&mut p, &mp3);
+    wait_for("an audio output", || {
+        matches!(
+            p.property_string("current-ao").as_deref(),
+            Some("coreaudio" | "avfoundation")
+        )
+    });
+}

@@ -293,16 +293,15 @@ impl Translator {
             "audio-out-params/hr-channels" => info.output_channels = value.string(),
             "current-tracks/audio/demux-bitrate" => self.demux_bitrate = value.uint(),
             "current-tracks/audio/hls-bitrate" => self.hls_bitrate = value.uint(),
-            // Measured bitrate jitters; keep kbps resolution to avoid churn.
-            "audio-bitrate" => {
-                self.measured_bitrate = value.uint().map(|b| (b + 500) / 1000 * 1000);
-            }
+            "audio-bitrate" => self.measured_bitrate = smooth(self.measured_bitrate, value.uint()),
             _ => {}
         }
-        self.info.bitrate = self
-            .demux_bitrate
-            .or(self.hls_bitrate)
-            .or(self.measured_bitrate);
+        // The measured (packet-level) rate of a lossless stream says
+        // nothing about its format and swings with the content.
+        let measured = self
+            .measured_bitrate
+            .filter(|_| !self.info.codec.as_deref().is_some_and(is_lossless));
+        self.info.bitrate = self.demux_bitrate.or(self.hls_bitrate).or(measured);
     }
 
     /// Classify a failed file from the mpv error code and the last network
@@ -329,6 +328,26 @@ impl Translator {
             c => ErrorKind::Other(c),
         };
         (kind, None)
+    }
+}
+
+/// Codecs whose bitrate varies with content by nature (FFmpeg names).
+fn is_lossless(codec: &str) -> bool {
+    codec.starts_with("pcm_")
+        || codec.starts_with("dsd_")
+        || matches!(
+            codec,
+            "flac" | "alac" | "wavpack" | "tta" | "ape" | "truehd" | "mlp" | "shorten"
+        )
+}
+
+/// Measured bitrate with hysteresis: rounded to kbps and only updated when
+/// it moves by 10 % or more, so VBR jitter does not flood the UI.
+fn smooth(old: Option<u32>, new: Option<u32>) -> Option<u32> {
+    let new = new.map(|b| (b + 500) / 1000 * 1000)?;
+    match old {
+        Some(old) if new.abs_diff(old) * 10 < old => Some(old),
+        _ => Some(new),
     }
 }
 
@@ -580,8 +599,10 @@ mod tests {
         let mut t = Translator::default();
         t.translate(prop("audio-bitrate", PropValue::Double(127_400.0)));
         assert_eq!(t.info.bitrate, Some(127_000));
-        t.translate(prop("audio-bitrate", PropValue::Double(127_600.0)));
-        assert_eq!(t.info.bitrate, Some(128_000));
+        t.translate(prop("audio-bitrate", PropValue::Double(131_600.0)));
+        assert_eq!(t.info.bitrate, Some(127_000), "jitter under 10 % ignored");
+        t.translate(prop("audio-bitrate", PropValue::Double(150_000.0)));
+        assert_eq!(t.info.bitrate, Some(150_000));
         t.translate(prop(
             "current-tracks/audio/hls-bitrate",
             PropValue::Int(96_000),
@@ -594,6 +615,25 @@ mod tests {
         assert_eq!(t.info.bitrate, Some(320_000));
         t.translate(prop("current-tracks/audio/demux-bitrate", PropValue::None));
         assert_eq!(t.info.bitrate, Some(96_000), "mirror follows mpv");
+    }
+
+    #[test]
+    fn lossless_codecs_get_no_measured_bitrate() {
+        let mut t = Translator::default();
+        t.translate(prop("audio-bitrate", PropValue::Double(900_000.0)));
+        assert_eq!(t.info.bitrate, Some(900_000));
+        t.translate(prop(
+            "current-tracks/audio/codec",
+            PropValue::Str("flac".into()),
+        ));
+        t.translate(prop("audio-bitrate", PropValue::Double(500_000.0)));
+        assert_eq!(t.info.bitrate, None);
+        t.translate(prop(
+            "current-tracks/audio/demux-bitrate",
+            PropValue::Int(1_411_200),
+        ));
+        assert_eq!(t.info.bitrate, Some(1_411_200), "nominal still shown");
+        assert!(is_lossless("pcm_s24le") && is_lossless("alac") && !is_lossless("aac"));
     }
 
     #[test]

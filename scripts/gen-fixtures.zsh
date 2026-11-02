@@ -33,7 +33,7 @@ gen() {
   local file=$1 rate=$2 layout=$3
   shift 3
   ffmpeg -nostdin -hide_banner -loglevel error -y \
-    -f lavfi -i "sine=frequency=440:sample_rate=$rate:duration=3" \
+    -f lavfi -i "sine=frequency=440:sample_rate=${rate}:duration=3" \
     -af "aformat=channel_layouts=$layout" "$@" "$out/$file"
 }
 
@@ -56,6 +56,37 @@ gen opus_71.opus      48000 7.1         -c:a libopus -b:a 256k
 gen hls/index.m3u8    48000 stereo      -c:a aac -b:a 96k -f hls -hls_time 1 \
                                         -hls_playlist_type vod -hls_segment_filename "$out/hls/seg%02d.ts"
 gen dash/manifest.mpd 48000 stereo      -c:a aac -b:a 96k -f dash -seg_duration 1
+
+# channel_check <file> <layout> <channel names in FFmpeg order…>
+# Speaker-mapping check by ear: one channel at a time in file order, 1.5 s
+# pink noise (~-22 dBFS peak) with 10 ms fades, 0.5 s gap; LFE gets a 60 Hz
+# sine (~-20 dBFS; `sine` defaults to amplitude 1/8). Two cycles. Recipe
+# after ALSA speaker-test / SMPTE ST 2095 practice (docs/RESEARCH.md);
+# FFmpeg channel order, see `ffmpeg -layouts`.
+channel_check() {
+  local file=$1 layout=$2 i graph="" ins="" map=""
+  shift 2
+  local -a names=("$@")
+  local n=${#names} on=1.5 slot=2 cycle=$(( ${#names} * 2 ))
+  for (( i = 0; i < n; i++ )); do
+    # join must be told the mapping: a mono input is FC and would go there.
+    map+="${map:+|}$i.0-${names[i + 1]}"
+    if [[ ${names[i + 1]} == LFE ]]; then
+      graph+="sine=frequency=60:sample_rate=48000,volume=0.8,"
+    else
+      graph+="anoisesrc=color=pink:sample_rate=48000:amplitude=0.1:seed=$((i + 1)),"
+    fi
+    graph+="atrim=0:$on,afade=t=in:d=0.01,afade=t=out:st=$(( on - 0.01 )):d=0.01,"
+    graph+="adelay=$(( i * slot * 1000 )),apad=whole_dur=${cycle}[c$i];"
+    ins+="[c$i]"
+  done
+  graph+="${ins}join=inputs=${n}:channel_layout=${layout}:map=${map},aloop=loop=1:size=$(( cycle * 48000 ))"
+  ffmpeg -nostdin -hide_banner -loglevel error -y -filter_complex "$graph" \
+    -c:a flac -sample_fmt s16 "$out/$file"
+}
+
+channel_check channel_check_51.flac '5.1(side)' FL FR FC LFE SL SR
+channel_check channel_check_71.flac 7.1         FL FR FC LFE BL BR SL SR
 
 print -r -- $want > $stamp
 print "gen-fixtures: wrote $out"

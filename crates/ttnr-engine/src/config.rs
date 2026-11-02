@@ -3,7 +3,9 @@
 /// Which mpv audio output driver to use.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub enum AudioOutput {
-    /// macOS CoreAudio (`ao=coreaudio`).
+    /// macOS CoreAudio (`ao=coreaudio`), falling back to AVFoundation when
+    /// the CoreAudio AudioUnit refuses a format (mpv 0.41.0 fails some
+    /// 44.1 kHz sources on Bluetooth outputs; docs/RESEARCH.md).
     #[default]
     CoreAudio,
     /// Discard audio (`ao=null`); for tests and headless probing.
@@ -11,10 +13,10 @@ pub enum AudioOutput {
 }
 
 impl AudioOutput {
-    /// mpv's name for this driver.
+    /// mpv `ao` value (a priority list; mpv tries entries in order).
     pub fn mpv_name(self) -> &'static str {
         match self {
-            Self::CoreAudio => "coreaudio",
+            Self::CoreAudio => "coreaudio,avfoundation",
             Self::Null => "null",
         }
     }
