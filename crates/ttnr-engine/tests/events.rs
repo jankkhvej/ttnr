@@ -232,11 +232,7 @@ fn icy_block(title: Option<&str>) -> Vec<u8> {
 /// bytes (only if the client asked with `Icy-MetaData: 1`). Title A first,
 /// then – after a pause so the player reads it – title B.
 fn icy_server() -> String {
-    let mp3 = std::fs::read(
-        std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-            .join("../../tests/fixtures/generated/icy_stream.mp3"),
-    )
-    .expect("run scripts/gen-fixtures.zsh");
+    let mp3 = std::fs::read(common::generated("icy_stream.mp3")).unwrap();
     let listener = TcpListener::bind("127.0.0.1:0").unwrap();
     let addr = listener.local_addr().unwrap();
     std::thread::spawn(move || {

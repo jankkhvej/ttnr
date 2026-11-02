@@ -5,7 +5,7 @@ cd "${0:A:h}/.."
 if [[ ! -f Cargo.toml ]]; then print "check: not bootstrapped yet (M0) — nothing to check."; exit 0; fi
 print "▸ fmt";    cargo fmt --all --check
 print "▸ clippy"; cargo clippy --workspace --all-targets -- -D warnings
-print "▸ test";   cargo test --workspace
+print "▸ test";   ./scripts/gen-fixtures.zsh >/dev/null && cargo test --workspace
 if command -v cargo-deny >/dev/null; then
   print "▸ deny";   cargo deny check
 else

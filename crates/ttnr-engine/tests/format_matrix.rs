@@ -12,7 +12,6 @@
 mod common;
 
 use std::path::PathBuf;
-use std::process::Command;
 use std::time::{Duration, Instant};
 
 use common::null_player;
@@ -115,13 +114,7 @@ fn cases() -> Vec<Case> {
 }
 
 fn fixtures_dir() -> PathBuf {
-    let root = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../..");
-    let status = Command::new("zsh")
-        .arg(root.join("scripts/gen-fixtures.zsh"))
-        .status()
-        .expect("cannot run scripts/gen-fixtures.zsh (zsh missing?)");
-    assert!(status.success(), "scripts/gen-fixtures.zsh failed");
-    root.join("tests/fixtures/generated")
+    common::generated("")
 }
 
 type Facts<'a> = (

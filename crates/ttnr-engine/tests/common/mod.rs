@@ -74,3 +74,15 @@ pub fn single_core() -> MutexGuard<'static, ()> {
     static CORE: Mutex<()> = Mutex::new(());
     CORE.lock().unwrap_or_else(|poisoned| poisoned.into_inner())
 }
+
+/// Path to a generated fixture; runs the idempotent
+/// `scripts/gen-fixtures.zsh` first (needs Homebrew ffmpeg).
+pub fn generated(name: &str) -> PathBuf {
+    let root = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../..");
+    let status = std::process::Command::new("zsh")
+        .arg(root.join("scripts/gen-fixtures.zsh"))
+        .status()
+        .expect("cannot run scripts/gen-fixtures.zsh (zsh missing?)");
+    assert!(status.success(), "scripts/gen-fixtures.zsh failed");
+    root.join("tests/fixtures/generated").join(name)
+}

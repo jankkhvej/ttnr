@@ -403,11 +403,19 @@ fn refresh_command() {
 /// shows them as `now:` lines.
 #[test]
 fn pls_with_icy_titles() {
-    let mp3 = std::fs::read(
-        std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-            .join("tests/fixtures/generated/icy_stream.mp3"),
-    )
-    .expect("run scripts/gen-fixtures.zsh");
+    let status = Command::new("zsh")
+        .arg(concat!(
+            env!("CARGO_MANIFEST_DIR"),
+            "/scripts/gen-fixtures.zsh"
+        ))
+        .status()
+        .unwrap();
+    assert!(status.success(), "scripts/gen-fixtures.zsh failed");
+    let mp3 = std::fs::read(concat!(
+        env!("CARGO_MANIFEST_DIR"),
+        "/tests/fixtures/generated/icy_stream.mp3"
+    ))
+    .unwrap();
     let listener = TcpListener::bind("127.0.0.1:0").unwrap();
     let addr = listener.local_addr().unwrap();
     std::thread::spawn(move || {

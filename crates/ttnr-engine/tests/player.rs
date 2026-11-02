@@ -139,8 +139,7 @@ fn coreaudio_output_opens() {
 #[test]
 #[ignore = "needs an audio device and scripts/gen-fixtures.zsh output"]
 fn real_output_opens_for_44k_mp3() {
-    let mp3 = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-        .join("../../tests/fixtures/generated/mp3.mp3");
+    let mp3 = common::generated("mp3.mp3");
     let mut p = MpvPlayer::new(&EngineConfig {
         volume: 0.0,
         ..EngineConfig::default()
