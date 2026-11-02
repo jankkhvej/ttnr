@@ -1,0 +1,19 @@
+# Sample stations file. Copy to ~/.config/tuner/stations.toml and edit.
+# `source` picks the plugin that resolves the station at play time.
+# `url` on a BBC station is an optional manual override (last resort in the resolver chain).
+
+[[station]]
+id     = "bbc_6music"
+name   = "BBC Radio 6 Music"
+source = "bbc"
+
+[[station]]
+id     = "bbc_radio_three"
+name   = "BBC Radio 3"
+source = "bbc"
+
+[[station]]
+id     = "example-icecast"
+name   = "Any Icecast/Shoutcast/HLS URL"
+source = "url"
+url    = "https://example.org/stream.m3u8"   # replace with a real stream

@@ -1,0 +1,29 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(cargo *)",
+      "Bash(rustup show*)",
+      "Bash(rustc --version)",
+      "Bash(./scripts/*)",
+      "Bash(git status*)",
+      "Bash(git diff*)",
+      "Bash(git log*)",
+      "Bash(git add *)",
+      "Bash(git commit *)",
+      "Bash(git show*)",
+      "Bash(pkg-config *)",
+      "Bash(brew list*)",
+      "Bash(brew info *)",
+      "Bash(ffmpeg *)",
+      "Bash(ffprobe *)",
+      "Bash(mpv --version)",
+      "Bash(curl -s *)",
+      "WebSearch",
+      "WebFetch"
+    ],
+    "deny": [
+      "Bash(git push*)",
+      "Bash(sudo *)"
+    ]
+  }
+}
