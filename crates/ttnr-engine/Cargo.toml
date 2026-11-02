@@ -9,7 +9,10 @@ publish = false
 
 [dependencies]
 libmpv2.workspace = true
+libmpv2-sys.workspace = true
 thiserror.workspace = true
+tokio = { workspace = true, features = ["sync"] }
+tracing.workspace = true
 ttnr-core.workspace = true
 
 [dev-dependencies]

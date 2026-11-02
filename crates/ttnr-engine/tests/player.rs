@@ -4,65 +4,13 @@
 // Test code: unwrap/expect allowed (CLAUDE.md conventions).
 #![allow(clippy::unwrap_used, clippy::expect_used)]
 
-use std::path::{Path, PathBuf};
-use std::time::{Duration, Instant};
+mod common;
 
+use std::path::Path;
+
+use common::{fixture, null_player, wait_for};
 use ttnr_core::StreamDescriptor;
 use ttnr_engine::{AudioOutput, EngineConfig, EngineError, MpvPlayer, Player};
-
-const RATE: u32 = 48_000;
-const CHANNELS: u16 = 2;
-
-/// Write `secs` seconds of a 440 Hz 16-bit PCM sine as a WAV file.
-fn write_wav(path: &Path, secs: u32) {
-    let frames = RATE * secs;
-    let data_len = frames * u32::from(CHANNELS) * 2;
-    let mut b = Vec::with_capacity(44 + data_len as usize);
-    b.extend_from_slice(b"RIFF");
-    b.extend_from_slice(&(36 + data_len).to_le_bytes());
-    b.extend_from_slice(b"WAVEfmt ");
-    b.extend_from_slice(&16u32.to_le_bytes());
-    b.extend_from_slice(&1u16.to_le_bytes()); // PCM
-    b.extend_from_slice(&CHANNELS.to_le_bytes());
-    b.extend_from_slice(&RATE.to_le_bytes());
-    b.extend_from_slice(&(RATE * u32::from(CHANNELS) * 2).to_le_bytes());
-    b.extend_from_slice(&(CHANNELS * 2).to_le_bytes());
-    b.extend_from_slice(&16u16.to_le_bytes());
-    b.extend_from_slice(b"data");
-    b.extend_from_slice(&data_len.to_le_bytes());
-    for i in 0..frames {
-        let t = i as f32 / RATE as f32;
-        let s = ((t * 440.0 * std::f32::consts::TAU).sin() * 8000.0) as i16;
-        for _ in 0..CHANNELS {
-            b.extend_from_slice(&s.to_le_bytes());
-        }
-    }
-    std::fs::write(path, b).unwrap();
-}
-
-fn fixture() -> (tempfile::TempDir, PathBuf) {
-    let dir = tempfile::tempdir().unwrap();
-    let path = dir.path().join("sine.wav");
-    write_wav(&path, 5);
-    (dir, path)
-}
-
-fn null_player() -> MpvPlayer {
-    MpvPlayer::new(&EngineConfig {
-        audio_output: AudioOutput::Null,
-        ..EngineConfig::default()
-    })
-    .unwrap()
-}
-
-/// Poll `cond` until it holds or 5 s pass.
-fn wait_for(what: &str, mut cond: impl FnMut() -> bool) {
-    let deadline = Instant::now() + Duration::from_secs(5);
-    while !cond() {
-        assert!(Instant::now() < deadline, "timed out waiting for {what}");
-        std::thread::sleep(Duration::from_millis(10));
-    }
-}
 
 fn start(p: &mut MpvPlayer, path: &Path) {
     p.play(&StreamDescriptor::direct(path.to_str().unwrap()))
@@ -81,7 +29,10 @@ fn plays_local_file_audio_only() {
         p.property_string("audio-codec-name").as_deref(),
         Some("pcm_s16le")
     );
-    assert_eq!(p.property_string("current-ao").as_deref(), Some("null"));
+    // The AO opens shortly after the decoder; wait rather than race it.
+    wait_for("null ao", || {
+        p.property_string("current-ao").as_deref() == Some("null")
+    });
     assert_eq!(p.property_string("vid").as_deref(), Some("no"));
     assert_eq!(p.property_string("current-vo"), None, "no video output");
     assert_eq!(p.property_flag("pause"), Some(false));

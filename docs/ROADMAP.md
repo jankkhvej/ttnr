@@ -13,7 +13,7 @@ Work top to bottom. Tick `[x]` when a task meets its acceptance criteria and
 
 ## M1 — Playback engine (headless)
 - [x] `MpvPlayer`: audio-only config, play/stop/pause/volume via CoreAudio.
-- [ ] Engine events: buffering, playing, error kinds (incl. HTTP 403/404), EOF.
+- [x] Engine events: buffering, playing, error kinds (incl. HTTP 403/404), EOF.
 - [ ] `StreamInfo` from mpv properties (codec, rate, format, channels, bitrate).
 - [ ] `ttnr play <url>` plays in the terminal (plain log output, Ctrl-C stops).
 - [ ] `scripts/gen-fixtures.zsh` + format-matrix test (see ARCHITECTURE.md) incl. 5.1 and 7.1.

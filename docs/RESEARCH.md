@@ -84,3 +84,15 @@ anything older than ~3 months before relying on it.
 | `--media-controls` is Windows-only | options.rst | VERIFIED 2026-11-02 |
 | Lead for M6: `--input-media-keys` (macOS/Windows) lets mpv receive media keys; whether this works in libmpv inside a windowless terminal app is unknown | options.rst | UNVERIFIED |
 | `ao=coreaudio` opens on the owner's Mac (`current-ao` = `coreaudio`) | ignored test `coreaudio_output_opens` | VERIFIED 2026-11-02 |
+
+### 2026-11-02 · mpv events, logs and HTTP errors (for engine events)
+
+| Fact | Source | Status |
+|---|---|---|
+| FFmpeg network errors as seen through mpv 0.41.0 / FFmpeg 9.0.2 logs (prefix `ffmpeg`, level warn): `http: HTTP error 403 Forbidden`, `http: HTTP error 404 Not Found`, `http: HTTP error 500 Internal Server Error`; connection: `tcp: Connection to tcp://H:P failed: Connection refused` / `… Operation timed out`; DNS: `tcp: Failed to resolve hostname …`. Same `http:` line for an HLS playlist 403 and for HLS segment 403s (then `[ffmpeg/demuxer] hls: …` lines) | local experiment with `mpv --msg-level=all=warn` against a loopback HTTP server; regression tests in `crates/ttnr-engine/tests/events.rs` | VERIFIED 2026-11-02 |
+| mpv exposes no HTTP status property; a failed open ends with `end-file` reason error, code `MPV_ERROR_LOADING_FAILED` (-13) | same experiment (`EndFile(Error(-13))`) | VERIFIED 2026-11-02 |
+| `mpv_wait_event` returns queued events first, then property changes, then log messages → a log line explaining a failure can be delivered *after* the `end-file` event | https://github.com/mpv-player/mpv/blob/v0.41.0/player/client.c (`mpv_wait_event`) | VERIFIED 2026-11-02 |
+| FFmpeg's log callback is process-global; mpv routes it only to the **first** mpv core initialised in the process (`log_mpv_instance`), re-registered only after that core is destroyed. Other concurrent cores get no `[ffmpeg]` log lines | https://github.com/mpv-player/mpv/blob/v0.41.0/common/av_log.c (`init_libav`, `mp_msg_av_log_callback`) | VERIFIED 2026-11-02 (reproduced: parallel tests lost the lines) |
+| `libmpv2` 7.0: no safe wrapper for `mpv_request_log_messages` (has `Event::LogMessage`, marked "has not been tested"); `Mpv::ctx` is public so `libmpv2_sys::mpv_request_log_messages` can be called; `wait_event` returns an end-file *with error* as `Err(Error::Raw(code))`, losing the reason; `PropertyData::from_raw` panics (`unimplemented!`) for `MPV_FORMAT_NODE`, so never observe properties as `Format::Node` | crate source `libmpv2-7.0.0/src/mpv.rs`, `src/mpv/events.rs` | VERIFIED 2026-11-02 |
+| `wait_event(-1.0)` blocks indefinitely (timeout < 0 → 1e20 s): no polling while idle | player/client.c | VERIFIED 2026-11-02 |
+| The `quit` command makes mpv emit `MPV_EVENT_SHUTDOWN` to clients | test `drop_shuts_down_and_closes_channel` | VERIFIED 2026-11-02 |

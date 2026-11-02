@@ -2,6 +2,13 @@
 
 Newest entry on top. Each entry: date · milestone/task · what changed · how to try it · next step · open questions for the owner.
 
+## 2026-11-02 · M1 · Engine events
+- `ttnr-engine::event`: `EngineEvent`, `ErrorKind`, pure `Translator`; `MpvPlayer` event thread (blocks in `mpv_wait_event`, no polling), `take_events()`, clean shutdown on drop (ADR-010).
+- HTTP 403/404/other and unreachable are classified from FFmpeg log lines; verified against a loopback HTTP server (plain and HLS), unit tests for the translator.
+- Found and documented two mpv behaviours: logs arrive after queued events (drain on error), and FFmpeg logs reach only the first mpv core per process (→ one `MpvPlayer` per process; event tests serialised).
+- Fixed a race in `plays_local_file_audio_only` (AO opens after the decoder). `tracing` without proc-macro attributes (avoids duplicate `syn`).
+- Next: M1 task 3 – `StreamInfo` from mpv properties.
+
 ## 2026-11-02 · M1 · `MpvPlayer` (audio-only, play/stop/pause/volume)
 - `ttnr-core::StreamDescriptor` (urls + headers, minimal); `ttnr-engine`: `Player` trait, `EngineConfig` (`AudioOutput::{CoreAudio, Null}`, `audio_channels` default `auto-safe`, initial volume), `MpvPlayer` (ADR-009). All mpv options verified against 0.41.0 (RESEARCH.md).
 - Tests (`crates/ttnr-engine/tests/player.rs`): generated WAV via `ao=null` – audio-only (no VO), pause/resume, clamped software volume, stop → idle, empty descriptor error, HTTP headers verbatim, device pin/unpin. Ignored test opens real CoreAudio silently: `cargo test -p ttnr-engine -- --ignored coreaudio`.

@@ -71,7 +71,7 @@ pub trait Player {               // implemented by MpvPlayer
     fn play(&mut self, d: &StreamDescriptor) -> Result<()>;
     fn stop(&mut self); fn pause(&mut self, on: bool);
     fn set_volume(&mut self, pct: f32); fn set_device(&mut self, dev: Option<&str>);
-    fn events(&self) -> Receiver<EngineEvent>; // StreamInfo, IcyTitle, Buffering, Error(kind), Eof…
+    fn take_events(&mut self) -> Option<EngineEvents>; // once; Loading, Playing, Buffering, Error{kind}, Eof… (ADR-010)
 }
 ```
 

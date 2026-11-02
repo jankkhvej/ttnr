@@ -3,9 +3,11 @@
 //! decoded).
 
 mod config;
+mod event;
 mod mpv;
 
 pub use config::{AudioOutput, EngineConfig};
+pub use event::{EngineEvent, EngineEvents, ErrorKind};
 pub use mpv::{MpvPlayer, libmpv_version};
 use ttnr_core::StreamDescriptor;
 
@@ -18,6 +20,9 @@ pub enum EngineError {
     /// The stream descriptor contained no URL to play.
     #[error("stream descriptor has no URL")]
     NoStreamUrl,
+    /// The engine's event thread could not be started.
+    #[error("cannot start engine thread: {0}")]
+    Thread(#[source] std::io::Error),
 }
 
 /// A playback backend. Implemented by [`MpvPlayer`].
@@ -34,4 +39,6 @@ pub trait Player {
     /// Pin an output device by its mpv name (`audio-device-list`), or follow
     /// the system default with `None`.
     fn set_device(&mut self, dev: Option<&str>) -> Result<(), EngineError>;
+    /// Take the event receiver. Returns `Some` once; later calls `None`.
+    fn take_events(&mut self) -> Option<EngineEvents>;
 }

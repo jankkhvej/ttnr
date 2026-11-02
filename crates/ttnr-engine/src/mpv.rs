@@ -1,10 +1,14 @@
 //! [`MpvPlayer`]: the libmpv implementation of [`Player`].
 
 use std::sync::Arc;
+use std::thread::JoinHandle;
 
-use libmpv2::Mpv;
+use libmpv2::events::{Event, PropertyData};
+use libmpv2::{Format, Mpv, mpv_end_file_reason};
+use tokio::sync::mpsc::{UnboundedSender, unbounded_channel};
 use ttnr_core::StreamDescriptor;
 
+use crate::event::{EndReason, EngineEvent, EngineEvents, RawEvent, Translator};
 use crate::{EngineConfig, EngineError, Player};
 
 /// Options set before `mpv_initialize`, making the core audio-only and
@@ -26,6 +30,13 @@ const AUDIO_ONLY_OPTIONS: &[(&str, &str)] = &[
     ("audio-client-name", "ttnr"),
 ];
 
+/// Properties observed for events: (name, format, reply id).
+const OBSERVED: &[(&str, Format, u64)] = &[
+    ("pause", Format::Flag, 1),
+    ("paused-for-cache", Format::Flag, 2),
+    ("cache-buffering-state", Format::Int64, 3),
+];
+
 /// Version string of the linked libmpv, e.g. `"mpv 0.41.0"`.
 ///
 /// Creates and drops a throw-away mpv core (no file loaded, no audio
@@ -36,12 +47,22 @@ pub fn libmpv_version() -> Result<String, EngineError> {
 }
 
 /// libmpv-backed [`Player`], audio only.
+///
+/// A background thread blocks in `mpv_wait_event` (no polling) and turns
+/// mpv events into [`EngineEvent`]s; take the receiver with
+/// [`Player::take_events`]. Dropping the player shuts the core down.
+///
+/// Use **one `MpvPlayer` per process**: mpv routes FFmpeg's (global) log
+/// callback only to the first mpv core created (`common/av_log.c`), and
+/// HTTP/network error classification relies on those log lines.
 pub struct MpvPlayer {
     mpv: Arc<Mpv>,
+    events: Option<EngineEvents>,
+    event_thread: Option<JoinHandle<()>>,
 }
 
 impl MpvPlayer {
-    /// Create an mpv core configured by `cfg`.
+    /// Create an mpv core configured by `cfg` and start its event thread.
     pub fn new(cfg: &EngineConfig) -> Result<Self, EngineError> {
         let mpv = Mpv::with_initializer(|init| {
             for (name, value) in AUDIO_ONLY_OPTIONS {
@@ -52,7 +73,24 @@ impl MpvPlayer {
             init.set_option("volume", f64::from(clamp_volume(cfg.volume)))?;
             Ok(())
         })?;
-        Ok(Self { mpv: Arc::new(mpv) })
+        request_log_messages(&mpv, c"warn")?;
+        for (name, format, id) in OBSERVED {
+            mpv.observe_property(name, *format, *id)?;
+        }
+
+        let mpv = Arc::new(mpv);
+        let (tx, rx) = unbounded_channel();
+        let thread_mpv = Arc::clone(&mpv);
+        let event_thread = std::thread::Builder::new()
+            .name("ttnr-mpv-events".into())
+            .spawn(move || event_loop(&thread_mpv, &tx))
+            .map_err(EngineError::Thread)?;
+
+        Ok(Self {
+            mpv,
+            events: Some(rx),
+            event_thread: Some(event_thread),
+        })
     }
 
     /// Read an mpv property as a string (`None` if unavailable right now).
@@ -107,6 +145,139 @@ impl Player for MpvPlayer {
             .mpv
             .set_property("audio-device", dev.unwrap_or("auto"))?)
     }
+
+    fn take_events(&mut self) -> Option<EngineEvents> {
+        self.events.take()
+    }
+}
+
+impl Drop for MpvPlayer {
+    fn drop(&mut self) {
+        // `quit` makes mpv emit MPV_EVENT_SHUTDOWN, which ends the event
+        // loop. If the command fails the core is already gone and the loop
+        // has exited (or will on its own); never block on join then.
+        let quit = self.mpv.command("quit", &[]);
+        if let Some(handle) = self.event_thread.take()
+            && quit.is_ok()
+        {
+            let _ = handle.join();
+        }
+    }
+}
+
+/// Ask mpv to deliver log messages at `level` and above as events.
+/// `libmpv2` 7.0 has no safe wrapper for this (docs/RESEARCH.md).
+fn request_log_messages(mpv: &Mpv, level: &std::ffi::CStr) -> Result<(), EngineError> {
+    // SAFETY: `mpv.ctx` is a valid handle for the lifetime of `mpv`;
+    // `level` is a NUL-terminated string that mpv copies before returning.
+    let rc = unsafe { libmpv2_sys::mpv_request_log_messages(mpv.ctx.as_ptr(), level.as_ptr()) };
+    if rc < 0 {
+        return Err(EngineError::Mpv(libmpv2::Error::Raw(rc)));
+    }
+    Ok(())
+}
+
+/// Result of one `mpv_wait_event` call.
+enum Next {
+    Event(RawEvent),
+    /// An event we do not translate.
+    Skip,
+    /// Timed out (or woken up) with no event.
+    Timeout,
+}
+
+fn next_raw(mpv: &Mpv, timeout: f64) -> Next {
+    match mpv.wait_event(timeout) {
+        None => Next::Timeout,
+        Some(Ok(event)) => to_raw(event).map_or(Next::Skip, Next::Event),
+        // libmpv2 reports a failed file (end-file with an error code)
+        // as `Err(Raw(code))`, dropping the reason.
+        Some(Err(libmpv2::Error::Raw(code))) => {
+            Next::Event(RawEvent::EndFile(EndReason::Error(code)))
+        }
+        Some(Err(e)) => {
+            tracing::debug!(error = ?e, "unreadable mpv event");
+            Next::Skip
+        }
+    }
+}
+
+/// Block on mpv events until shutdown, forwarding translated events.
+fn event_loop(mpv: &Mpv, tx: &UnboundedSender<EngineEvent>) {
+    let mut translator = Translator::default();
+    let mut forward = |raw: RawEvent| -> bool {
+        if let RawEvent::Log { prefix, text } = &raw {
+            tracing::warn!(target: "mpv", "[{prefix}] {text}");
+        }
+        let shutdown = raw == RawEvent::Shutdown;
+        for event in translator.translate(raw) {
+            // A dropped receiver only means nobody listens; keep draining.
+            let _ = tx.send(event);
+        }
+        shutdown
+    };
+    loop {
+        let raw = match next_raw(mpv, -1.0) {
+            Next::Event(raw) => raw,
+            Next::Skip | Next::Timeout => continue,
+        };
+        if !matches!(raw, RawEvent::EndFile(EndReason::Error(_))) {
+            if forward(raw) {
+                return;
+            }
+            continue;
+        }
+        // mpv delivers queued events before log messages (player/client.c,
+        // `mpv_wait_event`), so the FFmpeg line explaining this failure may
+        // still be pending. Drain what is ready: logs first, then the error,
+        // then the other drained events in their original order.
+        let mut later = Vec::new();
+        loop {
+            match next_raw(mpv, 0.0) {
+                Next::Event(log @ RawEvent::Log { .. }) => {
+                    forward(log);
+                }
+                Next::Event(other) => later.push(other),
+                Next::Skip => {}
+                Next::Timeout => break,
+            }
+        }
+        if forward(raw) {
+            return;
+        }
+        for other in later {
+            if forward(other) {
+                return;
+            }
+        }
+    }
+}
+
+/// Map a libmpv2 event to our owned [`RawEvent`]; `None` = not interesting.
+fn to_raw(event: Event<'_>) -> Option<RawEvent> {
+    Some(match event {
+        Event::Shutdown => RawEvent::Shutdown,
+        Event::StartFile => RawEvent::StartFile,
+        Event::FileLoaded => RawEvent::FileLoaded,
+        Event::PlaybackRestart => RawEvent::PlaybackRestart,
+        Event::EndFile(reason) => RawEvent::EndFile(match reason {
+            mpv_end_file_reason::Eof => EndReason::Eof,
+            mpv_end_file_reason::Redirect => EndReason::Redirect,
+            // Stop, Quit; Error arrives as `Err(Raw(code))` instead.
+            _ => EndReason::Stop,
+        }),
+        Event::LogMessage { prefix, text, .. } => RawEvent::Log {
+            prefix: prefix.to_owned(),
+            text: text.trim_end().to_owned(),
+        },
+        Event::PropertyChange { name, change, .. } => match (name, change) {
+            ("pause", PropertyData::Flag(on)) => RawEvent::Pause(on),
+            ("paused-for-cache", PropertyData::Flag(on)) => RawEvent::PausedForCache(on),
+            ("cache-buffering-state", PropertyData::Int64(p)) => RawEvent::CacheBufferingState(p),
+            _ => return None,
+        },
+        _ => return None,
+    })
 }
 
 /// Clamp to `0..=100`; NaN becomes 0 (silence is the safe failure).
