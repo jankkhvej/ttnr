@@ -2,6 +2,12 @@
 
 Newest entry on top. Each entry: date · milestone/task · what changed · how to try it · next step · open questions for the owner.
 
+## 2026-11-02 · M1 · `StreamInfo`
+- `ttnr-core::StreamInfo` + `summary()` (e.g. `AAC LC · 48 kHz · stereo · 128 kbps`, shows `→ 44.1 kHz · stereo` when resampled/downmixed).
+- Engine observes 13 scalar mpv properties; sticky facts per file, one coalesced `EngineEvent::StreamInfo` per burst (ADR-011). Event loop now drains non-blocking after each event and flushes when idle.
+- Tests: translator units (coalescing, stickiness, bitrate precedence, reset); WAV integration test asserts codec/container/rate/format/bit depth/channels/bitrate/output.
+- Next: M1 task 4 – `ttnr play <url>` with plain log output, Ctrl-C stops.
+
 ## 2026-11-02 · M1 · Engine events
 - `ttnr-engine::event`: `EngineEvent`, `ErrorKind`, pure `Translator`; `MpvPlayer` event thread (blocks in `mpv_wait_event`, no polling), `take_events()`, clean shutdown on drop (ADR-010).
 - HTTP 403/404/other and unreachable are classified from FFmpeg log lines; verified against a loopback HTTP server (plain and HLS), unit tests for the translator.

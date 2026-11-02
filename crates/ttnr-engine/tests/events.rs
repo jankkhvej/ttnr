@@ -71,9 +71,33 @@ fn local_file_loading_playing_eof() {
     p.play(&StreamDescriptor::direct(path.to_str().unwrap()))
         .unwrap();
     let seen = collect_until(&mut rx, |e| *e == EngineEvent::Eof);
+    let lifecycle: Vec<_> = seen
+        .iter()
+        .filter(|e| !matches!(e, EngineEvent::StreamInfo(_)))
+        .collect();
     assert_eq!(
-        seen,
-        [EngineEvent::Loading, EngineEvent::Playing, EngineEvent::Eof]
+        lifecycle,
+        [
+            &EngineEvent::Loading,
+            &EngineEvent::Playing,
+            &EngineEvent::Eof
+        ]
+    );
+    let infos = seen.len() - lifecycle.len();
+    assert!(
+        (1..=4).contains(&infos),
+        "stream info should be coalesced, got {infos} events"
+    );
+    let Some(EngineEvent::StreamInfo(last)) = seen
+        .iter()
+        .rev()
+        .find(|e| matches!(e, EngineEvent::StreamInfo(_)))
+    else {
+        unreachable!()
+    };
+    assert!(
+        last.codec.is_some(),
+        "info not cleared at end of file: {last:?}"
     );
 }
 
@@ -154,5 +178,39 @@ fn drop_shuts_down_and_closes_channel() {
     assert!(
         rx.blocking_recv().is_none(),
         "sender dropped after shutdown"
+    );
+}
+
+#[test]
+fn stream_info_for_pcm_wav() {
+    let _core = single_core();
+    let (_dir, path) = fixture();
+    let mut p = null_player();
+    let mut rx = p.take_events().unwrap();
+    p.play(&StreamDescriptor::direct(path.to_str().unwrap()))
+        .unwrap();
+    let complete = |e: &EngineEvent| {
+        matches!(e, EngineEvent::StreamInfo(i)
+            if i.codec.is_some() && i.sample_rate.is_some() && i.channels.is_some()
+                && i.output_sample_rate.is_some() && i.bitrate.is_some())
+    };
+    let seen = collect_until(&mut rx, complete);
+    let Some(EngineEvent::StreamInfo(info)) = seen.last() else {
+        unreachable!()
+    };
+    assert_eq!(info.codec.as_deref(), Some("pcm_s16le"));
+    assert_eq!(info.container.as_deref(), Some("wav"));
+    assert_eq!(info.sample_rate, Some(48_000));
+    assert_eq!(info.sample_format.as_deref(), Some("s16"));
+    assert_eq!(info.bit_depth, Some(16));
+    assert_eq!(info.channels.as_deref(), Some("stereo"));
+    assert_eq!(info.channel_count, Some(2));
+    assert_eq!(info.bitrate, Some(48_000 * 2 * 16));
+    assert_eq!(info.output_sample_rate, Some(48_000));
+    assert!(
+        info.summary()
+            .starts_with("PCM_S16LE · 48 kHz · 16-bit · stereo"),
+        "{}",
+        info.summary()
     );
 }

@@ -8,7 +8,7 @@ use libmpv2::{Format, Mpv, mpv_end_file_reason};
 use tokio::sync::mpsc::{UnboundedSender, unbounded_channel};
 use ttnr_core::StreamDescriptor;
 
-use crate::event::{EndReason, EngineEvent, EngineEvents, RawEvent, Translator};
+use crate::event::{EndReason, EngineEvent, EngineEvents, PropValue, RawEvent, Translator};
 use crate::{EngineConfig, EngineError, Player};
 
 /// Options set before `mpv_initialize`, making the core audio-only and
@@ -36,6 +36,28 @@ const OBSERVED: &[(&str, Format, u64)] = &[
     ("paused-for-cache", Format::Flag, 2),
     ("cache-buffering-state", Format::Int64, 3),
 ];
+
+/// Properties feeding [`ttnr_core::StreamInfo`] (mpv 0.41.0 manual,
+/// docs/RESEARCH.md). Observed as scalars: libmpv2 cannot decode
+/// `Format::Node` property events.
+const STREAM_INFO_PROPS: &[(&str, Format)] = &[
+    ("current-tracks/audio/codec", Format::String),
+    ("current-tracks/audio/codec-desc", Format::String),
+    ("current-tracks/audio/codec-profile", Format::String),
+    ("current-tracks/audio/demux-bitrate", Format::Int64),
+    ("current-tracks/audio/hls-bitrate", Format::Int64),
+    ("file-format", Format::String),
+    ("audio-params/format", Format::String),
+    ("audio-params/samplerate", Format::Int64),
+    ("audio-params/hr-channels", Format::String),
+    ("audio-params/channel-count", Format::Int64),
+    ("audio-out-params/samplerate", Format::Int64),
+    ("audio-out-params/hr-channels", Format::String),
+    ("audio-bitrate", Format::Double),
+];
+
+/// Reply id for all [`STREAM_INFO_PROPS`] (events carry the name).
+const STREAM_INFO_ID: u64 = 100;
 
 /// Version string of the linked libmpv, e.g. `"mpv 0.41.0"`.
 ///
@@ -76,6 +98,9 @@ impl MpvPlayer {
         request_log_messages(&mpv, c"warn")?;
         for (name, format, id) in OBSERVED {
             mpv.observe_property(name, *format, *id)?;
+        }
+        for (name, format) in STREAM_INFO_PROPS {
+            mpv.observe_property(name, *format, STREAM_INFO_ID)?;
         }
 
         let mpv = Arc::new(mpv);
@@ -203,8 +228,38 @@ fn next_raw(mpv: &Mpv, timeout: f64) -> Next {
 }
 
 /// Block on mpv events until shutdown, forwarding translated events.
+///
+/// After each event the queue is drained without blocking; once it is
+/// empty, accumulated stream-info changes are flushed as one event.
 fn event_loop(mpv: &Mpv, tx: &UnboundedSender<EngineEvent>) {
     let mut translator = Translator::default();
+    let mut timeout = -1.0;
+    loop {
+        match next_raw(mpv, timeout) {
+            Next::Timeout => {
+                if let Some(event) = translator.flush() {
+                    let _ = tx.send(event);
+                }
+                timeout = -1.0;
+            }
+            Next::Skip => timeout = 0.0,
+            Next::Event(raw) => {
+                if handle(mpv, &mut translator, tx, raw) {
+                    return;
+                }
+                timeout = 0.0;
+            }
+        }
+    }
+}
+
+/// Translate and forward one raw event; `true` on shutdown.
+fn handle(
+    mpv: &Mpv,
+    translator: &mut Translator,
+    tx: &UnboundedSender<EngineEvent>,
+    raw: RawEvent,
+) -> bool {
     let mut forward = |raw: RawEvent| -> bool {
         if let RawEvent::Log { prefix, text } = &raw {
             tracing::warn!(target: "mpv", "[{prefix}] {text}");
@@ -216,41 +271,28 @@ fn event_loop(mpv: &Mpv, tx: &UnboundedSender<EngineEvent>) {
         }
         shutdown
     };
+    if !matches!(raw, RawEvent::EndFile(EndReason::Error(_))) {
+        return forward(raw);
+    }
+    // mpv delivers queued events before log messages (player/client.c,
+    // `mpv_wait_event`), so the FFmpeg line explaining this failure may
+    // still be pending. Drain what is ready: logs first, then the error,
+    // then the other drained events in their original order.
+    let mut later = Vec::new();
     loop {
-        let raw = match next_raw(mpv, -1.0) {
-            Next::Event(raw) => raw,
-            Next::Skip | Next::Timeout => continue,
-        };
-        if !matches!(raw, RawEvent::EndFile(EndReason::Error(_))) {
-            if forward(raw) {
-                return;
+        match next_raw(mpv, 0.0) {
+            Next::Event(log @ RawEvent::Log { .. }) => {
+                forward(log);
             }
-            continue;
-        }
-        // mpv delivers queued events before log messages (player/client.c,
-        // `mpv_wait_event`), so the FFmpeg line explaining this failure may
-        // still be pending. Drain what is ready: logs first, then the error,
-        // then the other drained events in their original order.
-        let mut later = Vec::new();
-        loop {
-            match next_raw(mpv, 0.0) {
-                Next::Event(log @ RawEvent::Log { .. }) => {
-                    forward(log);
-                }
-                Next::Event(other) => later.push(other),
-                Next::Skip => {}
-                Next::Timeout => break,
-            }
-        }
-        if forward(raw) {
-            return;
-        }
-        for other in later {
-            if forward(other) {
-                return;
-            }
+            Next::Event(other) => later.push(other),
+            Next::Skip => {}
+            Next::Timeout => break,
         }
     }
+    if forward(raw) {
+        return true;
+    }
+    later.into_iter().any(forward)
 }
 
 /// Map a libmpv2 event to our owned [`RawEvent`]; `None` = not interesting.
@@ -269,6 +311,19 @@ fn to_raw(event: Event<'_>) -> Option<RawEvent> {
         Event::LogMessage { prefix, text, .. } => RawEvent::Log {
             prefix: prefix.to_owned(),
             text: text.trim_end().to_owned(),
+        },
+        Event::PropertyChange {
+            name,
+            change,
+            reply_userdata: STREAM_INFO_ID,
+        } => RawEvent::Prop {
+            name: name.to_owned(),
+            value: match change {
+                PropertyData::Str(s) | PropertyData::OsdStr(s) => PropValue::Str(s.to_owned()),
+                PropertyData::Int64(i) => PropValue::Int(i),
+                PropertyData::Double(d) => PropValue::Double(d),
+                PropertyData::Flag(_) | PropertyData::None => PropValue::None,
+            },
         },
         Event::PropertyChange { name, change, .. } => match (name, change) {
             ("pause", PropertyData::Flag(on)) => RawEvent::Pause(on),

@@ -96,3 +96,14 @@ anything older than ~3 months before relying on it.
 | `libmpv2` 7.0: no safe wrapper for `mpv_request_log_messages` (has `Event::LogMessage`, marked "has not been tested"); `Mpv::ctx` is public so `libmpv2_sys::mpv_request_log_messages` can be called; `wait_event` returns an end-file *with error* as `Err(Error::Raw(code))`, losing the reason; `PropertyData::from_raw` panics (`unimplemented!`) for `MPV_FORMAT_NODE`, so never observe properties as `Format::Node` | crate source `libmpv2-7.0.0/src/mpv.rs`, `src/mpv/events.rs` | VERIFIED 2026-11-02 |
 | `wait_event(-1.0)` blocks indefinitely (timeout < 0 → 1e20 s): no polling while idle | player/client.c | VERIFIED 2026-11-02 |
 | The `quit` command makes mpv emit `MPV_EVENT_SHUTDOWN` to clients | test `drop_shuts_down_and_closes_channel` | VERIFIED 2026-11-02 |
+
+### 2026-11-02 · Stream format properties (for `StreamInfo`)
+
+| Fact | Source | Status |
+|---|---|---|
+| Documented in 0.41.0: `audio-params/{format,samplerate,channels,hr-channels,channel-count}` (decoder output), `audio-out-params` (same, as sent to the audio API), `audio-bitrate` (packet-level estimate, bits/s, throttled updates), `file-format` (may be a comma list, e.g. `mov,mp4,m4a,3gp,3g2,mj2`), `current-tracks/audio/…` → `track-list/N/{codec,codec-desc,codec-profile,demux-bitrate,hls-bitrate,demux-samplerate,demux-channels}` | https://github.com/mpv-player/mpv/blob/v0.41.0/DOCS/man/input.rst | VERIFIED 2026-11-02 |
+| `audio-codec-name` still works but is not described in the 0.41.0 property list (only in interface-changes as the replacement of `audio-format`) → ttnr uses `current-tracks/audio/codec` | input.rst, https://github.com/mpv-player/mpv/blob/v0.41.0/DOCS/interface-changes.rst | VERIFIED 2026-11-02 |
+| mpv reports no source bit depth: 24-bit FLAC/ALAC decode to `s32`/`s32p` (ffprobe `bits_per_raw_sample=24`), 16-bit FLAC to `s16`, lossy codecs to `floatp` → bit depth is shown only for `u8`/`s16` | local test files from `ffmpeg 9.0.2` + `mpv --term-playing-msg` | VERIFIED 2026-11-02 |
+| Measured on test files: AAC-LC → `codec=aac prof=LC`; AC-3 5.1 → `hr-channels=5.1(side)`, `demux-bitrate=448000`; ALAC/AAC in MP4 have `demux-bitrate`, FLAC does not | same | VERIFIED 2026-11-02 |
+| During end-of-file teardown, stream properties become unavailable one by one *before* the `end-file` event is delivered | events test trace, 2026-11-02 | VERIFIED 2026-11-02 |
+| Homebrew FFmpeg 9.0.2 has the `aac_at` (AudioToolbox) encoder besides native `aac`; native `aac` cannot encode HE-AAC; whether `aac_at` can produce HE-AAC v1/v2 fixtures is to be checked in M1 task 5 | `ffmpeg -encoders` | UNVERIFIED (HE-AAC part) |

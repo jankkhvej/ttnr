@@ -4,4 +4,4 @@
 
 pub mod stream;
 
-pub use stream::StreamDescriptor;
+pub use stream::{StreamDescriptor, StreamInfo};

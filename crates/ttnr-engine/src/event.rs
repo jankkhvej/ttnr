@@ -2,6 +2,7 @@
 //! pure translation from raw mpv events to [`EngineEvent`]s.
 
 use libmpv2::mpv_error;
+use ttnr_core::StreamInfo;
 
 /// Receiving end of the engine's event channel.
 pub type EngineEvents = tokio::sync::mpsc::UnboundedReceiver<EngineEvent>;
@@ -20,6 +21,8 @@ pub enum EngineEvent {
     },
     /// The pause state changed.
     Paused(bool),
+    /// The stream format became known or changed (SPEC F2.4).
+    StreamInfo(StreamInfo),
     /// The stream ended normally (finite file or a live stream that closed).
     Eof,
     /// Playback was stopped by a command (stop, or replaced by a new play).
@@ -67,6 +70,32 @@ pub(crate) enum EndReason {
     Error(i32),
 }
 
+/// A property value from mpv; `None` = property unavailable.
+#[derive(Debug, Clone, PartialEq)]
+pub(crate) enum PropValue {
+    Str(String),
+    Int(i64),
+    Double(f64),
+    None,
+}
+
+impl PropValue {
+    fn string(self) -> Option<String> {
+        match self {
+            Self::Str(s) if !s.is_empty() => Some(s),
+            _ => None,
+        }
+    }
+
+    fn uint(self) -> Option<u32> {
+        match self {
+            Self::Int(i) => u32::try_from(i).ok().filter(|v| *v > 0),
+            Self::Double(d) if d >= 1.0 && d < f64::from(u32::MAX) => Some(d.round() as u32),
+            _ => None,
+        }
+    }
+}
+
 /// Raw mpv events, decoupled from libmpv2's borrowed event type.
 #[derive(Debug, Clone, PartialEq)]
 pub(crate) enum RawEvent {
@@ -77,7 +106,15 @@ pub(crate) enum RawEvent {
     Pause(bool),
     PausedForCache(bool),
     CacheBufferingState(i64),
-    Log { prefix: String, text: String },
+    /// A stream-format property (see `STREAM_INFO_PROPS` in `mpv.rs`).
+    Prop {
+        name: String,
+        value: PropValue,
+    },
+    Log {
+        prefix: String,
+        text: String,
+    },
     Shutdown,
 }
 
@@ -96,6 +133,13 @@ pub(crate) struct Translator {
     paused: bool,
     buffer_percent: Option<u8>,
     net_failure: Option<(NetFailure, String)>,
+    info: StreamInfo,
+    /// Last `StreamInfo` sent; see [`Translator::flush`].
+    sent_info: StreamInfo,
+    /// Nominal bitrates (container, HLS variant) and the measured one.
+    demux_bitrate: Option<u32>,
+    hls_bitrate: Option<u32>,
+    measured_bitrate: Option<u32>,
 }
 
 impl Translator {
@@ -107,6 +151,11 @@ impl Translator {
                 self.buffering = false;
                 self.buffer_percent = None;
                 self.net_failure = None;
+                self.info = StreamInfo::default();
+                self.sent_info = StreamInfo::default();
+                self.demux_bitrate = None;
+                self.hls_bitrate = None;
+                self.measured_bitrate = None;
                 vec![EngineEvent::Loading]
             }
             RawEvent::FileLoaded => {
@@ -179,8 +228,65 @@ impl Translator {
                 }
                 vec![]
             }
+            RawEvent::Prop { name, value } => {
+                self.apply_prop(&name, value);
+                vec![]
+            }
             RawEvent::Shutdown => vec![EngineEvent::Shutdown],
         }
+    }
+
+    /// Emit the accumulated [`StreamInfo`] if it changed since last sent.
+    /// Called when mpv's event queue is drained, so a burst of property
+    /// changes yields one event.
+    pub(crate) fn flush(&mut self) -> Option<EngineEvent> {
+        if self.info == self.sent_info {
+            return None;
+        }
+        self.sent_info = self.info.clone();
+        Some(EngineEvent::StreamInfo(self.info.clone()))
+    }
+
+    /// Update [`StreamInfo`] from one mpv property. Facts are sticky within
+    /// a file: unavailable/empty values (e.g. while the decoder is torn
+    /// down at end of file) never clear what is known; `StartFile` resets.
+    fn apply_prop(&mut self, name: &str, value: PropValue) {
+        fn keep<T>(slot: &mut Option<T>, new: Option<T>) {
+            if new.is_some() {
+                *slot = new;
+            }
+        }
+        let info = &mut self.info;
+        match name {
+            "current-tracks/audio/codec" => keep(&mut info.codec, value.string()),
+            "current-tracks/audio/codec-desc" => keep(&mut info.codec_desc, value.string()),
+            "current-tracks/audio/codec-profile" => keep(&mut info.codec_profile, value.string()),
+            "file-format" => keep(&mut info.container, value.string()),
+            "audio-params/samplerate" => keep(&mut info.sample_rate, value.uint()),
+            "audio-params/format" => {
+                keep(&mut info.sample_format, value.string());
+                info.bit_depth = info
+                    .sample_format
+                    .as_deref()
+                    .and_then(StreamInfo::bit_depth_of);
+            }
+            "audio-params/hr-channels" => keep(&mut info.channels, value.string()),
+            "audio-params/channel-count" => keep(&mut info.channel_count, value.uint()),
+            "audio-out-params/samplerate" => keep(&mut info.output_sample_rate, value.uint()),
+            "audio-out-params/hr-channels" => keep(&mut info.output_channels, value.string()),
+            "current-tracks/audio/demux-bitrate" => keep(&mut self.demux_bitrate, value.uint()),
+            "current-tracks/audio/hls-bitrate" => keep(&mut self.hls_bitrate, value.uint()),
+            // Measured bitrate jitters; keep kbps resolution to avoid churn.
+            "audio-bitrate" => keep(
+                &mut self.measured_bitrate,
+                value.uint().map(|b| (b + 500) / 1000 * 1000),
+            ),
+            _ => {}
+        }
+        self.info.bitrate = self
+            .demux_bitrate
+            .or(self.hls_bitrate)
+            .or(self.measured_bitrate);
     }
 
     /// Classify a failed file from the mpv error code and the last network
@@ -384,6 +490,96 @@ mod tests {
             let out = run([RawEvent::EndFile(EndReason::Error(code))]);
             assert_eq!(out, [E::Error { kind, detail: None }]);
         }
+    }
+
+    fn prop(name: &str, value: PropValue) -> RawEvent {
+        RawEvent::Prop {
+            name: name.into(),
+            value,
+        }
+    }
+
+    #[test]
+    fn stream_info_is_coalesced_until_flush() {
+        let mut t = Translator::default();
+        for raw in [
+            RawEvent::StartFile,
+            prop("current-tracks/audio/codec", PropValue::Str("aac".into())),
+            prop("audio-params/samplerate", PropValue::Int(48_000)),
+            prop("audio-params/format", PropValue::Str("s16".into())),
+        ] {
+            let out = t.translate(raw);
+            assert!(!out.iter().any(|e| matches!(e, E::StreamInfo(_))));
+        }
+        let Some(E::StreamInfo(info)) = t.flush() else {
+            panic!("expected one StreamInfo")
+        };
+        assert_eq!(info.codec.as_deref(), Some("aac"));
+        assert_eq!(info.sample_rate, Some(48_000));
+        assert_eq!(info.bit_depth, Some(16));
+        assert_eq!(t.flush(), None, "unchanged info is not re-sent");
+        t.translate(prop("audio-params/samplerate", PropValue::Int(48_000)));
+        assert_eq!(t.flush(), None, "same value is not a change");
+    }
+
+    #[test]
+    fn nominal_bitrate_wins_over_measured() {
+        let mut t = Translator::default();
+        t.translate(prop("audio-bitrate", PropValue::Double(127_400.0)));
+        assert_eq!(t.info.bitrate, Some(127_000));
+        t.translate(prop("audio-bitrate", PropValue::Double(127_600.0)));
+        assert_eq!(t.info.bitrate, Some(128_000));
+        t.translate(prop(
+            "current-tracks/audio/hls-bitrate",
+            PropValue::Int(96_000),
+        ));
+        assert_eq!(t.info.bitrate, Some(96_000));
+        t.translate(prop(
+            "current-tracks/audio/demux-bitrate",
+            PropValue::Int(320_000),
+        ));
+        assert_eq!(t.info.bitrate, Some(320_000));
+    }
+
+    #[test]
+    fn stream_info_resets_on_new_file() {
+        let mut t = Translator::default();
+        t.translate(prop("audio-params/samplerate", PropValue::Int(44_100)));
+        assert!(t.flush().is_some());
+        t.translate(RawEvent::StartFile);
+        assert_eq!(t.info, StreamInfo::default());
+        t.translate(prop("audio-params/samplerate", PropValue::Int(44_100)));
+        assert!(
+            t.flush().is_some(),
+            "same value in a new file is sent again"
+        );
+    }
+
+    #[test]
+    fn facts_are_sticky_within_a_file() {
+        let mut t = Translator::default();
+        t.translate(prop(
+            "audio-params/hr-channels",
+            PropValue::Str("stereo".into()),
+        ));
+        t.translate(prop(
+            "audio-params/hr-channels",
+            PropValue::Str(String::new()),
+        ));
+        t.translate(prop("audio-params/hr-channels", PropValue::None));
+        assert_eq!(t.info.channels.as_deref(), Some("stereo"));
+        t.translate(prop("audio-params/samplerate", PropValue::Int(44_100)));
+        t.translate(prop("audio-params/samplerate", PropValue::Int(0)));
+        assert_eq!(t.info.sample_rate, Some(44_100));
+        t.translate(prop(
+            "audio-params/hr-channels",
+            PropValue::Str("5.1".into()),
+        ));
+        assert_eq!(
+            t.info.channels.as_deref(),
+            Some("5.1"),
+            "real changes apply"
+        );
     }
 
     #[test]
