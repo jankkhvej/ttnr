@@ -49,6 +49,19 @@ const OBSERVED: &[(&str, Format, u64)] = &[
     ("pause", Format::Flag, 1),
     ("paused-for-cache", Format::Flag, 2),
     ("cache-buffering-state", Format::Int64, 3),
+    // Only a change signal: mpv notifies `metadata` (not its by-key
+    // sub-properties) on ICY/tag updates; read as a string because libmpv2
+    // cannot decode `Format::Node` events (ADR-020).
+    ("metadata", Format::String, 4),
+];
+
+/// Tag keys read on every `metadata` change and at file load.
+const TAG_PROPS: &[&str] = &[
+    "metadata/by-key/icy-title",
+    "metadata/by-key/icy-name",
+    "metadata/by-key/title",
+    "metadata/by-key/artist",
+    "metadata/by-key/album",
 ];
 
 /// Properties feeding [`ttnr_core::StreamInfo`] (mpv 0.41.0 manual,
@@ -268,7 +281,10 @@ fn event_loop(mpv: &Mpv, tx: &UnboundedSender<EngineEvent>) {
     loop {
         match next_raw(mpv, timeout) {
             Next::Timeout => {
-                if let Some(event) = translator.flush() {
+                for event in [translator.flush(), translator.flush_tags()]
+                    .into_iter()
+                    .flatten()
+                {
                     let _ = tx.send(event);
                 }
                 timeout = -1.0;
@@ -302,12 +318,27 @@ fn handle(
         }
         shutdown
     };
+    if raw == RawEvent::MetadataChanged {
+        for name in TAG_PROPS {
+            forward(RawEvent::Prop {
+                name: (*name).to_owned(),
+                value: read_prop(mpv, name, Format::String),
+            });
+        }
+        return false;
+    }
     if matches!(
         raw,
         RawEvent::FileLoaded | RawEvent::PlaybackRestart | RawEvent::AudioReconfig
     ) {
         if forward(raw) {
             return true;
+        }
+        for name in TAG_PROPS {
+            forward(RawEvent::Prop {
+                name: (*name).to_owned(),
+                value: read_prop(mpv, name, Format::String),
+            });
         }
         // mpv 0.41.0 does not always re-notify observed properties for a
         // new file: after one AAC file, the next one's `audio-params` stay
@@ -390,6 +421,7 @@ fn to_raw(event: Event<'_>) -> Option<RawEvent> {
         Event::PropertyChange { name, change, .. } => match (name, change) {
             ("pause", PropertyData::Flag(on)) => RawEvent::Pause(on),
             ("paused-for-cache", PropertyData::Flag(on)) => RawEvent::PausedForCache(on),
+            ("metadata", _) => RawEvent::MetadataChanged,
             ("cache-buffering-state", PropertyData::Int64(p)) => RawEvent::CacheBufferingState(p),
             _ => return None,
         },

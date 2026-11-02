@@ -5,6 +5,7 @@
 
 pub mod cache;
 pub mod http;
+pub mod merge;
 pub mod nowplaying;
 pub mod registry;
 pub mod resolve;
@@ -14,7 +15,8 @@ pub mod stream;
 
 pub use cache::ResolveCache;
 pub use http::{Http, HttpError, HttpResponse};
-pub use nowplaying::{InfoSource, NowPlaying};
+pub use merge::Merger;
+pub use nowplaying::{InfoSource, NowPlaying, StreamTags, split_icy_title};
 pub use registry::SourceRegistry;
 pub use resolve::{Mode, ResolveCtx, ResolveError, resolve_chain};
 pub use source::{ListQuery, MetadataProvider, Source, SourceCaps, SourceError};

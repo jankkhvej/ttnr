@@ -12,7 +12,8 @@ use crate::playlist::is_stream_mime;
 pub const BODY_CAP: usize = 256 * 1024;
 
 /// reqwest-based client: redirects (≤ 10), connect/read timeouts, body cap,
-/// and no body read at all for media streams.
+/// and no body read at all for endless media streams (media type or ICY
+/// headers without `Content-Length`).
 #[derive(Debug, Clone)]
 pub struct ReqwestHttp {
     client: reqwest::Client,
@@ -76,7 +77,11 @@ impl Http for ReqwestHttp {
             .headers()
             .keys()
             .any(|k| k.as_str().starts_with("icy-"));
-        let streaming = icy || content_type.as_deref().is_some_and(is_stream_mime);
+        // A media type *without* a length is an endless stream; a sized one
+        // (e.g. an HLS segment, possibly a ranged 206) may be read.
+        let streaming = icy
+            || (resp.content_length().is_none()
+                && content_type.as_deref().is_some_and(is_stream_mime));
         let mut body = Vec::new();
         if !streaming {
             while body.len() < BODY_CAP {

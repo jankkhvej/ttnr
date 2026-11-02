@@ -89,8 +89,8 @@ pub trait Source: Send + Sync {
         Vec::new()
     }
 
-    /// Optional external now-playing provider for this station.
-    fn metadata(&self, _st: &Station) -> Option<Box<dyn MetadataProvider>> {
+    /// Optional now-playing provider for this station (its own polling).
+    fn metadata(&self, _st: &Station, _ctx: &ResolveCtx) -> Option<Box<dyn MetadataProvider>> {
         None
     }
 }

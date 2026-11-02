@@ -1,9 +1,13 @@
-//! `ttnr play <url>`: headless playback with plain status lines on stdout.
+//! `ttnr play <target>`: headless playback with plain status lines on stdout.
 
 use std::sync::Arc;
+use std::time::SystemTime;
 
 use anyhow::{Context, Result, bail};
-use ttnr_core::{ResolveCache, ResolveCtx, SourceRegistry, Station, StreamDescriptor};
+use tokio::sync::mpsc;
+use ttnr_core::{
+    Merger, NowPlaying, ResolveCache, ResolveCtx, SourceRegistry, Station, StreamDescriptor,
+};
 use ttnr_engine::{EngineConfig, EngineEvent, ErrorKind, MpvPlayer, Player};
 use ttnr_sources::{ReqwestHttp, StationsSource, UrlSource};
 
@@ -12,10 +16,10 @@ use crate::{paths, stations};
 /// Play `target` – a URL, a file path or a station id from
 /// `stations.toml` – until it ends, fails, or Ctrl-C is pressed. Playlists
 /// are expanded; if one of several streams fails, the next is tried.
+/// Now-playing info from the stream (ICY, tags) and from the station's
+/// metadata provider is merged by priority.
 pub async fn run(target: &str, cfg: &EngineConfig) -> Result<()> {
     let station = station_for(target)?;
-    let url = station.url.clone().unwrap_or_default();
-    let url = url.as_str();
     let mut player = MpvPlayer::new(cfg).context("cannot start the audio engine")?;
     let mut events = player
         .take_events()
@@ -23,16 +27,18 @@ pub async fn run(target: &str, cfg: &EngineConfig) -> Result<()> {
     tracing::info!(station = %station.key(), "play");
     println!("ttnr: {}", station.name);
 
-    let resolved = resolve(&station).await?;
+    let (registry, ctx) = setup()?;
+    let resolved = resolve(&registry, &ctx, &station).await?;
     if resolved.urls.len() > 1 {
         println!("playlist: {} streams", resolved.urls.len());
     }
+    let own_url = station.url.clone().unwrap_or_default();
     let mut candidates = resolved.urls.iter();
     let mut play_next = |player: &mut MpvPlayer| -> Result<bool> {
         let Some(next) = candidates.next() else {
             return Ok(false);
         };
-        if next != url {
+        if *next != own_url {
             println!("stream: {next}");
         }
         player.play(&StreamDescriptor {
@@ -43,6 +49,25 @@ pub async fn run(target: &str, cfg: &EngineConfig) -> Result<()> {
         Ok(true)
     };
     play_next(&mut player)?;
+
+    // The provider stops by itself when `np_rx` is dropped.
+    let (np_tx, mut np_rx) = mpsc::channel::<NowPlaying>(8);
+    if let Some(provider) = registry
+        .get(&station.source)
+        .and_then(|s| s.metadata(&station, &ctx))
+    {
+        tokio::spawn(async move {
+            if let Err(e) = provider.run(np_tx).await {
+                tracing::warn!(error = %e, "metadata provider stopped");
+            }
+        });
+    }
+    let mut merger = Merger::default();
+    let show = |np: NowPlaying, merger: &mut Merger| {
+        if let Some(line) = merger.update(np).and_then(now_line) {
+            println!("{line}");
+        }
+    };
 
     loop {
         tokio::select! {
@@ -59,8 +84,14 @@ pub async fn run(target: &str, cfg: &EngineConfig) -> Result<()> {
                         ao = player.property_string("current-ao").as_deref().unwrap_or("?"),
                         "audio output"
                     ),
+                    EngineEvent::Tags(tags) => {
+                        if let Some(np) = NowPlaying::from_tags(&tags, SystemTime::now()) {
+                            show(np, &mut merger);
+                        }
+                    }
                     EngineEvent::Eof => return Ok(()),
                     EngineEvent::Error { kind, .. } if is_stream_failure(kind) && play_next(&mut player)? => {
+                        merger.clear();
                         println!("[{kind}; trying the next stream]");
                     }
                     EngineEvent::Error { kind, detail } => match detail {
@@ -70,6 +101,10 @@ pub async fn run(target: &str, cfg: &EngineConfig) -> Result<()> {
                     EngineEvent::Shutdown => bail!("audio engine shut down"),
                     _ => {}
                 }
+            }
+            Some(np) = np_rx.recv() => {
+                tracing::info!(?np, "provider");
+                show(np, &mut merger);
             }
             _ = tokio::signal::ctrl_c() => {
                 println!("[stopped]");
@@ -104,8 +139,8 @@ fn looks_like_url_or_path(target: &str) -> bool {
         || std::path::Path::new(target).exists()
 }
 
-/// Resolve through the source registry.
-async fn resolve(station: &Station) -> Result<StreamDescriptor> {
+/// The source registry and the resolve context (HTTP client, URL cache).
+fn setup() -> Result<(SourceRegistry, ResolveCtx)> {
     let cache = match paths::cache_dir() {
         Some(dir) => ResolveCache::load(dir.join("resolve.json")),
         None => ResolveCache::in_memory(),
@@ -115,13 +150,20 @@ async fn resolve(station: &Station) -> Result<StreamDescriptor> {
     let mut registry = SourceRegistry::new();
     registry.register(Arc::new(UrlSource));
     registry.register(Arc::new(StationsSource::default()));
-    let d = registry.resolve(station, &ctx).await.map_err(|e| match e {
-        ttnr_core::ResolveError::UnknownSource(id) => {
-            anyhow::anyhow!(
-                "station {:?} needs the `{id}` source, which is not available yet",
-                station.id
-            )
-        }
+    Ok((registry, ctx))
+}
+
+/// Resolve `station` through its source.
+async fn resolve(
+    registry: &SourceRegistry,
+    ctx: &ResolveCtx,
+    station: &Station,
+) -> Result<StreamDescriptor> {
+    let d = registry.resolve(station, ctx).await.map_err(|e| match e {
+        ttnr_core::ResolveError::UnknownSource(id) => anyhow::anyhow!(
+            "station {:?} needs the `{id}` source, which is not available yet",
+            station.id
+        ),
         other => other.into(),
     })?;
     tracing::info!(trace = %d.trace, urls = ?d.urls, "resolved");
@@ -140,8 +182,18 @@ fn is_stream_failure(kind: ErrorKind) -> bool {
     )
 }
 
+/// `now: Artist – Title` (or just the title).
+fn now_line(np: &NowPlaying) -> Option<String> {
+    match (&np.artist, &np.title) {
+        (Some(artist), Some(title)) => Some(format!("now: {artist} – {title}")),
+        (None, Some(title)) => Some(format!("now: {title}")),
+        _ => None,
+    }
+}
+
 /// The status line for an engine event, if it deserves one. Errors are
-/// reported by the caller (stderr, exit code).
+/// reported by the caller (stderr, exit code); now-playing goes through the
+/// merger.
 fn describe(event: &EngineEvent) -> Option<String> {
     Some(match event {
         EngineEvent::Loading => "[loading]".into(),
@@ -158,14 +210,17 @@ fn describe(event: &EngineEvent) -> Option<String> {
             format!("format: {summary}")
         }
         EngineEvent::Eof => "[end of stream]".into(),
-        EngineEvent::Stopped | EngineEvent::Error { .. } | EngineEvent::Shutdown => return None,
+        EngineEvent::Tags(_)
+        | EngineEvent::Stopped
+        | EngineEvent::Error { .. }
+        | EngineEvent::Shutdown => return None,
     })
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use ttnr_core::StreamInfo;
+    use ttnr_core::{InfoSource, StreamInfo};
     use ttnr_engine::ErrorKind;
 
     #[test]
@@ -205,5 +260,15 @@ mod tests {
             detail: None,
         };
         assert_eq!(describe(&err), None);
+    }
+
+    #[test]
+    fn now_lines() {
+        let mut np = NowPlaying::empty(InfoSource::Icy, SystemTime::UNIX_EPOCH);
+        assert_eq!(now_line(&np), None);
+        np.title = Some("Song".into());
+        assert_eq!(now_line(&np).as_deref(), Some("now: Song"));
+        np.artist = Some("Band".into());
+        assert_eq!(now_line(&np).as_deref(), Some("now: Band – Song"));
     }
 }

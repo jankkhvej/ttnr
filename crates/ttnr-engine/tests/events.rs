@@ -214,3 +214,87 @@ fn stream_info_for_pcm_wav() {
         info.summary()
     );
 }
+
+/// One ICY metadata block: length byte (×16) + padded `StreamTitle='…';`.
+fn icy_block(title: Option<&str>) -> Vec<u8> {
+    let Some(title) = title else {
+        return vec![0];
+    };
+    let mut text = format!("StreamTitle='{title}';").into_bytes();
+    let blocks = text.len().div_ceil(16);
+    text.resize(blocks * 16, 0);
+    let mut out = vec![u8::try_from(blocks).unwrap()];
+    out.extend(text);
+    out
+}
+
+/// An Icecast-style server: MP3 frames with in-band titles every 8000
+/// bytes (only if the client asked with `Icy-MetaData: 1`). Title A first,
+/// then – after a pause so the player reads it – title B.
+fn icy_server() -> String {
+    let mp3 = std::fs::read(
+        std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+            .join("../../tests/fixtures/generated/icy_stream.mp3"),
+    )
+    .expect("run scripts/gen-fixtures.zsh");
+    let listener = TcpListener::bind("127.0.0.1:0").unwrap();
+    let addr = listener.local_addr().unwrap();
+    std::thread::spawn(move || {
+        for stream in listener.incoming() {
+            let Ok(mut s) = stream else { continue };
+            let mut buf = [0u8; 4096];
+            let n = s.read(&mut buf).unwrap_or(0);
+            let wants_icy = String::from_utf8_lossy(&buf[..n])
+                .to_ascii_lowercase()
+                .contains("icy-metadata: 1");
+            let metaint = 8000;
+            let head = if wants_icy {
+                format!(
+                    "HTTP/1.1 200 OK\r\nContent-Type: audio/mpeg\r\nicy-name: Test FM\r\nicy-metaint: {metaint}\r\n\r\n"
+                )
+            } else {
+                "HTTP/1.1 200 OK\r\nContent-Type: audio/mpeg\r\nicy-name: Test FM\r\n\r\n"
+                    .to_owned()
+            };
+            if s.write_all(head.as_bytes()).is_err() {
+                continue;
+            }
+            for (i, chunk) in mp3.chunks(metaint).enumerate() {
+                if s.write_all(chunk).is_err() {
+                    break;
+                }
+                if !wants_icy || chunk.len() < metaint {
+                    continue;
+                }
+                let title = match i {
+                    0 => Some("Artist One - Song A"),
+                    3 => Some("Artist Two - Song B"),
+                    _ => None,
+                };
+                if i == 3 {
+                    std::thread::sleep(Duration::from_millis(800));
+                }
+                if s.write_all(&icy_block(title)).is_err() {
+                    break;
+                }
+            }
+        }
+    });
+    format!("http://{addr}/live")
+}
+
+#[test]
+fn icy_titles_become_tags() {
+    let _core = single_core();
+    let url = icy_server();
+    let mut p = null_player();
+    let mut rx = p.take_events().unwrap();
+    p.play(&StreamDescriptor::direct(url)).unwrap();
+    let title = |e: &EngineEvent, want: &str| matches!(e, EngineEvent::Tags(t) if t.icy_title.as_deref() == Some(want));
+    let seen = collect_until(&mut rx, |e| title(e, "Artist One - Song A"));
+    let Some(EngineEvent::Tags(tags)) = seen.last() else {
+        unreachable!()
+    };
+    assert_eq!(tags.icy_name.as_deref(), Some("Test FM"));
+    collect_until(&mut rx, |e| title(e, "Artist Two - Song B"));
+}

@@ -2,7 +2,7 @@
 //! pure translation from raw mpv events to [`EngineEvent`]s.
 
 use libmpv2::mpv_error;
-use ttnr_core::StreamInfo;
+use ttnr_core::{StreamInfo, StreamTags};
 
 /// Receiving end of the engine's event channel.
 pub type EngineEvents = tokio::sync::mpsc::UnboundedReceiver<EngineEvent>;
@@ -23,6 +23,8 @@ pub enum EngineEvent {
     Paused(bool),
     /// The stream format became known or changed (SPEC F2.4).
     StreamInfo(StreamInfo),
+    /// In-stream metadata (ICY title, tags) changed.
+    Tags(StreamTags),
     /// The stream ended normally (finite file or a live stream that closed).
     Eof,
     /// Playback was stopped by a command (stop, or replaced by a new play).
@@ -123,6 +125,9 @@ pub(crate) enum RawEvent {
     CacheBufferingState(i64),
     /// mpv reconfigured the audio output (no engine event of its own).
     AudioReconfig,
+    /// mpv's `metadata` changed; the tag keys must be re-read (mpv does not
+    /// notify `metadata/by-key/…` sub-properties).
+    MetadataChanged,
     /// A stream-format property (see `STREAM_INFO_PROPS` in `mpv.rs`).
     Prop {
         name: String,
@@ -156,6 +161,9 @@ pub(crate) struct Translator {
     info: StreamInfo,
     /// Last `StreamInfo` sent in this file; see [`Translator::flush`].
     sent_info: StreamInfo,
+    /// Mirror of the tag keys, and the last tags sent in this file.
+    tags: StreamTags,
+    sent_tags: StreamTags,
     /// Nominal bitrates (container, HLS variant) and the measured one.
     demux_bitrate: Option<u32>,
     hls_bitrate: Option<u32>,
@@ -172,6 +180,8 @@ impl Translator {
                 self.buffer_percent = None;
                 self.net_failure = None;
                 self.sent_info = StreamInfo::default();
+                self.tags = StreamTags::default();
+                self.sent_tags = StreamTags::default();
                 vec![EngineEvent::Loading]
             }
             RawEvent::FileLoaded => {
@@ -248,7 +258,7 @@ impl Translator {
                 self.apply_prop(&name, value);
                 vec![]
             }
-            RawEvent::AudioReconfig => vec![],
+            RawEvent::AudioReconfig | RawEvent::MetadataChanged => vec![],
             RawEvent::Shutdown => vec![EngineEvent::Shutdown],
         }
     }
@@ -271,8 +281,28 @@ impl Translator {
         Some(EngineEvent::StreamInfo(next))
     }
 
-    /// Mirror one mpv property into [`Self::info`].
+    /// Emit the current [`StreamTags`] if they changed since last sent (only
+    /// while a file is loaded). Tags are not sticky: an empty ICY title
+    /// means "nothing announced" and must clear the old one.
+    pub(crate) fn flush_tags(&mut self) -> Option<EngineEvent> {
+        if !self.loaded || self.tags == self.sent_tags {
+            return None;
+        }
+        self.sent_tags = self.tags.clone();
+        Some(EngineEvent::Tags(self.tags.clone()))
+    }
+
+    /// Mirror one mpv property into [`Self::info`] / [`Self::tags`].
     fn apply_prop(&mut self, name: &str, value: PropValue) {
+        let tags = &mut self.tags;
+        match name {
+            "metadata/by-key/icy-title" => return tags.icy_title = value.string(),
+            "metadata/by-key/icy-name" => return tags.icy_name = value.string(),
+            "metadata/by-key/title" => return tags.title = value.string(),
+            "metadata/by-key/artist" => return tags.artist = value.string(),
+            "metadata/by-key/album" => return tags.album = value.string(),
+            _ => {}
+        }
         let info = &mut self.info;
         match name {
             "current-tracks/audio/codec" => info.codec = value.string(),
@@ -710,6 +740,38 @@ mod tests {
             PropValue::Str("5.1".into()),
         ));
         assert_eq!(info_of(t.flush()).channels.as_deref(), Some("5.1"));
+    }
+
+    #[test]
+    fn tags_are_coalesced_and_cleared() {
+        let mut t = Translator::default();
+        t.translate(RawEvent::StartFile);
+        t.translate(prop(
+            "metadata/by-key/icy-name",
+            PropValue::Str("Test FM".into()),
+        ));
+        assert_eq!(t.flush_tags(), None, "not before the file is loaded");
+        t.translate(RawEvent::FileLoaded);
+        t.translate(prop(
+            "metadata/by-key/icy-title",
+            PropValue::Str("A - B".into()),
+        ));
+        let Some(E::Tags(tags)) = t.flush_tags() else {
+            panic!("expected tags")
+        };
+        assert_eq!(tags.icy_title.as_deref(), Some("A - B"));
+        assert_eq!(tags.icy_name.as_deref(), Some("Test FM"));
+        assert_eq!(t.flush_tags(), None);
+        t.translate(prop(
+            "metadata/by-key/icy-title",
+            PropValue::Str(String::new()),
+        ));
+        let Some(E::Tags(tags)) = t.flush_tags() else {
+            panic!("expected tags")
+        };
+        assert_eq!(tags.icy_title, None, "empty StreamTitle clears");
+        t.translate(RawEvent::StartFile);
+        assert_eq!(t.tags, StreamTags::default());
     }
 
     #[test]

@@ -183,3 +183,17 @@ anything older than ~3 months before relying on it.
 |---|---|---|
 | `toml` 1.1.8 implements TOML spec 1.1.0 (crate version suffix `+spec-1.1.0`) | https://crates.io/crates/toml | VERIFIED 2026-11-02 |
 | BBC service ids `bbc_6music`, `bbc_radio_three` in `examples/stations.toml` come from community tools | planning notes | UNVERIFIED (M4) |
+
+### 2026-11-02 · In-stream metadata: ICY and HLS ID3
+
+| Fact | Source | Status |
+|---|---|---|
+| FFmpeg http requests ICY by default (`icy=1` → `Icy-MetaData: 1`); mpv's `stream_lavf.c` `read_icy()` turns `icy_metadata_headers` into tags (e.g. `icy-name`, `icy-genre`, `icy-br`) and `StreamTitle` into `icy-title` (charset guessed, converted to UTF-8) | https://github.com/FFmpeg/FFmpeg/blob/master/libavformat/http.c · https://github.com/mpv-player/mpv/blob/v0.41.0/stream/stream_lavf.c (via research subagent); behaviour confirmed by test `icy_titles_become_tags` | VERIFIED 2026-11-02 |
+| mpv notifies `metadata`, `filtered-metadata`, `media-title` on `MP_EVENT_METADATA_UPDATE`; `metadata/by-key/<key>` sub-properties are not in the event table → observe `metadata` and re-read keys | https://github.com/mpv-player/mpv/blob/v0.41.0/player/command.c (property/event table, via subagent) | VERIFIED 2026-11-02 (works in our engine test) |
+| At playback start `icy-title` is unavailable until the first metadata block (after `icy-metaint` bytes); `icy-name`/`icy-genre` are there from the headers (SomaFM) | `mpv --term-playing-msg` on SomaFM | VERIFIED 2026-11-02 |
+| FFmpeg 9.0.2 `hls.c`: TS segments' timed-ID3 data streams are propagated as metadata updates (`timed_id3_metadata`, `metadata_has_changed`); in packed-audio segments only the initial ID3 is used, later changes log "Changing ID3 metadata in HLS audio elementary stream" (missing feature) | https://github.com/FFmpeg/FFmpeg/blob/n9.0.2/libavformat/hls.c (lines ~187, 1312, 2677, 2844) | VERIFIED 2026-11-02 |
+| mpv 0.41.0 shows **no** metadata keys for a packed-AAC HLS stream whose segments start with ID3 TIT2/TPE1 (`metadata/list/count` = 0) | `mpv --term-playing-msg` on https://db2.indexcom.com/bucket/ram/00/05/05.m3u8 | VERIFIED 2026-11-02 |
+| That stream (StreamS encoder): each `.aac` segment starts with two ID3v2.4 tags – PRIV `com.apple.streaming.transportStreamTimestamp` (73 B), then TIT2/TPE1/TALB/TRSN/WXXX `artworkURL_640x`… (984 B); audio from byte 1057 | recorded segment, `tests/fixtures/id3/streams_packed_aac.id3` | VERIFIED 2026-11-02 |
+| FIP (Radio France) HLS uses MPEG-TS segments with an AAC stream and a `timed_id3` data stream, but the ID3 packets are empty (10-byte header, no frames) → no now-playing via ID3 | ffprobe/ffmpeg on a live segment | VERIFIED 2026-11-02 |
+| A TS timed-ID3 stream with real frames reaching mpv's `metadata` is untested (no public example found) | – | UNVERIFIED |
+| ID3v2.4 / v2.3 structure (syncsafe sizes in v2.4 frames, text encodings 0–3, WXXX layout) | https://id3.org/id3v2.4.0-structure · https://id3.org/id3v2.3.0 | from spec knowledge; pinned by unit tests | 

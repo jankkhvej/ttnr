@@ -5,9 +5,12 @@
 use std::time::Duration;
 
 use async_trait::async_trait;
-use ttnr_core::{ResolveCtx, Source, SourceCaps, SourceError, Station, StreamDescriptor};
+use ttnr_core::{
+    MetadataProvider, ResolveCtx, Source, SourceCaps, SourceError, Station, StreamDescriptor,
+};
 use url::Url;
 
+use crate::hls_id3::HlsId3Provider;
 use crate::playlist::{self, Kind};
 
 /// Source id.
@@ -41,6 +44,20 @@ impl Source for UrlSource {
 
     fn capabilities(&self) -> SourceCaps {
         SourceCaps::default()
+    }
+
+    /// HLS URLs get the segment-ID3 poller (it stops by itself if the
+    /// stream carries no ID3 now-playing frames).
+    fn metadata(&self, st: &Station, ctx: &ResolveCtx) -> Option<Box<dyn MetadataProvider>> {
+        let url = st.url.as_deref()?;
+        let path = url
+            .split(['?', '#'])
+            .next()
+            .unwrap_or(url)
+            .to_ascii_lowercase();
+        path.ends_with(".m3u8").then(|| {
+            Box::new(HlsId3Provider::new(url, ctx.http.clone())) as Box<dyn MetadataProvider>
+        })
     }
 
     /// Fetch the URL's head: media stream or HLS → play the URL as is;

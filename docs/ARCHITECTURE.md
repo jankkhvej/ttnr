@@ -49,7 +49,7 @@ pub trait Source: Send + Sync {          // hooks; the chain is shared (ADR-017)
     /// Known URL templates, best first; the chain probes them in order.
     fn patterns(&self, st: &Station) -> Vec<StreamDescriptor>;
     /// Optional external now-playing provider for this station.
-    fn metadata(&self, st: &Station) -> Option<Box<dyn MetadataProvider>> { None }
+    fn metadata(&self, st: &Station, ctx: &ResolveCtx) -> Option<Box<dyn MetadataProvider>> { None }
 }
 // SourceRegistry::resolve(st, ctx) / ::refresh(st, ctx) run
 // cache → discover → patterns → override via ttnr_core::resolve_chain.

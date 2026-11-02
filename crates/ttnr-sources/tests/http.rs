@@ -75,6 +75,7 @@ fn routes(path: &str) -> Reply {
             b"HTTP/1.1 302 Found\r\nLocation: /list.pls\r\nContent-Length: 0\r\n\r\n".to_vec(),
         ),
         "/big" => ok("text/plain", &vec![b'x'; BODY_CAP * 4]),
+        "/segment.aac" => ok("audio/aac", b"ID3\x04\x00\x00\x00\x00\x00\x00audio"),
         _ => Reply::Fixed(b"HTTP/1.1 404 Not Found\r\nContent-Length: 0\r\n\r\n".to_vec()),
     }
 }
@@ -156,4 +157,17 @@ async fn shoutcast_v1_status_line_is_an_error() {
         .get(&format!("{base}/shoutcast-v1"), &[])
         .await;
     assert!(r.is_err(), "{r:?}");
+}
+
+/// A sized media response (e.g. an HLS segment) is not an endless stream.
+#[tokio::test]
+async fn sized_media_is_read() {
+    let base = serve(routes).await;
+    let r = ReqwestHttp::new()
+        .unwrap()
+        .get(&format!("{base}/segment.aac"), &[])
+        .await
+        .unwrap();
+    assert!(!r.streaming);
+    assert!(r.body.starts_with(b"ID3"));
 }

@@ -2,6 +2,13 @@
 
 Newest entry on top. Each entry: date · milestone/task · what changed · how to try it · next step · open questions for the owner.
 
+## 2026-11-02 · M2 · ICY and HLS ID3 now-playing
+- Engine `EngineEvent::Tags` (ICY title/name, tags); core `StreamTags`, `NowPlaying::from_tags`, `Merger`; sources `id3` parser + `HlsId3Provider` (segment-head poller, because mpv/FFmpeg drop packed-audio ID3 updates); `ttnr play` prints `now: Artist – Title` (ADR-020).
+- Tests: ICY titles from a loopback Icecast-style server, translator/merger/ICY-split units, ID3 parser (encodings, consecutive tags, garbage) + real recorded segment head, poller with virtual time (variant selection, change-only, stop without ID3, non-HLS), sized media read.
+- Verified live: SomaFM (ICY) and a StreamS HLS test stream (ID3) show titles; FIP's timed ID3 is empty (no titles from the stream itself).
+- Try it: `cargo run -q -- play https://somafm.com/groovesalad.pls`, `cargo run -q -- play https://db2.indexcom.com/bucket/ram/00/05/05.m3u8`.
+- Next: M2 task 5 – auto re-resolve once on 403/404; `ttnr refresh [station]`.
+
 ## 2026-11-02 · M2 · `stations` source
 - `StationsSource` (load/validate/list/find), `ttnr play <station-id>`, `ttnr stations [--search]`; `examples/stations.toml` now has real, checked SomaFM/FIP entries plus BBC placeholders (ADR-019).
 - Tests: parser/validation units, example file validity, CLI (list, search, play by id, BBC-before-M4 message, unknown id, broken file).
