@@ -1,0 +1,3 @@
+# unwrap()/expect() are allowed in tests only (CLAUDE.md conventions).
+allow-unwrap-in-tests = true
+allow-expect-in-tests = true

@@ -1,0 +1,18 @@
+[package]
+name = "tuner-engine"
+description = "Playback engine for tuner (libmpv, audio only)"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish = false
+
+[dependencies]
+libmpv2.workspace = true
+thiserror.workspace = true
+
+[lints]
+workspace = true
+
+[build-dependencies]
+pkg-config.workspace = true

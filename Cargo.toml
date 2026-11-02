@@ -1,0 +1,53 @@
+[package]
+name = "tuner"
+description = "Minimal, themeable terminal player for network music streams"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish = false
+
+[[bin]]
+name = "tuner"
+path = "src/main.rs"
+
+[dependencies]
+anyhow.workspace = true
+clap.workspace = true
+tuner-core.workspace = true
+tuner-engine.workspace = true
+
+[lints]
+workspace = true
+
+[workspace]
+members = ["crates/*"]
+resolver = "3"
+
+[workspace.package]
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.99"
+license = "GPL-3.0-or-later"
+
+[workspace.dependencies]
+anyhow = "1.0.104"
+clap = { version = "4.6.7", features = ["derive"] }
+libmpv2 = { version = "7.0.0", default-features = false }
+pkg-config = "0.3.34"
+thiserror = "2"
+
+tuner-core = { path = "crates/tuner-core" }
+tuner-engine = { path = "crates/tuner-engine" }
+tuner-platform = { path = "crates/tuner-platform" }
+tuner-sources = { path = "crates/tuner-sources" }
+tuner-themes = { path = "crates/tuner-themes" }
+tuner-tui = { path = "crates/tuner-tui" }
+
+[workspace.lints.rust]
+unsafe_op_in_unsafe_fn = "deny"
+missing_docs = "warn"
+
+[workspace.lints.clippy]
+unwrap_used = "warn"
+expect_used = "warn"

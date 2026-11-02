@@ -20,3 +20,14 @@ Decision: GPL-3.0-or-later for the project.
 Context: BBC (and others) change stream URLs without notice.
 Decision: resolver chain cache → discovery → patterns → user override; auto re-resolve once on 403/404; `tuner refresh`.
 Consequences: no hard-coded URL is ever load-bearing; small on-disk cache.
+
+## ADR-005 · 2026-11-02 · libmpv binding: `libmpv2` crate
+Context: we embed libmpv (ADR-002) and need a maintained, OSI-licensed Rust binding that matches the installed libmpv (client API 2.5, mpv 0.41.0). Candidates: `libmpv2` (kohsine), `libmpv`/`libmpv-sys` (ParadoxSpiral), `mpv-client-dyn`, or our own FFI.
+Decision: `libmpv2` 7.x with `default-features = false` (drops the video `render` feature). Its `-sys` crate ships pregenerated bindings for client API 2.5, so no bindgen/libclang is needed. Because `libmpv2-sys` emits only `-lmpv`, `tuner-engine/build.rs` adds the search path via the `pkg-config` crate (reads Homebrew's `mpv.pc`). In `deny.toml` the deprecated licence id `LGPL-2.1` is clarified to `LGPL-2.1-only` (pinned to the LICENSE file hash).
+Rejected: ParadoxSpiral `libmpv` (last release 2020, pre-API-2); `mpv-client-dyn` (plugin API, not embedding); hand-written FFI (more unsafe code for no gain – keep as fallback if `libmpv2` stalls).
+Consequences: unsafe code stays inside the binding; `MpvPlayer` wraps `libmpv2::Mpv`. A future libmpv API 3 would need a new binding release. If the clarify hash breaks after a `libmpv2` upgrade, re-check the LICENSE file and update the hash.
+
+## ADR-006 · 2026-11-02 · Workspace layout and toolchain
+Context: ARCHITECTURE.md lists one binary and six library crates; M8 wants `cargo install --path .`.
+Decision: the repo root is the `tuner` binary package *and* the workspace root; libraries live in `crates/tuner-*`. Shared versions/lints in `[workspace.*]`. Edition 2024, resolver 3. `rust-toolchain.toml` pins `1.99.1` (current stable) with rustfmt + clippy. Workspace lints: `missing_docs` and clippy `unwrap_used`/`expect_used` warn (→ errors under `-D warnings`), allowed in tests via `clippy.toml`.
+Consequences: `cargo install --path .` works as-is; bumping Rust is an explicit one-line change.

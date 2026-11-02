@@ -4,11 +4,11 @@ Work top to bottom. Tick `[x]` when a task meets its acceptance criteria and
 `./scripts/check.zsh` is green. Stop at the end of each milestone for owner review.
 
 ## M0 — Bootstrap
-- [ ] Verify toolchain: Rust stable, libmpv via Homebrew (`pkg-config --modversion mpv`), ffmpeg. Log versions in RESEARCH.md.
-- [ ] Choose and verify the libmpv Rust binding (maintenance, licence, mpv version compatibility) → ADR.
-- [ ] Cargo workspace with the crates in ARCHITECTURE.md (empty but compiling), `rust-toolchain.toml`, `LICENSE` (GPL-3.0-or-later), `deny.toml`.
-- [ ] `scripts/check.zsh` gate (fmt, clippy -D warnings, test, deny) passes.
-- [ ] `tuner --version` and `tuner --help` work.
+- [x] Verify toolchain: Rust stable, libmpv via Homebrew (`pkg-config --modversion mpv`), ffmpeg. Log versions in RESEARCH.md.
+- [x] Choose and verify the libmpv Rust binding (maintenance, licence, mpv version compatibility) → ADR.
+- [x] Cargo workspace with the crates in ARCHITECTURE.md (empty but compiling), `rust-toolchain.toml`, `LICENSE` (GPL-3.0-or-later), `deny.toml`.
+- [x] `scripts/check.zsh` gate (fmt, clippy -D warnings, test, deny) passes.
+- [x] `tuner --version` and `tuner --help` work.
 **Acceptance:** clean clone → `./scripts/check.zsh` green.
 
 ## M1 — Playback engine (headless)

@@ -1,0 +1,50 @@
+# cargo-deny configuration (https://embarkstudios.github.io/cargo-deny/).
+# Hard rule: OSI-approved licences only, no known advisories.
+
+[graph]
+all-features = true
+
+[advisories]
+# Unmaintained/unsound/yanked crates in the graph fail the gate.
+yanked = "deny"
+
+[licenses]
+# Every entry must be OSI-approved. Extend only with an ADR.
+allow = [
+    "Apache-2.0",
+    "Apache-2.0 WITH LLVM-exception",
+    "BSD-2-Clause",
+    "BSD-3-Clause",
+    "GPL-3.0-or-later",
+    "ISC",
+    "LGPL-2.1-only",      # libmpv2 / libmpv2-sys, see [[licenses.clarify]]
+    "MIT",
+    "Unicode-3.0",
+    "Zlib",
+]
+confidence-threshold = 0.9
+# The allow-list is intentionally broader than today's graph.
+unused-allowed-license = "allow"
+# Our own crates are unpublished workspace members.
+private = { ignore = true }
+
+# libmpv2 and libmpv2-sys declare the deprecated SPDX id "LGPL-2.1"; their
+# LICENSE file is the plain LGPL-2.1 text, so clarify as LGPL-2.1-only.
+[[licenses.clarify]]
+crate = "libmpv2"
+expression = "LGPL-2.1-only"
+license-files = [{ path = "LICENSE", hash = 0x13b834cd }]
+
+[[licenses.clarify]]
+crate = "libmpv2-sys"
+expression = "LGPL-2.1-only"
+license-files = [{ path = "LICENSE", hash = 0x13b834cd }]
+
+[bans]
+multiple-versions = "warn"
+wildcards = "deny"
+allow-wildcard-paths = true
+
+[sources]
+unknown-registry = "deny"
+unknown-git = "deny"
