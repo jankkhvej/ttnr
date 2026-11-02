@@ -163,3 +163,16 @@ anything older than ~3 months before relying on it.
 | Fact | Source | Status |
 |---|---|---|
 | Rust 1.99.1: a trait with `async fn` is still not dyn-compatible (`E0038 … because method is async`) → `async-trait` 0.1.92 for `dyn Source` / `dyn Http` / `dyn MetadataProvider` | `rustc --edition 2024` on a minimal example | VERIFIED 2026-11-02 |
+
+### 2026-11-02 · Playlists, HTTP client, `url` source
+
+| Fact | Source | Status |
+|---|---|---|
+| mpv's playlist demuxer reads 8 KiB to probe, strips a BOM, forces format by MIME when it matches, needs `#EXTM3U` on the first line for M3U (headerless only by extension, "unsafe" level), `[playlist]` (case-insensitive) for PLS; no ASX/XSPF parsing there | https://github.com/mpv-player/mpv/blob/master/demux/demux_playlist.c (via research subagent) | seen 2026-11-02 |
+| HLS = `#EXTM3U` + any `#EXT-X-` tag (RFC 8216); `.m3u8`/`application/vnd.apple.mpegurl` alone does not imply HLS (UTF-8 plain playlists use `.m3u8` too) | https://www.rfc-editor.org/rfc/rfc8216 | VERIFIED 2026-11-02 (spec), behaviour pinned by tests |
+| Real playlists (recorded to `tests/fixtures/playlists/real/`): PLS with CRLF and lowercase `numberofentries` (StreamTheWorld, SomaFM; `audio/x-scpls`), headerless and extended M3U (`audio/x-mpegurl`), ASX with `href = "…"` spacing (`video/x-ms-asx`, `video/x-ms-asf`), XSPF with `&amp;` (`application/xspf+xml`), HLS master with relative variant and HLS media playlist (`application/vnd.apple.mpegurl`) | recorded from radio-browser's most-voted playlist URLs | VERIFIED 2026-11-02 |
+| reqwest 0.13.5: default TLS is rustls + aws-lc-rs (+ rustls-platform-verifier); `native-tls` feature uses Security.framework on macOS (security-framework, MIT/Apache-2.0), no C/cmake build; `Response::chunk()` reads incrementally, dropping the response aborts the body; `ClientBuilder::{read_timeout, connect_timeout, redirect, user_agent}` exist | crate source `reqwest-0.13.5/Cargo.toml`, `src/async_impl/{client,response}.rs` | VERIFIED 2026-11-02 |
+| A Shoutcast v1 `ICY 200 OK` status line makes reqwest/hyper fail the request → `UrlSource` hands such URLs straight to mpv | test `shoutcast_v1_status_line_is_an_error` (loopback server) | VERIFIED 2026-11-02 |
+| HEAD is unreliable on Icecast mounts → probe with GET and drop after the headers | research subagent (general knowledge, not from a primary source) | UNVERIFIED (GET+drop used regardless) |
+| With all targets, `native-tls` pulls `openssl` (+ `openssl-macros` → duplicate `syn` 2) for Linux; on macOS it uses security-framework only | `cargo tree -d --target all` | VERIFIED 2026-11-02 |
+| `ttnr play` resolves and plays SomaFM `.pls`, WDVX `.xspf`, TranceBase `.asx`, 101 Smooth Jazz `.m3u` | manual run 2026-11-02 | seen 2026-11-02 |

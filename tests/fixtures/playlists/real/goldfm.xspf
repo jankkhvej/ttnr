@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<playlist xmlns="http://xspf.org/ns/0/" version="1">
+  <title/>
+  <creator/>
+  <trackList>
+    <track>
+      <location>http://stream.goldfm.lt:80/goldfm.aac</location>
+      <title>London Boys - Harlem Desire</title>
+      <annotation>Stream Title: GoldFM
+Stream Description: aac
+Content Type:audio/aac
+Bitrate: 192
+Current Listeners: 87
+Peak Listeners: 761
+Stream Genre: gold</annotation>
+      <info>http://goldfm.lt</info>
+    </track>
+  </trackList>
+</playlist>

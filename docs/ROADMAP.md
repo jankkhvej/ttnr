@@ -21,7 +21,7 @@ Work top to bottom. Tick `[x]` when a task meets its acceptance criteria and
 
 ## M2 — Sources & in-stream metadata
 - [x] `Source` / `MetadataProvider` traits, `SourceRegistry`, `ResolveCtx`, resolver chain + cache (cache/discovery/patterns/override).
-- [ ] `url` source: direct URLs and playlist files (`m3u`, `m3u8` master/media, `pls`, `xspf`, `asx`) with fixtures.
+- [x] `url` source: direct URLs and playlist files (`m3u`, `m3u8` master/media, `pls`, `xspf`, `asx`) with fixtures.
 - [ ] `stations` source from `stations.toml` (sample file in `examples/`).
 - [ ] ICY and HLS timed-ID3 metadata surfaced as `NowPlaying`.
 - [ ] Auto re-resolve once on 403/404; `ttnr refresh [station]`.

@@ -2,6 +2,12 @@
 
 Newest entry on top. Each entry: date · milestone/task · what changed · how to try it · next step · open questions for the owner.
 
+## 2026-11-02 · M2 · `url` source + playlists + HTTP client
+- `ttnr-sources`: `playlist` (detect/parse M3U, HLS pass-through, PLS, XSPF, ASX), `ReqwestHttp` (native TLS, stream-aware, capped), `UrlSource` (ADR-018). `ttnr play` now resolves via the registry, caches in `~/.cache/ttnr/resolve.json`, and fails over between playlist mirrors.
+- Fixtures: 10 real playlists recorded from popular stations. Tests: parser units, real-playlist table, HTTP client vs loopback (endless stream, redirect, cap, ICY status), `UrlSource` through the chain, CLI fail-over (404 mirror → next).
+- Try it: `cargo run -q -- play https://somafm.com/groovesalad.pls` (also `.xspf`, `.asx`, `.m3u` URLs in RESEARCH.md).
+- Next: M2 task 3 – `stations` source from `stations.toml` (+ sample in `examples/`).
+
 ## 2026-11-02 · M2 · Source traits, registry, resolver chain + cache
 - `ttnr-core`: `Station`, `NowPlaying`/`InfoSource`, extended `StreamDescriptor` (+`ResolverTrace`), `Http` trait, `Source`/`MetadataProvider` (async-trait), `ResolveCtx`, `ResolveCache` (JSON, TTL), `resolve_chain`, `SourceRegistry` (ADR-017).
 - Tests: cache (TTL, persistence, corrupt file), chain (cache hit/miss, expiry, pattern probing order, override last and uncached, exhausted trace, refresh replaces stale URL, failed refresh does not resurrect it, unknown source).

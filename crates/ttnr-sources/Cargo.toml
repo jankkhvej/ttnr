@@ -8,7 +8,15 @@ license.workspace = true
 publish = false
 
 [dependencies]
+async-trait.workspace = true
+reqwest.workspace = true
+tokio = { workspace = true, features = ["time"] }
+tracing.workspace = true
 ttnr-core.workspace = true
+url.workspace = true
+
+[dev-dependencies]
+tokio = { workspace = true, features = ["rt", "macros", "net", "io-util", "time"] }
 
 [lints]
 workspace = true

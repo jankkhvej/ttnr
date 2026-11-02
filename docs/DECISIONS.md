@@ -100,3 +100,13 @@ Decision:
 - Network behind `ttnr_core::Http` (`get`, `probe`); the real client comes with the `url` source; tests use fakes. `ResolveCtx` carries HTTP, cache and an injectable clock.
 - `Station` {id, name, source, url override, params}; `StreamDescriptor` gains `resolved_at`, `ttl`, `trace`; `NowPlaying` + `InfoSource` (priority External > TimedId3 > Icy) defined for the metadata tasks.
 Consequences: a source with fully custom resolution implements it inside `discover`. Adding a source = implement hooks + one `register` call.
+
+## ADR-018 · 2026-11-02 · `url` source: content-sniffed playlists, reqwest + native TLS
+Context: M2 task 2. Requirements: any URL (SPEC F1.1), never download an endless stream, HLS untouched, playlist files expanded, tests offline. Research (RESEARCH.md) via a lighter-model subagent, key facts re-verified.
+Decision:
+- `ttnr-sources::playlist`: pure functions. Detection by content first (`#EXTM3U` + `#EXT-X-` → HLS; `#EXTM3U` → M3U; `[playlist]` → PLS; `<asx` → ASX; XSPF namespace), MIME/extension only as a hint (a headerless M3U must actually list URLs). UTF-8 with BOM strip, Latin-1 fallback. Lenient tag scanning for ASX/XSPF (no XML dependency; ASX is often malformed). Relative URLs resolved against the final URL (`url` crate); only network schemes accepted from remote playlists (no `file:`), duplicates removed.
+- `ReqwestHttp` (reqwest 0.13, `default-features = false, features = ["native-tls"]`): redirects ≤ 10, connect 10 s / read 15 s timeouts, body cap 256 KiB, body not read at all for `audio/*`/`application/ogg`/`icy-*` responses (`HttpResponse::streaming`); `probe` = GET dropped after headers. Error text includes the cause chain.
+- `UrlSource::discover`: non-HTTP → direct; transport error (e.g. `ICY 200 OK`) → direct; non-2xx → error (chain falls back to the URL as override, so mpv still classifies the failure); streaming / HLS / unknown → direct; playlist → entries as ordered candidates (TTL 1 h).
+- `ttnr play` resolves through the registry with the on-disk cache (`$XDG_CACHE_HOME/ttnr/resolve.json`) and fails over to the next candidate on HTTP/unreachable/load errors.
+- `cargo deny` graph restricted to `aarch64-apple-darwin` and `x86_64-apple-darwin` (the shipped platforms); avoids judging Linux-only branches like native-tls → openssl.
+Consequences: nested playlists (a playlist entry that is itself a PLS/M3U) are left to mpv, which parses M3U/PLS itself. Extend the deny targets if Linux becomes a goal.

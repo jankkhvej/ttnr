@@ -1,0 +1,12 @@
+[playlist]
+File1=http://15113.live.streamtheworld.com:80/977_COUNTRY_SC
+File2=http://15113.live.streamtheworld.com:3690/977_COUNTRY_SC
+File3=http://24293.live.streamtheworld.com:80/977_COUNTRY_SC
+File4=http://24293.live.streamtheworld.com:3690/977_COUNTRY_SC
+File5=http://26343.live.streamtheworld.com:80/977_COUNTRY_SC
+File6=http://26343.live.streamtheworld.com:3690/977_COUNTRY_SC
+Title1=977_COUNTRY_SC
+Title2=977_COUNTRY_SC-Bak
+Length1=-1
+NumberOfEntries=6
+Version=2

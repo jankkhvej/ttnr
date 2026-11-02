@@ -13,6 +13,15 @@ pub fn state_dir() -> Option<PathBuf> {
     )
 }
 
+/// `$XDG_CACHE_HOME/ttnr`, else `$HOME/.cache/ttnr` (resolve cache).
+pub fn cache_dir() -> Option<PathBuf> {
+    xdg_dir(
+        std::env::var_os("XDG_CACHE_HOME"),
+        std::env::var_os("HOME"),
+        ".cache",
+    )
+}
+
 /// Resolve an XDG base directory for ttnr. Per the spec, an unset, empty or
 /// relative `$XDG_*` value is ignored in favour of `$HOME/<fallback>`.
 fn xdg_dir(xdg: Option<OsString>, home: Option<OsString>, fallback: &str) -> Option<PathBuf> {

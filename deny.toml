@@ -3,6 +3,9 @@
 
 [graph]
 all-features = true
+# Platforms we build for (SPEC: macOS first). Linux-only branches such as
+# native-tls → openssl are not part of the shipped graph (ADR-018).
+targets = ["aarch64-apple-darwin", "x86_64-apple-darwin"]
 
 [advisories]
 # Unmaintained/unsound/yanked crates in the graph fail the gate.

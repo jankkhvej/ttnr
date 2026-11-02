@@ -35,6 +35,7 @@ fn ttnr(state: &Path, args: &[&str]) -> Output {
     Command::new(env!("CARGO_BIN_EXE_ttnr"))
         .args(args)
         .env("XDG_STATE_HOME", state)
+        .env("XDG_CACHE_HOME", state)
         .env_remove("TTNR_LOG")
         .output()
         .unwrap()
@@ -136,4 +137,76 @@ fn volume_out_of_range_is_rejected() {
     let out = ttnr(state.path(), &["play", "x", "--volume", "150"]);
     assert!(!out.status.success());
     assert!(text(&out.stderr).contains("between 0 and 100"));
+}
+
+/// A PLS whose first stream is gone (404) and whose second plays: ttnr
+/// expands the playlist and falls over to the second stream.
+#[test]
+fn playlist_falls_over_to_the_next_stream() {
+    let dir = tempfile::tempdir().unwrap();
+    let wav_path = dir.path().join("silence.wav");
+    write_wav(&wav_path);
+    let wav = std::fs::read(&wav_path).unwrap();
+    let listener = TcpListener::bind("127.0.0.1:0").unwrap();
+    let addr = listener.local_addr().unwrap();
+    std::thread::spawn(move || {
+        for stream in listener.incoming() {
+            let Ok(mut s) = stream else { continue };
+            let mut buf = [0u8; 4096];
+            let n = s.read(&mut buf).unwrap_or(0);
+            let req = String::from_utf8_lossy(&buf[..n]);
+            let path = req.split_whitespace().nth(1).unwrap_or("/").to_owned();
+            let (head, body): (String, Vec<u8>) = match path.as_str() {
+                "/list.pls" => {
+                    let pls = format!(
+                        "[playlist]\nFile1=http://{addr}/gone\nFile2=http://{addr}/ok.wav\n"
+                    );
+                    (
+                        format!(
+                            "HTTP/1.1 200 OK\r\nContent-Type: audio/x-scpls\r\nContent-Length: {}\r\n",
+                            pls.len()
+                        ),
+                        pls.into_bytes(),
+                    )
+                }
+                "/ok.wav" => (
+                    format!(
+                        "HTTP/1.1 200 OK\r\nContent-Type: audio/x-wav\r\nContent-Length: {}\r\n",
+                        wav.len()
+                    ),
+                    wav.clone(),
+                ),
+                _ => (
+                    "HTTP/1.1 404 Not Found\r\nContent-Length: 0\r\n".to_owned(),
+                    Vec::new(),
+                ),
+            };
+            let _ = s.write_all(format!("{head}Connection: close\r\n\r\n").as_bytes());
+            let _ = s.write_all(&body);
+        }
+    });
+    let url = format!("http://{addr}/list.pls");
+    let out = ttnr(dir.path(), &["play", &url, "--audio-output", "null"]);
+    let stdout = text(&out.stdout);
+    assert!(
+        out.status.success(),
+        "stdout: {stdout}\nstderr: {}",
+        text(&out.stderr)
+    );
+    for expected in [
+        "playlist: 2 streams",
+        "[HTTP 404 Not Found; trying the next stream]",
+        "[end of stream]",
+    ] {
+        assert!(
+            stdout.contains(expected),
+            "missing {expected:?} in:\n{stdout}"
+        );
+    }
+    assert!(
+        stdout.contains(&format!("stream: http://{addr}/ok.wav")),
+        "{stdout}"
+    );
+    // The expansion was cached under $XDG_CACHE_HOME/ttnr.
+    assert!(dir.path().join("ttnr/resolve.json").is_file());
 }

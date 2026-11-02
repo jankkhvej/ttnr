@@ -13,8 +13,11 @@ pub struct HttpResponse {
     pub final_url: String,
     /// `Content-Type` header, if any.
     pub content_type: Option<String>,
-    /// Body bytes (bounded by the client).
+    /// Body bytes, bounded by the client. Empty when `streaming`.
     pub body: Vec<u8>,
+    /// The headers announced a continuous media stream (`audio/*`, `icy-*`
+    /// headers, …), so the body was not read.
+    pub streaming: bool,
 }
 
 impl HttpResponse {
@@ -32,7 +35,8 @@ pub struct HttpError(pub String);
 /// Minimal async HTTP client.
 #[async_trait]
 pub trait Http: Send + Sync {
-    /// `GET url` with extra headers; body capped by the implementation.
+    /// `GET url` with extra headers. Implementations read at most a small
+    /// cap of the body, and none of it for media streams (`streaming`).
     async fn get(&self, url: &str, headers: &[(String, String)])
     -> Result<HttpResponse, HttpError>;
 
