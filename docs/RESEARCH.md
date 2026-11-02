@@ -107,3 +107,14 @@ anything older than ~3 months before relying on it.
 | Measured on test files: AAC-LC → `codec=aac prof=LC`; AC-3 5.1 → `hr-channels=5.1(side)`, `demux-bitrate=448000`; ALAC/AAC in MP4 have `demux-bitrate`, FLAC does not | same | VERIFIED 2026-11-02 |
 | During end-of-file teardown, stream properties become unavailable one by one *before* the `end-file` event is delivered | events test trace, 2026-11-02 | VERIFIED 2026-11-02 |
 | Homebrew FFmpeg 9.0.2 has the `aac_at` (AudioToolbox) encoder besides native `aac`; native `aac` cannot encode HE-AAC; whether `aac_at` can produce HE-AAC v1/v2 fixtures is to be checked in M1 task 5 | `ffmpeg -encoders` | UNVERIFIED (HE-AAC part) |
+
+### 2026-11-02 · CLI, logging and smoke-test streams (for `ttnr play`)
+
+| Fact | Source | Status |
+|---|---|---|
+| XDG Base Directory spec 0.8: `$XDG_STATE_HOME` default `$HOME/.local/state` when unset or empty; relative paths in `XDG_*` must be ignored | https://specifications.freedesktop.org/basedir-spec/latest/ | VERIFIED 2026-11-02 |
+| `tracing-appender` 0.2.5: `RollingFileAppender::builder().rotation(Rotation::DAILY).filename_prefix(..).filename_suffix(..).max_log_files(n).build(dir)`; implements `MakeWriter` (sync writes); file name `ttnr.YYYY-MM-DD.log` | crate source `tracing-appender-0.2.5/src/rolling{,/builder}.rs`; CLI test | VERIFIED 2026-11-02 |
+| `tracing-subscriber` 0.3.23 `Targets` implements `FromStr` (filter without the regex-based `env-filter` feature) | crate source `src/filter/targets.rs` | VERIFIED 2026-11-02 |
+| mpv 0.41.0 built-in scripts are controlled by `load-auto-profiles`, `load-commands`, `load-console`, `load-context-menu`, `load-positioning`, `load-select`, `load-stats-overlay` (plus `osc`, `ytdl`); `auto_profiles` exits mid-hook without conditional profiles → `[cplayer] client removed during hook handling` warning | `mpv --list-options`, `mpv -v` trace | VERIFIED 2026-11-02 |
+| Lead for M6: Homebrew mpv 0.41.0 is built with the `macos-media-player` feature (mpv's own Now Playing / remote-command integration); whether it works inside libmpv in a windowless terminal app, and how to toggle it, is unknown | `mpv -v` "List of enabled features" | UNVERIFIED |
+| Smoke-test streams (played with `ttnr play`, `ao=null`): SomaFM Groove Salad Icecast MP3 `https://ice6.somafm.com/groovesalad-128-mp3` (from `https://somafm.com/groovesalad.pls`; MP3 44.1 kHz stereo 128 kbps); FIP (Radio France) HLS `https://stream.radiofrance.fr/fip/fip.m3u8?id=radiofrance` (master with lofi/midfi/hifi AAC-LC variants 107/185/280 kbit/s; mpv picked hifi: AAC LC 48 kHz stereo 280 kbps) | manual run 2026-11-02 | seen 2026-11-02 (third-party URLs, may change) |

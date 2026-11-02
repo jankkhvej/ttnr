@@ -123,7 +123,7 @@ hard-code colours or glyphs. See THEMES.md.
 
 - `~/.config/ttnr/config.toml`, `stations.toml`, `themes/`
 - cache: `~/.cache/ttnr/resolve.json`
-- logs: `~/.local/state/ttnr/ttnr.log` (rotated)
+- logs: `~/.local/state/ttnr/ttnr.YYYY-MM-DD.log` (daily, last 7; `$XDG_STATE_HOME` respected; ADR-012)
 - control socket: `$TMPDIR/ttnr-$UID.sock` (JSON lines)
 
 ## Testing strategy

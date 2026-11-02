@@ -14,8 +14,15 @@ path = "src/main.rs"
 [dependencies]
 anyhow.workspace = true
 clap.workspace = true
+tokio = { workspace = true, features = ["rt", "macros", "signal"] }
+tracing.workspace = true
+tracing-appender.workspace = true
+tracing-subscriber.workspace = true
 ttnr-core.workspace = true
 ttnr-engine.workspace = true
+
+[dev-dependencies]
+tempfile.workspace = true
 
 [lints]
 workspace = true
@@ -40,6 +47,8 @@ tempfile = "3.27.0"
 thiserror = "2"
 tokio = { version = "1.54.1", default-features = false }
 tracing = { version = "0.1.44", default-features = false, features = ["std"] }
+tracing-appender = "0.2.5"
+tracing-subscriber = { version = "0.3.23", default-features = false, features = ["fmt", "std"] }
 
 ttnr-core = { path = "crates/ttnr-core" }
 ttnr-engine = { path = "crates/ttnr-engine" }

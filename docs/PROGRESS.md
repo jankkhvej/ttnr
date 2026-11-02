@@ -2,6 +2,13 @@
 
 Newest entry on top. Each entry: date · milestone/task · what changed · how to try it · next step · open questions for the owner.
 
+## 2026-11-02 · M1 · `ttnr play <url>`
+- `ttnr play <url|file> [--volume N]`: plain status lines, Ctrl-C stops (exit 0), errors to stderr (exit 1). File logging via `tracing` to `~/.local/state/ttnr/` (ADR-012). mpv built-in scripts disabled (removed a warning on every file).
+- Tests: CLI end-to-end (WAV to EOF with format line, HTTP 404 via loopback, volume validation, log file lands in `$XDG_STATE_HOME`); unit tests for paths and status lines.
+- Smoke-tested by hand: SomaFM Icecast MP3 and FIP HLS AAC both play (RESEARCH.md).
+- Try it: `cargo run -q -- play https://ice6.somafm.com/groovesalad-128-mp3` (Ctrl-C to stop).
+- Next: M1 task 5 – `scripts/gen-fixtures.zsh` + format-matrix test (incl. 5.1/7.1).
+
 ## 2026-11-02 · M1 · `StreamInfo`
 - `ttnr-core::StreamInfo` + `summary()` (e.g. `AAC LC · 48 kHz · stereo · 128 kbps`, shows `→ 44.1 kHz · stereo` when resampled/downmixed).
 - Engine observes 13 scalar mpv properties; sticky facts per file, one coalesced `EngineEvent::StreamInfo` per burst (ADR-011). Event loop now drains non-blocking after each event and flushes when idle.

@@ -21,6 +21,15 @@ const AUDIO_ONLY_OPTIONS: &[(&str, &str)] = &[
     ("ytdl", "no"),
     ("config", "no"),
     ("load-scripts", "no"),
+    // mpv's built-in Lua/JS scripts: none is useful headless; auto_profiles
+    // even logs a warning on every file when it exits mid-hook.
+    ("load-auto-profiles", "no"),
+    ("load-commands", "no"),
+    ("load-console", "no"),
+    ("load-context-menu", "no"),
+    ("load-positioning", "no"),
+    ("load-select", "no"),
+    ("load-stats-overlay", "no"),
     ("terminal", "no"),
     ("osc", "no"),
     ("input-default-bindings", "no"),

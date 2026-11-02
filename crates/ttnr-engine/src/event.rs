@@ -59,6 +59,21 @@ pub enum ErrorKind {
     Other(i32),
 }
 
+impl std::fmt::Display for ErrorKind {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Http403 => f.write_str("HTTP 403 Forbidden"),
+            Self::Http404 => f.write_str("HTTP 404 Not Found"),
+            Self::Http(status) => write!(f, "HTTP {status}"),
+            Self::Unreachable => f.write_str("server unreachable"),
+            Self::Unsupported => f.write_str("no playable audio"),
+            Self::AudioOutput => f.write_str("audio output failed"),
+            Self::LoadFailed => f.write_str("loading failed"),
+            Self::Other(code) => write!(f, "mpv error {code}"),
+        }
+    }
+}
+
 /// Why mpv ended the current file (subset of `mpv_end_file_reason`).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) enum EndReason {
