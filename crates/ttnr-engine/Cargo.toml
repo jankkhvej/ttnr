@@ -1,6 +1,6 @@
 [package]
-name = "tuner-engine"
-description = "Playback engine for tuner (libmpv, audio only)"
+name = "ttnr-engine"
+description = "Playback engine for ttnr (libmpv, audio only)"
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true

@@ -4,16 +4,16 @@
 
 ```
  ┌──────────────┐   commands    ┌──────────────┐   mpv commands   ┌─────────────┐
- │  tuner-tui   │ ────────────▶ │  tuner-core  │ ───────────────▶ │ tuner-engine│──▶ libmpv ──▶ CoreAudio
+ │  ttnr-tui    │ ────────────▶ │  ttnr-core   │ ───────────────▶ │ ttnr-engine │──▶ libmpv ──▶ CoreAudio
  │ (ratatui UI) │ ◀──────────── │  (app state, │ ◀─────────────── │ (playback)  │
  └──────────────┘   AppEvents   │   registry)  │   EngineEvents   └─────────────┘
         ▲                       └──────┬───────┘
         │ theme                        │ resolve / metadata
  ┌──────┴───────┐               ┌──────▼───────────────────────────┐
- │ tuner-themes │               │ tuner-sources: url · stations ·  │
+ │ ttnr-themes  │               │ ttnr-sources: url · stations ·   │
  └──────────────┘               │ bbc · radio-browser · exec       │
                                 └──────────────────────────────────┘
-        tuner-platform (macOS: Now Playing, media keys, device changes)
+        ttnr-platform (macOS: Now Playing, media keys, device changes)
 ```
 
 One async runtime (tokio). Components talk through typed channels; the UI
@@ -23,13 +23,13 @@ never blocks on network or audio.
 
 | Crate | Responsibility |
 |---|---|
-| `tuner` (bin) | CLI parsing (clap), wiring, config loading, logging setup |
-| `tuner-core` | Domain types (`Station`, `StreamDescriptor`, `NowPlaying`, `StreamInfo`), app state machine, `SourceRegistry`, metadata merging, sync offset, history |
-| `tuner-engine` | `Player` trait + `MpvPlayer` (libmpv) implementation; audio-only config; property observation → `EngineEvent`s |
-| `tuner-sources` | Source plugins (one module each) implementing `Source` / `MetadataProvider` |
-| `tuner-themes` | Theme model, TOML loader, built-in themes (embedded), glyph/case/colour transforms, colour-depth fallback |
-| `tuner-tui` | ratatui views, input handling, keymap; renders `AppState` through a `Theme` |
-| `tuner-platform` | macOS integration behind a trait: Now Playing/media keys (MediaPlayer via `objc2`), output device list/changes, sleep/wake; no-op impl for other OSes |
+| `ttnr` (bin) | CLI parsing (clap), wiring, config loading, logging setup |
+| `ttnr-core` | Domain types (`Station`, `StreamDescriptor`, `NowPlaying`, `StreamInfo`), app state machine, `SourceRegistry`, metadata merging, sync offset, history |
+| `ttnr-engine` | `Player` trait + `MpvPlayer` (libmpv) implementation; audio-only config; property observation → `EngineEvent`s |
+| `ttnr-sources` | Source plugins (one module each) implementing `Source` / `MetadataProvider` |
+| `ttnr-themes` | Theme model, TOML loader, built-in themes (embedded), glyph/case/colour transforms, colour-depth fallback |
+| `ttnr-tui` | ratatui views, input handling, keymap; renders `AppState` through a `Theme` |
+| `ttnr-platform` | macOS integration behind a trait: Now Playing/media keys (MediaPlayer via `objc2`), output device list/changes, sleep/wake; no-op impl for other OSes |
 
 ## Key abstractions (sketch — refine in code, record changes as ADRs)
 
@@ -43,7 +43,7 @@ pub trait Source: Send + Sync {
     /// Turn a station into something playable *now*. Called at play time,
     /// never cached forever: stream URLs change.
     async fn resolve(&self, st: &Station, ctx: &ResolveCtx) -> Result<StreamDescriptor>;
-    /// Force re-discovery (bypass caches), e.g. after a 403/404 or `tuner refresh`.
+    /// Force re-discovery (bypass caches), e.g. after a 403/404 or `ttnr refresh`.
     async fn refresh(&self, st: &Station) -> Result<StreamDescriptor> { … }
     /// Optional external now-playing provider for this station.
     fn metadata(&self, st: &Station) -> Option<Box<dyn MetadataProvider>> { None }
@@ -86,7 +86,7 @@ strategies, with a small on-disk cache:
 
 The engine reports `EngineEvent::Error(Http403 | Http404 | Unreachable)`;
 core then calls `Source::refresh()` **once**, retries, and only then shows
-an error. `tuner refresh [station]` forces re-discovery from the CLI.
+an error. `ttnr refresh [station]` forces re-discovery from the CLI.
 Every resolution records a `ResolverTrace` (visible with `--debug`).
 
 ## Engine: libmpv configuration (audio-only)
@@ -117,10 +117,10 @@ hard-code colours or glyphs. See THEMES.md.
 
 ## Config & files
 
-- `~/.config/tuner/config.toml`, `stations.toml`, `themes/`
-- cache: `~/.cache/tuner/resolve.json`
-- logs: `~/.local/state/tuner/tuner.log` (rotated)
-- control socket: `$TMPDIR/tuner-$UID.sock` (JSON lines)
+- `~/.config/ttnr/config.toml`, `stations.toml`, `themes/`
+- cache: `~/.cache/ttnr/resolve.json`
+- logs: `~/.local/state/ttnr/ttnr.log` (rotated)
+- control socket: `$TMPDIR/ttnr-$UID.sock` (JSON lines)
 
 ## Testing strategy
 

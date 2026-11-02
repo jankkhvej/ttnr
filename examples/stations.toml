@@ -1,4 +1,4 @@
-# Sample stations file. Copy to ~/.config/tuner/stations.toml and edit.
+# Sample stations file. Copy to ~/.config/ttnr/stations.toml and edit.
 # `source` picks the plugin that resolves the station at play time.
 # `url` on a BBC station is an optional manual override (last resort in the resolver chain).
 

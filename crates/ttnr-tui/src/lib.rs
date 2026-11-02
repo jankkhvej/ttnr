@@ -1,4 +1,4 @@
-//! ratatui user interface for tuner: views, input handling and keymap.
+//! ratatui user interface for ttnr: views, input handling and keymap.
 //! Renders the core `AppState` through a theme; never blocks on network
 //! or audio.
 //!

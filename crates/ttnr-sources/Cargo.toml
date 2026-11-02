@@ -1,6 +1,6 @@
 [package]
-name = "tuner-sources"
-description = "Source plugins for tuner (url, stations, bbc, ...)"
+name = "ttnr-sources"
+description = "Source plugins for ttnr (url, stations, bbc, ...)"
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
@@ -8,7 +8,7 @@ license.workspace = true
 publish = false
 
 [dependencies]
-tuner-core.workspace = true
+ttnr-core.workspace = true
 
 [lints]
 workspace = true

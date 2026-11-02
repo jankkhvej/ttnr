@@ -1,11 +1,11 @@
-//! `tuner` – minimal, themeable terminal player for network music streams.
+//! `ttnr` – minimal, themeable terminal player for network music streams.
 
 use anyhow::Result;
 use clap::Parser;
 
 /// Minimal, themeable terminal player for network music streams.
 #[derive(Debug, Parser)]
-#[command(name = "tuner", version, about, long_about = None)]
+#[command(name = "ttnr", version, about, long_about = None)]
 struct Cli {}
 
 fn main() -> Result<()> {

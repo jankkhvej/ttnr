@@ -1,5 +1,5 @@
 [package]
-name = "tuner"
+name = "ttnr"
 description = "Minimal, themeable terminal player for network music streams"
 version.workspace = true
 edition.workspace = true
@@ -8,14 +8,14 @@ license.workspace = true
 publish = false
 
 [[bin]]
-name = "tuner"
+name = "ttnr"
 path = "src/main.rs"
 
 [dependencies]
 anyhow.workspace = true
 clap.workspace = true
-tuner-core.workspace = true
-tuner-engine.workspace = true
+ttnr-core.workspace = true
+ttnr-engine.workspace = true
 
 [lints]
 workspace = true
@@ -37,12 +37,12 @@ libmpv2 = { version = "7.0.0", default-features = false }
 pkg-config = "0.3.34"
 thiserror = "2"
 
-tuner-core = { path = "crates/tuner-core" }
-tuner-engine = { path = "crates/tuner-engine" }
-tuner-platform = { path = "crates/tuner-platform" }
-tuner-sources = { path = "crates/tuner-sources" }
-tuner-themes = { path = "crates/tuner-themes" }
-tuner-tui = { path = "crates/tuner-tui" }
+ttnr-core = { path = "crates/ttnr-core" }
+ttnr-engine = { path = "crates/ttnr-engine" }
+ttnr-platform = { path = "crates/ttnr-platform" }
+ttnr-sources = { path = "crates/ttnr-sources" }
+ttnr-themes = { path = "crates/ttnr-themes" }
+ttnr-tui = { path = "crates/ttnr-tui" }
 
 [workspace.lints.rust]
 unsafe_op_in_unsafe_fn = "deny"

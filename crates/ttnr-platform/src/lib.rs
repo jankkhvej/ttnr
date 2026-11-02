@@ -1,4 +1,4 @@
-//! OS integration for tuner behind a trait: Now Playing / media keys,
+//! OS integration for ttnr behind a trait: Now Playing / media keys,
 //! output device list and changes, sleep/wake. macOS implementation plus a
 //! no-op implementation for other systems.
 //!

@@ -1,6 +1,6 @@
 [package]
-name = "tuner-tui"
-description = "ratatui user interface for tuner"
+name = "ttnr-themes"
+description = "Text-only theme engine for ttnr"
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
@@ -8,8 +8,6 @@ license.workspace = true
 publish = false
 
 [dependencies]
-tuner-core.workspace = true
-tuner-themes.workspace = true
 
 [lints]
 workspace = true

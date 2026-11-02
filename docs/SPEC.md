@@ -1,4 +1,4 @@
-# tuner — product specification
+# ttnr — product specification
 
 ## Goal
 
@@ -73,7 +73,7 @@ track and programme information — which the BBC streams themselves do not carr
 
 ### F6 Themes (text-only, as faithful as possible)
 - F6.1 Theme engine driven by TOML theme files (built-ins embedded, user
-  themes in `~/.config/tuner/themes/`).
+  themes in `~/.config/ttnr/themes/`).
 - F6.2 A theme controls: palette, character case rules, border glyphs,
   allowed glyph set (ASCII-only / box-drawing / block mosaics), logical
   screen width (e.g. 32 or 40 columns) and centring, banner/boot text,
@@ -84,13 +84,13 @@ track and programme information — which the BBC streams themselves do not carr
 - F6.4 Colour depth fallback: truecolor → 256 → 16 → monochrome.
 
 ### F7 CLI and scripting
-- `tuner` (TUI), `tuner play <url|station-id>`, `tuner --theme <name>`,
-  `tuner stations`, `tuner now --json` (current NowPlaying as JSON),
+- `ttnr` (TUI), `ttnr play <url|station-id>`, `ttnr --theme <name>`,
+  `ttnr stations`, `ttnr now --json` (current NowPlaying as JSON),
   and a local control socket so other tools (e.g. a menu-bar widget) can
   read status and send commands.
 
 ### F8 Configuration
-- `~/.config/tuner/config.toml` (respect `$XDG_CONFIG_HOME`),
+- `~/.config/ttnr/config.toml` (respect `$XDG_CONFIG_HOME`),
   `stations.toml`, `themes/*.toml`. Sensible defaults; app runs with no config.
 
 ## Non-functional requirements

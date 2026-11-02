@@ -199,21 +199,21 @@ dependencies = [
 ]
 
 [[package]]
-name = "tuner"
+name = "ttnr"
 version = "0.1.0"
 dependencies = [
  "anyhow",
  "clap",
- "tuner-core",
- "tuner-engine",
+ "ttnr-core",
+ "ttnr-engine",
 ]
 
 [[package]]
-name = "tuner-core"
+name = "ttnr-core"
 version = "0.1.0"
 
 [[package]]
-name = "tuner-engine"
+name = "ttnr-engine"
 version = "0.1.0"
 dependencies = [
  "libmpv2",
@@ -222,26 +222,26 @@ dependencies = [
 ]
 
 [[package]]
-name = "tuner-platform"
+name = "ttnr-platform"
 version = "0.1.0"
 
 [[package]]
-name = "tuner-sources"
+name = "ttnr-sources"
 version = "0.1.0"
 dependencies = [
- "tuner-core",
+ "ttnr-core",
 ]
 
 [[package]]
-name = "tuner-themes"
+name = "ttnr-themes"
 version = "0.1.0"
 
 [[package]]
-name = "tuner-tui"
+name = "ttnr-tui"
 version = "0.1.0"
 dependencies = [
- "tuner-core",
- "tuner-themes",
+ "ttnr-core",
+ "ttnr-themes",
 ]
 
 [[package]]

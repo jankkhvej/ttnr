@@ -1,4 +1,4 @@
-//! Playback engine for tuner: the `Player` trait and its libmpv-backed
+//! Playback engine for ttnr: the `Player` trait and its libmpv-backed
 //! implementation, configured for audio only (video is never decoded).
 //!
 //! M0 only verifies that libmpv links and initialises; playback arrives in

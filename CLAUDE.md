@@ -1,8 +1,8 @@
 # CLAUDE.md — instructions for Claude Code
 
-You are developing **tuner**: a minimal, themeable terminal (TUI) player for
+You are developing **ttnr**: a minimal, themeable terminal (TUI) player for
 **network music streams** on macOS, written in Rust, built only from
-open-source components. Owner: Sergii. Working name "tuner" (owner may rename).
+open-source components. Owner: Sergii. Name: `ttnr` ("text tuner", ADR-008).
 
 Read these before doing anything, every session:
 
@@ -63,7 +63,7 @@ Read these before doing anything, every session:
 - Errors: `thiserror` in libraries, `anyhow` in the binary. No `unwrap()` /
   `expect()` outside tests except with a `// SAFETY:`-style justification.
 - Logging: `tracing`, to a file (never to the TUI's stdout).
-- Config: TOML under `$XDG_CONFIG_HOME/tuner/` (default `~/.config/tuner/`).
+- Config: TOML under `$XDG_CONFIG_HOME/ttnr/` (default `~/.config/ttnr/`).
 - Public traits and modules get rustdoc comments.
 - Snapshot-test TUI rendering with ratatui's `TestBackend` (+ `insta`).
 - Prefer small, boring, well-maintained crates; record why in DECISIONS.md.

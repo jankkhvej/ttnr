@@ -1,6 +1,6 @@
 [package]
-name = "tuner-core"
-description = "Domain types, app state and source registry for tuner"
+name = "ttnr-core"
+description = "Domain types, app state and source registry for ttnr"
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true

@@ -1,6 +1,6 @@
 [package]
-name = "tuner-platform"
-description = "OS integration for tuner (macOS Now Playing, media keys, devices)"
+name = "ttnr-platform"
+description = "OS integration for ttnr (macOS Now Playing, media keys, devices)"
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true

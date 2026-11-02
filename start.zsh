@@ -1,5 +1,5 @@
 #!/usr/bin/env zsh
-# tuner — start/continue autonomous development with Claude Code.
+# ttnr — start/continue autonomous development with Claude Code.
 #
 #   ./start.zsh            continue the project (new session, reads progress from docs/)
 #   ./start.zsh --resume   reopen the most recent Claude Code conversation here
@@ -65,5 +65,5 @@ kickoff='Follow CLAUDE.md. Read docs/PROGRESS.md and docs/ROADMAP.md, state in t
 if (( resume )); then
   exec claude --continue --permission-mode $mode
 else
-  exec claude -n tuner --permission-mode $mode "$kickoff"
+  exec claude -n ttnr --permission-mode $mode "$kickoff"
 fi

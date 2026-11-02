@@ -2,6 +2,12 @@
 
 Newest entry on top. Each entry: date · milestone/task · what changed · how to try it · next step · open questions for the owner.
 
+## 2026-11-02 · M0 follow-up – renamed to `ttnr`
+- Owner chose `ttnr` (ADR-008): crates `ttnr-*`, binary `ttnr`, paths `~/.config/ttnr/` etc. across code, CLAUDE.md, SPEC, ARCHITECTURE, ROADMAP, README, examples, start.zsh.
+- Licence BSD-2-Clause confirmed by owner. A project page on hcc07.org will come later → set Cargo `homepage` then.
+- Try it: `./scripts/check.zsh` · `cargo run -q -- --version` (prints `ttnr 0.1.0`).
+- Next: M1 – `MpvPlayer` (audio-only config, play/stop/pause/volume).
+
 ## 2026-11-02 · M0 follow-up – owner decisions
 - Licence changed to **BSD-2-Clause** (owner preference; ADR-007 supersedes ADR-003). Binaries linked to Homebrew's GPL libmpv/FFmpeg are GPL-3.0-or-later as a combined work – documented in README/SPEC.
 - Name: owner OK with "tuner", asked for a short BSD-style name. `tnr` is taken (Thunder Compute CLI on macOS); `ttnr` is free (RESEARCH.md). Waiting for the owner's pick before renaming.

@@ -38,3 +38,8 @@ Decision: all tuner source is BSD-2-Clause (`LICENSE`, `license = "BSD-2-Clause"
 Rejected: GPL-3.0-or-later for the source (not required by our dependencies, against owner preference); an LGPL-only libmpv/FFmpeg build to make even binaries non-GPL (custom native build outside Homebrew – revisit only if binary redistribution under BSD terms becomes a goal).
 Consequences: anyone can reuse tuner code under BSD terms. A future Homebrew bottle / release binary must ship GPL-3.0 text and offer corresponding source of the GPL parts (M8 third-party notices).
 
+## ADR-008 · 2026-11-02 · Project name `ttnr`
+Context: "tuner" was a working name; owner wanted a terse, early-BSD-style command name (`ls`, `rm`). `tnr` collides with Thunder Compute's macOS CLI; `ttnr` had no collisions (RESEARCH.md, 2026-11-02).
+Decision: the project, binary and crates are `ttnr` / `ttnr-*` ("text tuner"). Config/cache/state dirs and the control socket use `ttnr` (`~/.config/ttnr/`, `$TMPDIR/ttnr-$UID.sock`). Owner domain hcc07.org is used for reverse-DNS identifiers (e.g. macOS bundle id `org.hcc07.ttnr`, M6). Earlier ADRs and log entries keep the old name as history.
+Consequences: the repo folder on disk is still `~/workspace/tuner` (outside the repo; owner may rename it).
+
