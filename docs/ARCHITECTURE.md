@@ -132,8 +132,9 @@ hard-code colours or glyphs. See THEMES.md.
   HTTP via fixtures), metadata merging, theme transforms.
 - Snapshot: each view × each built-in theme × 3 sizes (`insta`).
 - Format matrix: `scripts/gen-fixtures.zsh` uses `ffmpeg` to generate short
-  test files (MP3, AAC-LC, HE-AAC, Opus, Vorbis, FLAC 24/96, ALAC, AC-3 5.1,
-  E-AC-3 7.1, PCM) and an HLS sample; tests play them via `MpvPlayer` with
-  `ao=null` and assert reported `StreamInfo`.
+  test files (MP3, AAC-LC, HE-AAC v1/v2, Opus, Vorbis, FLAC 24/96, ALAC, AC-3 5.1,
+  E-AC-3 5.1, AAC 7.1, Opus 7.1, PCM) and an HLS sample (DASH pending: no
+  demuxer in Homebrew FFmpeg); tests play them via `MpvPlayer` with
+  `ao=null` and assert reported `StreamInfo` (ADR-013).
 - Network smoke tests (`cargo test -- --ignored`): real BBC resolution and
   now-playing fetch.

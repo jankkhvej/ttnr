@@ -280,6 +280,25 @@ fn handle(
         }
         shutdown
     };
+    if matches!(
+        raw,
+        RawEvent::FileLoaded | RawEvent::PlaybackRestart | RawEvent::AudioReconfig
+    ) {
+        if forward(raw) {
+            return true;
+        }
+        // mpv 0.41.0 does not always re-notify observed properties for a
+        // new file: after one AAC file, the next one's `audio-params` stay
+        // "unavailable" to the observer while readable (docs/RESEARCH.md).
+        // Re-read them at these points so the mirror is always current.
+        for (name, format) in STREAM_INFO_PROPS {
+            forward(RawEvent::Prop {
+                name: (*name).to_owned(),
+                value: read_prop(mpv, name, *format),
+            });
+        }
+        return false;
+    }
     if !matches!(raw, RawEvent::EndFile(EndReason::Error(_))) {
         return forward(raw);
     }
@@ -304,6 +323,17 @@ fn handle(
     later.into_iter().any(forward)
 }
 
+/// Read one stream-info property now (`None` if unavailable).
+fn read_prop(mpv: &Mpv, name: &str, format: Format) -> PropValue {
+    match format {
+        Format::String => mpv.get_property::<String>(name).map(PropValue::Str),
+        Format::Int64 => mpv.get_property::<i64>(name).map(PropValue::Int),
+        Format::Double => mpv.get_property::<f64>(name).map(PropValue::Double),
+        _ => return PropValue::None,
+    }
+    .unwrap_or(PropValue::None)
+}
+
 /// Map a libmpv2 event to our owned [`RawEvent`]; `None` = not interesting.
 fn to_raw(event: Event<'_>) -> Option<RawEvent> {
     Some(match event {
@@ -311,6 +341,7 @@ fn to_raw(event: Event<'_>) -> Option<RawEvent> {
         Event::StartFile => RawEvent::StartFile,
         Event::FileLoaded => RawEvent::FileLoaded,
         Event::PlaybackRestart => RawEvent::PlaybackRestart,
+        Event::AudioReconfig => RawEvent::AudioReconfig,
         Event::EndFile(reason) => RawEvent::EndFile(match reason {
             mpv_end_file_reason::Eof => EndReason::Eof,
             mpv_end_file_reason::Redirect => EndReason::Redirect,
