@@ -11,3 +11,14 @@ publish = false
 
 [lints]
 workspace = true
+
+[target.'cfg(target_os = "macos")'.dependencies]
+block2 = "0.6"
+objc2 = "0.6"
+objc2-app-kit = { version = "0.3", default-features = false, features = ["std", "NSApplication", "NSResponder", "NSRunningApplication"] }
+objc2-foundation = { version = "0.3", features = ["NSString", "NSDictionary", "NSValue", "NSRunLoop", "NSDate", "NSThread", "NSObject"] }
+objc2-media-player = { version = "0.3", features = ["MPNowPlayingInfoCenter", "MPRemoteCommandCenter", "MPRemoteCommand", "MPRemoteCommandEvent", "MPMediaItem", "block2"] }
+
+[dev-dependencies]
+ttnr-core = { path = "../ttnr-core" }
+ttnr-engine = { path = "../ttnr-engine" }

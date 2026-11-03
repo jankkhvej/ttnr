@@ -2,6 +2,10 @@
 
 Newest entry on top. Each entry: date · milestone/task · what changed · how to try it · next step · open questions for the owner.
 
+## 2026-11-03 · M6 · Now Playing spike
+- Research (RESEARCH.md): libmpv's own Now Playing is unusable for us; plan = own module in `ttnr-platform` on objc2 + objc2-media-player, AppKit host on the main thread, app on a worker thread (needs owner OK – large structural change), 1 s heartbeat.
+- Spike `crates/ttnr-platform/examples/nowplaying_spike.rs` (+ embedded Info.plist `org.hcc07.ttnr`, opt-out `TTNR_NO_PLIST=1`): plays a stream, publishes Now Playing as a live stream, prints received remote commands. Waiting for the owner's test (Control Center + media keys, kitty and Terminal.app).
+
 ## 2026-11-03 · M5 complete – accepted by the owner
 - Themes: `plain`, `pdp11-vt100` (+amber, +green), `pdp11-bsd`, `pdp11-teletype`, `zx80`, `zx-spectrum`, `bbc-mode7`; engine: logical screen + margins, text rules (case, ASCII, character map, octal, percent sign), chrome (banner, prompt, cursor, double-height bar, mosaic rule), status templates, printout mode, animations (boot sequences, tape border, ZX80 blank), serial line speed (`b`, `baud`) with cursor (ADR-033–035).
 - Open, not blocking: host name in the `pdp11-bsd` banner (`ttnr`); sextant rule in Terminal.app unchecked; Teletype "everything on paper" is a proposal (THEMES.md).

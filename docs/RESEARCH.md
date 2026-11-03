@@ -316,3 +316,15 @@ anything older than ~3 months before relying on it.
 | Per-character attributes (reverse, blink, bold, underline) need the Advanced Video Option; the base VT100 has none | https://vt100.net/docs/vt100-ug/chapter1.html | seen 2026-11-03 |
 | Earlier "test data, then erase" wording (VT102 guide summary) not confirmed for the VT100 | https://vt100.net/docs/vt102-ug/chapter9.html | UNVERIFIED |
 
+### 2026-11-03 · macOS Now Playing / media keys for a windowless process (M6 research; subagent, sources older than macOS 27)
+
+| Fact | Source | Status |
+|---|---|---|
+| libmpv's built-in Now Playing (`macos-media-player`, `remote_command_center.swift`) starts only with `input-media-keys=yes`, which the libmpv profile forces off; it maps next/prev to mpv keys, reports media type video and elapsed time, and needs a main-thread run loop host anyway → not used | local mpv 0.41.0 source: `etc/builtin.conf:21,30`, `input/input.c:1698-1712`, `osdep/mac/app_hub.swift:93-99`, `osdep/mac/remote_command_center.swift` | VERIFIED (source) 2026-11-03 |
+| Remote commands are delivered on the main thread's run loop; a worker-thread run loop sent media keys to Music.app | https://github.com/LargeModGames/spotatui/pull/528 · https://github.com/emoeem/voicefox/pull/46 | seen 2026-11-03 |
+| Working terminal players host NSApplication (`.accessory`/`.prohibited`) on the main thread with tokio elsewhere; a 1 s heartbeat re-asserting `playbackState` keeps the claim | https://github.com/Spotifyd/spotifyd/pull/1430 · https://docs.rs/crate/spotatui/0.38.0/source/src/infra/macos_media.rs | seen 2026-11-03 |
+| On macOS `MPNowPlayingInfoCenter.playbackState` "must be set every time the app begins or halts playback" | objc2-media-player 0.3.2 generated docs (Apple header comment) | VERIFIED 2026-11-03 |
+| A bare executable can carry an Info.plist via `-sectcreate __TEXT __info_plist` | https://redsweater.com/blog/2083/the-power-of-plist | seen 2026-11-03 – embedded in the spike, verified with `otool -s __TEXT __info_plist` |
+| Crates: objc2 0.6.5 (MIT), objc2-foundation 0.3.2 (MIT), objc2-app-kit / objc2-media-player / objc2-core-foundation 0.3.2 (Zlib OR Apache-2.0 OR MIT), block2 0.6.2 (MIT); objc2-media-player exposes `MPNowPlayingInfoCenter::setPlaybackState`, `MPNowPlayingInfoPropertyIsLiveStream`, `MPRemoteCommand::addTargetWithHandler` | crates.io API; crate sources | VERIFIED 2026-11-03 (cargo deny passes) |
+| Whether a bare executable from kitty/Terminal.app appears in Control Center and gets media keys on macOS 27 | spike `crates/ttnr-platform/examples/nowplaying_spike.rs` | UNVERIFIED – owner test pending |
+
