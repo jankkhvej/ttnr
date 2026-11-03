@@ -2,6 +2,10 @@
 
 Newest entry on top. Each entry: date · milestone/task · what changed · how to try it · next step · open questions for the owner.
 
+## 2026-11-03 · M7 complete – accepted by the owner
+- Owner: radio-browser search, the SomaFM exec source (added to the owner's config.toml) and the control socket all work.
+- Next: M8 – polish & release; open follow-up: move `ttnr play` onto `App` (ADR-022).
+
 ## 2026-11-03 · M7 · Control socket – **M7 complete, waiting for owner review**
 - TUI serves `$TMPDIR/ttnr-$UID.sock` (JSON lines: status, subscribe, toggle_pause, next, prev, mute, volume, play, quit); `ttnr now [--json]`, `ttnr ctl` (ADR-042); `Command::SetVolume`.
 - Tests: status JSON + line, request parsing, a served socket (status, command, unknown station, subscribe updates, second instance backs off, socket removed); live pty round trip (now, ctl volume, now --json, bad command, ctl quit → TUI exits in 90 ms, socket gone, "not running").
