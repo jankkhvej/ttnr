@@ -2,6 +2,11 @@
 
 Newest entry on top. Each entry: date · milestone/task · what changed · how to try it · next step · open questions for the owner.
 
+## 2026-11-03 · M5 complete – accepted by the owner
+- Themes: `plain`, `pdp11-vt100` (+amber, +green), `pdp11-bsd`, `pdp11-teletype`, `zx80`, `zx-spectrum`, `bbc-mode7`; engine: logical screen + margins, text rules (case, ASCII, character map, octal, percent sign), chrome (banner, prompt, cursor, double-height bar, mosaic rule), status templates, printout mode, animations (boot sequences, tape border, ZX80 blank), serial line speed (`b`, `baud`) with cursor (ADR-033–035).
+- Open, not blocking: host name in the `pdp11-bsd` banner (`ttnr`); sextant rule in Terminal.app unchecked; Teletype "everything on paper" is a proposal (THEMES.md).
+- Next: M6 – macOS integration, task 1: Now Playing / Control Center + media keys.
+
 ## 2026-11-03 · M5 · Fix: boot's last frame could stay on screen (owner)
 - Owner: `pdp11-vt100-amber` looked hung on the boot's last frame after switching. Cause: a race – the next wake-up was computed (and the boot expired) just after its last frame was drawn, so no further redraw was scheduled. `Fx::tick` no longer expires anything; an ended animation always gets one more frame. Regression test `an_ended_boot_still_gets_a_final_frame`; pty: 8/8 runs show the UI after the boot, quit in ~10 ms.
 

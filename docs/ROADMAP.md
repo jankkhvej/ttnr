@@ -46,7 +46,7 @@ Work top to bottom. Tick `[x]` when a task meets its acceptance criteria and
 - [x] Research each machine (THEMES.md checklist) and correct THEMES.md.
 - [x] `pdp11-vt100`, `pdp11-teletype`, `zx80`, `bbc-mode7` themes + snapshots.
 - [x] Octal numbers, double-height emulation, mosaic glyph fallback, uppercase mapping.
-**Acceptance:** owner judges each theme recognisable at a glance.
+**Acceptance:** owner judges each theme recognisable at a glance. (Accepted 2026-11-03.)
 
 ## M6 — macOS integration
 - [ ] Now Playing / Control Center + media keys (MediaPlayer framework via `objc2`; terminal app has no window — solve and document).
