@@ -541,3 +541,100 @@ fn unknown_theme_is_reported() {
         "{stderr}"
     );
 }
+
+/// Security: a stream's ICY title with terminal control sequences (OSC 0
+/// window title, OSC 52 clipboard) must not reach the terminal raw.
+#[test]
+fn icy_title_control_sequences_are_neutralised() {
+    let status = Command::new("zsh")
+        .arg(concat!(
+            env!("CARGO_MANIFEST_DIR"),
+            "/scripts/gen-fixtures.zsh"
+        ))
+        .status()
+        .unwrap();
+    assert!(status.success());
+    let mp3 = std::fs::read(concat!(
+        env!("CARGO_MANIFEST_DIR"),
+        "/tests/fixtures/generated/icy_stream.mp3"
+    ))
+    .unwrap();
+    let listener = TcpListener::bind("127.0.0.1:0").unwrap();
+    let addr = listener.local_addr().unwrap();
+    std::thread::spawn(move || {
+        for stream in listener.incoming() {
+            let Ok(mut s) = stream else { continue };
+            let mut buf = [0u8; 4096];
+            let n = s.read(&mut buf).unwrap_or(0);
+            let icy = String::from_utf8_lossy(&buf[..n])
+                .to_ascii_lowercase()
+                .contains("icy-metadata: 1");
+            let _ = write!(
+                s,
+                "HTTP/1.1 200 OK\r\nContent-Type: audio/mpeg\r\n{}\r\n",
+                if icy { "icy-metaint: 8000\r\n" } else { "" }
+            );
+            for (i, chunk) in mp3.chunks(8000).take(3).enumerate() {
+                let _ = s.write_all(chunk);
+                if icy {
+                    let block = if i == 0 {
+                        let mut t =
+                            b"StreamTitle='Evil \x1b]52;c;SGk=\x07 - Song \x1b]0;PWNED\x07';"
+                                .to_vec();
+                        let n = t.len().div_ceil(16);
+                        t.resize(n * 16, 0);
+                        std::iter::once(u8::try_from(n).unwrap()).chain(t).collect()
+                    } else {
+                        vec![0]
+                    };
+                    let _ = s.write_all(&block);
+                }
+            }
+        }
+    });
+    let state = tempfile::tempdir().unwrap();
+    let mut child = Command::new(env!("CARGO_BIN_EXE_ttnr"))
+        .args([
+            "play",
+            &format!("http://{addr}/live"),
+            "--audio-output",
+            "null",
+        ])
+        .env("XDG_STATE_HOME", state.path())
+        .env("XDG_CACHE_HOME", state.path())
+        .env("XDG_CONFIG_HOME", state.path())
+        .env("TMPDIR", state.path())
+        .stdout(std::process::Stdio::piped())
+        .spawn()
+        .unwrap();
+    let stdout = child.stdout.take().unwrap();
+    let (tx, rx) = std::sync::mpsc::channel();
+    std::thread::spawn(move || {
+        use std::io::Read as _;
+        let mut all = Vec::new();
+        let mut buf = [0u8; 4096];
+        let mut r = stdout;
+        while let Ok(n) = r.read(&mut buf) {
+            if n == 0 {
+                break;
+            }
+            all.extend_from_slice(&buf[..n]);
+            if String::from_utf8_lossy(&all).contains("now: ") {
+                let _ = tx.send(all.clone());
+            }
+        }
+    });
+    let out = rx
+        .recv_timeout(std::time::Duration::from_secs(30))
+        .expect("a now: line");
+    let _ = Command::new("kill")
+        .args(["-INT", &child.id().to_string()])
+        .status();
+    let _ = child.wait();
+    assert!(
+        !out.contains(&0x1b) && !out.contains(&0x07),
+        "{:?}",
+        String::from_utf8_lossy(&out)
+    );
+    assert!(String::from_utf8_lossy(&out).contains("now: Evil ?]52;c;SGk=?"));
+}

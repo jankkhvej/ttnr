@@ -44,7 +44,7 @@ pub fn print(search: Option<String>) -> Result<()> {
         .max()
         .unwrap_or(0);
     for s in rows {
-        println!("{:id_w$}  {:src_w$}  {}", s.id, s.source, s.name);
+        crate::term::say(&format!("{:id_w$}  {:src_w$}  {}", s.id, s.source, s.name));
     }
     Ok(())
 }

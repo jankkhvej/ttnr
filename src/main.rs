@@ -8,6 +8,7 @@ mod paths;
 mod play;
 mod runtime;
 mod stations;
+mod term;
 mod tui;
 
 use std::process::ExitCode;
@@ -107,7 +108,7 @@ fn main() -> ExitCode {
         Ok(()) => ExitCode::SUCCESS,
         Err(e) => {
             tracing::error!("{e:#}");
-            eprintln!("ttnr: {e:#}");
+            eprintln!("ttnr: {}", term::clean(&format!("{e:#}")));
             ExitCode::FAILURE
         }
     }
@@ -171,7 +172,7 @@ async fn now(json: bool) -> Result<()> {
         println!("{answer}");
     } else {
         let status: control::StatusJson = serde_json::from_str(&answer)?;
-        println!("{}", status.line());
+        term::say(&status.line());
     }
     Ok(())
 }

@@ -29,7 +29,7 @@ pub async fn run(
         .take_events()
         .context("engine events already taken")?;
     tracing::info!(station = %station.key(), "play");
-    println!("ttnr: {}", station.name);
+    crate::term::say(&format!("ttnr: {}", station.name));
 
     let (registry, ctx) = setup()?;
     let offsets = config::load().map(|c| c.sync_offsets()).unwrap_or_default();
@@ -77,17 +77,17 @@ pub async fn run(
     loop {
         if let Some(msg) = next.take() {
             if let Some(line) = printer.msg(&msg) {
-                println!("{line}");
+                crate::term::say(&line);
             }
             let effects = app.update(msg);
             // What happened first ("[…; trying the next stream]"), then
             // what starts ("stream: …").
             for line in printer.state(&app.state) {
-                println!("{line}");
+                crate::term::say(&line);
             }
             for effect in effects {
                 if let Some(line) = printer.effect(&effect) {
-                    println!("{line}");
+                    crate::term::say(&line);
                 }
                 runtime.perform(effect, &mut player);
             }
@@ -293,12 +293,12 @@ pub async fn refresh(target: Option<&str>) -> Result<()> {
     for st in &stations {
         match registry.refresh(st, &ctx).await {
             Ok(d) => {
-                println!("{}: {}", st.id, d.urls.join(" | "));
-                println!("  {}", d.trace);
+                crate::term::say(&format!("{}: {}", st.id, d.urls.join(" | ")));
+                crate::term::say(&format!("  {}", d.trace));
             }
             Err(e) => {
                 failed += 1;
-                println!("{}: error: {e}", st.id);
+                crate::term::say(&format!("{}: error: {e}", st.id));
             }
         }
     }
@@ -369,13 +369,13 @@ pub async fn search(query: &str, limit: usize, source_id: &str) -> Result<()> {
         .await
         .with_context(|| format!("{source_id} search failed"))?;
     if list.is_empty() {
-        println!("no stations found for {query:?}");
+        crate::term::say(&format!("no stations found for {query:?}"));
         return Ok(());
     }
     for st in &list {
         match st.params.get("detail") {
-            Some(detail) => println!("{}  {}  [{detail}]", st.id, st.name),
-            None => println!("{}  {}", st.id, st.name),
+            Some(detail) => crate::term::say(&format!("{}  {}  [{detail}]", st.id, st.name)),
+            None => crate::term::say(&format!("{}  {}", st.id, st.name)),
         }
     }
     println!();
@@ -383,7 +383,8 @@ pub async fn search(query: &str, limit: usize, source_id: &str) -> Result<()> {
         println!("play: ttnr play radio-browser:<uuid>   ·   or add to stations.toml:");
         if let Some(st) = list.first() {
             println!(
-                "[[station]]\nid     = \"{}\"\nname   = {:?}\nsource = \"radio-browser\"\nparams = {{ uuid = \"{}\" }}",
+                // `{:?}` escapes control characters from the directory.
+                "[[station]]\nid     = \"{}\"\nname   = {:?}\nsource = \"radio-browser\"\nparams = {{ uuid = {:?} }}",
                 slug(&st.name),
                 st.name,
                 st.id
