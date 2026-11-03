@@ -2,6 +2,11 @@
 
 Newest entry on top. Each entry: date · milestone/task · what changed · how to try it · next step · open questions for the owner.
 
+## 2026-11-03 · M3 · Views
+- `ttnr-tui::view`: main view per SPEC F5.1 (station, programme, artist – title, album, format, status, volume + output device, recent tracks, key help), overlays for stations, open URL, help, devices; priority-based layout down to 32×16 (ADR-023). Minimal `ttnr-themes::Theme` + `plain`, width-aware truncation.
+- Tests: rendering at sizes 1×1…120×40 for every view (no panic), essentials at 32×16, footer growth, low-height priorities, error/empty states; pty run through the overlays.
+- Next: M3 task 3 – keymap remappable in config.
+
 ## 2026-11-02 · M3 · App state machine + TUI runtime
 - `ttnr_core::app` (Elm-style `App::update(Msg) -> Vec<Effect>`), `ttnr-tui` (`command_for` keymap, minimal `draw`), binary `src/tui.rs` runtime (ADR-022). `ttnr` alone now starts the TUI (station list opens if stations exist).
 - Engine: device list events; error classification on `ErrorKind`.

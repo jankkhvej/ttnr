@@ -3,6 +3,36 @@
 use ratatui::crossterm::event::{KeyCode, KeyEvent, KeyEventKind, KeyModifiers};
 use ttnr_core::app::{Command, View};
 
+/// Default bindings for the help overlay: (keys, description).
+pub const HELP: &[(&str, &str)] = &[
+    ("space", "play / pause"),
+    ("+ -", "volume up / down"),
+    ("m", "mute"),
+    ("n p", "next / previous station"),
+    ("s", "station list"),
+    ("o", "open URL"),
+    ("d", "output device"),
+    ("t", "next theme"),
+    ("?", "help"),
+    ("q", "quit"),
+];
+
+/// Key help for the main view's bottom line: as many of these as fit,
+/// then always [`FOOTER_TAIL`].
+pub const FOOTER: &[&str] = &[
+    "spc play",
+    "+- vol",
+    "m mute",
+    "n/p station",
+    "s list",
+    "o url",
+    "d device",
+    "t theme",
+];
+
+/// Always shown at the end of the key help line.
+pub const FOOTER_TAIL: &str = "? help · q quit";
+
 /// The command for `key` in `view`, if any. In the open-URL prompt
 /// printable keys are text.
 pub fn command_for(key: KeyEvent, view: &View) -> Option<Command> {

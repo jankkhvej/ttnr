@@ -137,3 +137,11 @@ Decision:
 - Binary `src/tui.rs` (`ttnr` without subcommand): one loop over engine events, messages from spawned tasks (resolution, metadata provider – aborted on station change) and SIGTERM; effects performed on the player; state published via `tokio::sync::watch::send_if_modified` only when it changed. UI task: `ratatui::try_init` (panic hook restores the terminal), crossterm `EventStream`, draws only when the state changed or on resize, `restore()` on every exit. Keys → commands in `ttnr-tui::keys` (SPEC F5.3; Ctrl-C quits; text input in the URL prompt).
 - Engine: `EngineEvent::Devices` from `audio-device-list` (observed as JSON string, CoreAudio entries only); `ErrorKind::{is_retryable, is_stale_hint}` shared by CLI and TUI.
 Consequences: `ttnr play` still has its own loop (same `Failover`/`Merger` logic); migrating it onto `App` is a follow-up when its line output can be derived from state changes.
+
+## ADR-023 · 2026-11-03 · Views: priority-based layout, minimal theme model first
+Context: M3 task 2 – main view (SPEC F5.1), station list, open-URL prompt, help, device picker; usable from 32×16; views must not hard-code colours/glyphs (CLAUDE.md), but the theme engine is task 4.
+Decision:
+- `ttnr-themes::Theme` starts as plain data (palette roles fg/bg/accent/dim/warn/error as `ThemeColor` Reset/Ansi/Indexed/Rgb; glyphs: borders or none, ellipsis, dash, separator, status symbols, list marks; `uppercase`; title) with built-in `plain`; `Theme::fit` cuts to terminal *columns* (`unicode-width`, wide CJK = 2) ending in the theme's ellipsis. Task 4 adds TOML + depth fallback on top.
+- Main view lines carry priorities; when the height is short the least important go first (blank lines → older history → "recent" → album → programme → format); station, track and status always stay. One column margin from 40 columns. The key-help line shows as many default bindings as fit, always ending with `? help · q quit`.
+- Overlays are centred, cleared, framed popups; lists scroll to keep the highlight visible, mark the current item, highlight with reverse video.
+Consequences: snapshot tests (task 5) will freeze the layouts per theme and size; the help table comes from the keymap once it is remappable (task 3).

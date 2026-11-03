@@ -24,6 +24,7 @@ tracing-subscriber.workspace = true
 ttnr-core.workspace = true
 ttnr-engine.workspace = true
 ttnr-sources.workspace = true
+ttnr-themes.workspace = true
 ttnr-tui.workspace = true
 
 [dev-dependencies]
@@ -62,6 +63,7 @@ toml = "1.1.8"
 tokio = { version = "1.54.1", default-features = false }
 tracing = { version = "0.1.44", default-features = false, features = ["std"] }
 tracing-appender = "0.2.5"
+unicode-width = "0.2.3"
 url = "2.5.8"
 tracing-subscriber = { version = "0.3.23", default-features = false, features = ["fmt", "std"] }
 

@@ -2476,6 +2476,7 @@ dependencies = [
  "ttnr-core",
  "ttnr-engine",
  "ttnr-sources",
+ "ttnr-themes",
  "ttnr-tui",
 ]
 
@@ -2530,6 +2531,9 @@ dependencies = [
 [[package]]
 name = "ttnr-themes"
 version = "0.1.0"
+dependencies = [
+ "unicode-width",
+]
 
 [[package]]
 name = "ttnr-tui"

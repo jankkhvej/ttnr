@@ -227,6 +227,7 @@ async fn ui_loop(
 ) -> Result<()> {
     let mut terminal = ratatui::try_init().context("cannot initialise the terminal")?;
     let result = async {
+        let theme = ttnr_themes::Theme::plain();
         let mut events = EventStream::new();
         let mut dirty = true;
         loop {
@@ -235,7 +236,7 @@ async fn ui_loop(
                 return Ok(());
             }
             if dirty {
-                terminal.draw(|frame| ttnr_tui::draw(frame, &state))?;
+                terminal.draw(|frame| ttnr_tui::draw(frame, &state, &theme))?;
                 dirty = false;
             }
             tokio::select! {

@@ -29,7 +29,7 @@ Work top to bottom. Tick `[x]` when a task meets its acceptance criteria and
 
 ## M3 — Minimal TUI + theme engine
 - [x] App state machine in core; ratatui UI on its own task; redraw only on change.
-- [ ] Main view per SPEC F5.1; station list; open-URL prompt; help overlay; device picker.
+- [x] Main view per SPEC F5.1; station list; open-URL prompt; help overlay; device picker.
 - [ ] Keymap (SPEC F5.3), remappable in config.
 - [ ] Theme model + TOML loader + `plain` theme; colour-depth fallback.
 - [ ] Snapshot tests for all views at 3 sizes.
