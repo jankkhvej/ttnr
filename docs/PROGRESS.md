@@ -2,6 +2,9 @@
 
 Newest entry on top. Each entry: date · milestone/task · what changed · how to try it · next step · open questions for the owner.
 
+## 2026-11-03 · M6 · Task 3 done – owner test
+- Sleep: woke → immediate reconnect, works. Wi-Fi off ~20 s on BBC HLS: mpv buffered, FFmpeg's HLS demuxer resumed by itself and skipped expired segments (log), so no reconnect was needed – correct. The reconnect path (stream really lost) was verified with a local dropping server; visible live with an Icecast station and a longer outage. Next: M6 task 4 – optional exclusive mode and sample-rate matching.
+
 ## 2026-11-03 · M6 · Reconnect with backoff, wake from sleep
 - Core reconnects a station that has played when it fails retryably or ends while not seekable (live): 1/2/4/8/16/30/60 s, reset on playing; stale retries ignored; never-played stations fail as before. Engine: `seekable` in `StreamInfo`. macOS: wake notification → immediate reconnect (ADR-038).
 - Tests: 6 core scenarios (backoff sequence + reset, never played, live end vs file end, stale/superseded retries, wake, resolve error while reconnecting), translator `seekable`; end to end with a local server dropping a real-time stream (3 connections, 1 s retries). Waiting for the owner's sleep / Wi-Fi test.

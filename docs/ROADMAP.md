@@ -51,7 +51,7 @@ Work top to bottom. Tick `[x]` when a task meets its acceptance criteria and
 ## M6 — macOS integration
 - [x] Now Playing / Control Center + media keys (MediaPlayer framework via `objc2`; terminal app has no window — solve and document).
 - [x] Follow default-device changes; pinned device option; device picker uses mpv's device list.
-- [ ] Sleep/wake and network change: reconnect with backoff.
+- [x] Sleep/wake and network change: reconnect with backoff.
 - [ ] Optional exclusive mode and sample-rate matching.
 **Acceptance:** AirPods connect/disconnect while playing → audio follows; media keys work; laptop sleep → resumes.
 
