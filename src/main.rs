@@ -206,6 +206,63 @@ mod tests {
     use super::*;
     use clap::CommandFactory;
 
+    /// The docs name every subcommand, key action and setting (they must not
+    /// drift from the code).
+    #[test]
+    fn docs_cover_commands_keys_and_settings() {
+        let read = |p: &str| {
+            std::fs::read_to_string(std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join(p))
+                .unwrap()
+        };
+        let (man, readme, config, example) = (
+            read("docs/ttnr.1"),
+            read("README.md"),
+            read("docs/CONFIG.md"),
+            read("examples/config.toml"),
+        );
+        for sub in Cli::command().get_subcommands() {
+            let name = sub.get_name();
+            if name == "help" {
+                continue;
+            }
+            assert!(
+                man.contains(&format!(".Cm {name}")),
+                "ttnr.1 lacks `{name}`"
+            );
+            assert!(
+                readme.contains(&format!("ttnr {name}")),
+                "README lacks `{name}`"
+            );
+        }
+        for action in ttnr_tui::keys::action_names() {
+            assert!(
+                config.contains(&format!("`{action}`")),
+                "CONFIG.md lacks key action {action}"
+            );
+        }
+        // Every field of `Config` (keep in sync with src/config.rs).
+        for key in [
+            "theme",
+            "color",
+            "mosaic",
+            "effects",
+            "baud",
+            "media_controls",
+            "output_device",
+            "exclusive",
+            "match_sample_rate",
+            "sync_offset",
+            "keys",
+            "sources",
+        ] {
+            assert!(
+                config.contains(&format!("`{key}`")) || config.contains(&format!("[{key}")),
+                "CONFIG.md lacks setting {key}"
+            );
+            assert!(example.contains(key), "examples/config.toml lacks {key}");
+        }
+    }
+
     #[test]
     fn cli_definition_is_valid() {
         Cli::command().debug_assert();

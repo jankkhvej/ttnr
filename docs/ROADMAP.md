@@ -62,7 +62,7 @@ Work top to bottom. Tick `[x]` when a task meets its acceptance criteria and
 **Acceptance:** a new source added as a 30-line script, no recompilation. (Accepted 2026-11-03.)
 
 ## M8 — Polish & release
-- [ ] README, man page, config reference, theme authoring guide.
+- [x] README, man page, config reference, theme authoring guide.
 - [ ] Release profile, `cargo install --path .` instructions, local Homebrew formula draft.
 - [ ] Final licence audit (`cargo deny`), third-party notices file.
 

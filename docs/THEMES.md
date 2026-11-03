@@ -26,7 +26,7 @@ show the same information as `plain`.
 Fonts: themes must work with any monospace font. README may *suggest*
 open-licence retro fonts per theme; never require them.
 
-## Theme files (implemented in M3)
+## Theme files (schema; tutorial: THEME-GUIDE.md)
 
 A theme is one TOML file; built-ins are embedded from
 `crates/ttnr-themes/themes/*.toml`, user themes live in
@@ -67,8 +67,10 @@ Added in M5 (all optional; `plain.toml` lists the defaults):
 - `[effects]` `loading` (`none`/`tape`/`blank`) and `boot` (`none`/
   `zx-spectrum`/`zx80`/`bbc-micro`/`vt100`): a power-on sequence when the
   theme is switched to (and at start; any key skips it) and an animation
-  while a station loads. Config `effects = false` turns all of them off;
-  the UI ticks (25 fps) only while one runs.
+  while a station loads; `boot_text` = console lines the `vt100` boot
+  prints after the terminal self-test (the operating system's boot).
+  Config `effects = false` turns all of them off; the UI ticks (25 fps)
+  only while one runs.
 - `[chrome] serial = true` marks a terminal on a serial line
   (`pdp11-teletype`, `pdp11-vt100*`): the `b` key (`cycle_baud`) cycles the
   line speed off → 9600 → 1200 → 300 → 110 baud (start value: config
@@ -76,7 +78,7 @@ Added in M5 (all optional; `plain.toml` lists the defaults):
   that speed (old queued lines are printed at once when more than ~4 s would
   be queued); screen themes receive their changed cells one by one, row by
   row (10 bits per character; cursor-addressing bytes not counted), with a
-block cursor on the next cell to arrive while the update is in progress. Boot
+  block cursor on the next cell to arrive while the update is in progress. Boot
   sequences run at their own pace; whole-screen redraws (start, resize,
   switching a speed on) appear at once – only UI changes arrive slowly.
 

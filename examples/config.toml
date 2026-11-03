@@ -1,20 +1,17 @@
 # Sample configuration. Copy to ~/.config/ttnr/config.toml
 # (or $XDG_CONFIG_HOME/ttnr/config.toml); every setting is optional.
+# Full reference: docs/CONFIG.md. Plain settings first, then [tables].
 
-# Theme: a built-in (plain; retro themes in M5) or the `name` of a file
-# in ~/.config/ttnr/themes/*.toml. `t` cycles through all of them.
+# Theme: a built-in (plain, pdp11-vt100, pdp11-vt100-amber,
+# pdp11-vt100-green, pdp11-bsd, pdp11-teletype, zx80, zx-spectrum,
+# bbc-mode7) or the `name` of a file in ~/.config/ttnr/themes/*.toml.
+# `t` cycles through all of them.
 # theme = "plain"
 
 # Colour depth: "auto" (detect: NO_COLOR, COLORTERM, TERM), "truecolor",
 # "256", "16", "mono". Terminal.app (macOS 26+) supports truecolor but is
 # detected as 256 – set "truecolor" to use it.
 # color = "auto"
-
-# Sync offset: seconds to delay track info from external providers (BBC's
-# now-playing API, HLS ID3 polling) so it matches what you hear. Tune live
-# with ] and [ in the TUI, then put the value here.
-# [sync_offset]
-# bbc = 0
 
 # Mosaic glyphs used by retro themes (bbc-mode7): "auto" (quadrant blocks
 # in Terminal.app, whose fonts lack Unicode sextants; sextants elsewhere),
@@ -48,6 +45,12 @@
 #   reverts when it stops.
 # exclusive = false
 # match_sample_rate = false
+
+# Sync offset: seconds to delay track info from external providers (BBC's
+# now-playing API, HLS ID3 polling) so it matches what you hear. Tune live
+# with ] and [ in the TUI, then put the value here.
+# [sync_offset]
+# bbc = 0
 
 # External-command sources (docs/SOURCES.md): the table name becomes the
 # source id. Tables must come after the plain settings above.

@@ -1,58 +1,141 @@
 # ttnr – text tuner
 
-A minimal, themeable, open-source terminal player for network music streams
-on macOS — BBC radio with live track info first, any stream URL after that.
-Rust + ratatui + libmpv (FFmpeg) → CoreAudio. Themes: plain, PDP-11 (VT100 /
-Teletype), Sinclair ZX80, BBC Micro MODE 7 — in text.
+A small, open-source terminal player for **network radio** on macOS. It plays
+any stream URL (Icecast/Shoutcast, HLS, playlists), BBC radio with live
+programme and track information, stations from the radio-browser.info
+directory, and sources you script yourself – with a minimal text UI and
+faithful retro themes (DEC PDP-11 on a VT100 or a Teletype, 2.11BSD, Sinclair
+ZX80 and ZX Spectrum, BBC Micro MODE 7), all in plain text.
 
-**Status:** scaffold only. The code is written by Claude Code following the
-docs in this folder.
+Audio goes through libmpv (FFmpeg) to CoreAudio: every format FFmpeg
+decodes, any channel layout, the macOS default output device followed as it
+changes. Now Playing in Control Center and the media keys work; the player
+reconnects after sleep or a dropped network.
 
-## Start / continue development
+## Install
+
+Requirements: macOS on Apple Silicon (the only tested platform), Homebrew,
+Rust (<https://rustup.rs>; the toolchain is pinned in `rust-toolchain.toml`).
 
 ```zsh
-cd ~/workspace/tuner
-./start.zsh            # checks prerequisites, then Claude Code continues from docs/PROGRESS.md
-./start.zsh --resume   # reopen the last Claude Code conversation in this folder
-./start.zsh --auto     # fewer permission prompts (Claude Code auto mode)
-./start.zsh --check    # prerequisites only
+brew install mpv pkgconf ffmpeg
+git clone <this repository> ttnr && cd ttnr
+./scripts/build-libmpv.zsh     # recommended, see below (~20 s, no system changes)
+cargo install --path .         # installs `ttnr` into ~/.cargo/bin
 ```
 
-Prerequisites (the script checks and offers to install the brew ones):
-Homebrew, Claude Code CLI, git, Rust (https://rustup.rs), and
-`brew install mpv pkgconf ffmpeg`. Later `cargo-deny` is needed for the
-licence gate (`cargo install --locked cargo-deny`).
+`scripts/build-libmpv.zsh` builds Homebrew's mpv 0.41.0 recipe plus an
+upstream CoreAudio fix into `third_party/mpv/` and `ttnr` links to it.
+Without it ttnr uses Homebrew's libmpv, whose CoreAudio output fails on
+macOS 27 for many streams; it then falls back to AVFoundation, where volume
+and mute react up to ~2 s late (ADR-015). Release builds: see
+"Release build" below.
 
-Recommended: `./scripts/build-libmpv.zsh` builds a fixed libmpv into
-`third_party/mpv/` (no system changes, ~20 s). Homebrew's mpv 0.41.0 has a
-CoreAudio bug on macOS 27; without the local build ttnr falls back to
-AVFoundation (volume/mute react up to ~2 s late). See docs/DECISIONS.md ADR-015.
+## Quick start
 
-Claude works milestone by milestone and **stops at the end of each one** for
-you to try it — the exact commands will be in its last message and in
-`docs/PROGRESS.md`. Run `./start.zsh` again to continue.
+```zsh
+ttnr play https://somafm.com/groovesalad.pls   # plain output, Ctrl-C stops
+ttnr search "jazz"                             # radio-browser.info
+mkdir -p ~/.config/ttnr && cp examples/stations.toml ~/.config/ttnr/
+ttnr                                           # the TUI: pick a station, Enter
+ttnr --theme bbc-mode7
+```
 
-## Files
+## The TUI
+
+| Key | Action | Key | Action |
+|---|---|---|---|
+| `space` | play / pause | `s` | station list |
+| `+` `=` / `-` | volume | `/` | search radio-browser |
+| `m` | mute | `o` | open a URL |
+| `n` / `p` | next / previous station | `d` | output device |
+| `t` | next theme | `b` | line speed (terminal themes) |
+| `]` / `[` | track info later / earlier | `?` | help |
+| `q` | quit | | |
+
+Keys are remappable (`[keys]` in `config.toml`). The view shows the station,
+programme, artist – title, the stream format, status, volume, output device
+and recent tracks; nothing else.
+
+Media keys (F7/F8/F9), headphone buttons and Control Center control the
+TUI and `ttnr play`. Set `media_controls = false` to turn that off.
+
+## Command line
+
+| Command | |
+|---|---|
+| `ttnr` | the TUI (`--theme <name>` picks a theme) |
+| `ttnr play <url \| file \| station-id \| radio-browser:<uuid>>` | play with plain status lines |
+| `ttnr search <text> [--source <id>] [--limit n]` | search a source (default radio-browser) |
+| `ttnr stations [--search text]` | list `stations.toml` |
+| `ttnr refresh [station-id \| url]` | re-discover stream URLs, bypassing the cache |
+| `ttnr now [--json]` | what the running ttnr plays |
+| `ttnr ctl <command> [arg]` | control it: `toggle_pause`, `next`, `prev`, `mute`, `quit`, `volume N`, `play <id>` |
+
+Details: `man ./docs/ttnr.1`.
+
+## Configuration
+
+Everything is optional; ttnr runs without any configuration. Files live in
+`~/.config/ttnr/` (`$XDG_CONFIG_HOME/ttnr/`): `config.toml`,
+`stations.toml`, `themes/*.toml`. Start from `examples/config.toml` and
+`examples/stations.toml`. Reference: [docs/CONFIG.md](docs/CONFIG.md).
+
+## Themes
+
+`plain` (default), `pdp11-vt100` (+ `-amber`, `-green`), `pdp11-bsd`,
+`pdp11-teletype`, `zx80`, `zx-spectrum`, `bbc-mode7`. Retro themes have
+boot sequences and machine-style messages; terminal themes can simulate a
+slow serial line (`b`). Themes are TOML files – write your own:
+[docs/THEME-GUIDE.md](docs/THEME-GUIDE.md). Design notes and sources:
+[docs/THEMES.md](docs/THEMES.md).
+
+## Sources
+
+Built in: plain URLs, `stations.toml`, BBC (live national and local
+stations; streams as BBC serves them for your location), radio-browser.info.
+Any other source can be a script in any language speaking a small JSON
+protocol – see [docs/SOURCES.md](docs/SOURCES.md) and
+`examples/sources/somafm.py` (32 lines).
+
+## Release build
+
+```zsh
+cargo build --release          # target/release/ttnr
+```
+
+The binary links libmpv by absolute path (the local build in
+`third_party/mpv/prefix` or Homebrew's), so keep that library where it is.
+
+## Development
+
+The project is developed with Claude Code following `CLAUDE.md` and the
+documents in `docs/` (spec, architecture, roadmap, research log, decision
+records, progress log).
+
+```zsh
+./scripts/check.zsh    # the gate: cargo fmt --check, clippy -D warnings, tests, cargo deny
+./start.zsh            # checks prerequisites, then Claude Code continues from docs/PROGRESS.md
+```
+
+Tests never use the network (fixtures under `tests/fixtures/`); live smoke
+tests are `#[ignore]`d (`cargo test -- --ignored`). `cargo-deny` is needed
+for the gate: `cargo install --locked cargo-deny`.
 
 | Path | What |
 |---|---|
-| `CLAUDE.md` | Rules and session workflow for Claude Code |
-| `docs/SPEC.md` | Requirements and non-goals |
-| `docs/ARCHITECTURE.md` | Crates, traits, stream resolution, engine config, tests |
-| `docs/ROADMAP.md` | Milestones M0–M8 with acceptance criteria |
-| `docs/THEMES.md` | Theme spec (to be verified against sources) |
-| `docs/RESEARCH.md` | Verified external facts with sources |
-| `docs/DECISIONS.md` | Architecture decision records |
-| `docs/PROGRESS.md` | Session log — where things stand |
-| `scripts/check.zsh` | Quality gate: fmt, clippy, tests, licences |
-| `.claude/settings.json` | Claude Code permissions (no push, no sudo) |
-| `examples/stations.toml` | Sample station list |
+| `docs/SPEC.md` | requirements and non-goals |
+| `docs/ARCHITECTURE.md` | crates, data flow, stream resolution |
+| `docs/ROADMAP.md` | milestones and acceptance criteria |
+| `docs/DECISIONS.md` | architecture decision records |
+| `docs/RESEARCH.md` | verified external facts with sources |
+| `docs/PROGRESS.md` | session log |
 
 ## Licence
 
 The source code is under the **BSD 2-Clause** licence (see `LICENSE`).
-`ttnr` links at runtime to libmpv and FFmpeg from Homebrew, which are built
+`ttnr` links at run time to libmpv and FFmpeg from Homebrew, which are built
 as GPL (FFmpeg `--enable-gpl --enable-version3`). A compiled `ttnr` binary
 is therefore, as a combined work, redistributable only under
-GPL-3.0-or-later terms. Building from source for your own use is unaffected.
-
+GPL-3.0-or-later terms. Building from source for your own use is
+unaffected.

@@ -15,6 +15,11 @@ struct Action {
     defaults: &'static [&'static str],
 }
 
+/// Names of all remappable actions (the `[keys]` table's keys).
+pub fn action_names() -> impl Iterator<Item = &'static str> {
+    ACTIONS.iter().map(|a| a.name)
+}
+
 const ACTIONS: &[Action] = &[
     Action {
         name: "toggle_pause",

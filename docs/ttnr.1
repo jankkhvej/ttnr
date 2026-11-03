@@ -1,0 +1,172 @@
+.\" ttnr(1) – mdoc(7). Read with: man ./docs/ttnr.1
+.Dd November 3, 2026
+.Dt TTNR 1
+.Os
+.Sh NAME
+.Nm ttnr
+.Nd text tuner, a terminal player for network radio
+.Sh SYNOPSIS
+.Nm
+.Op Fl -theme Ar name
+.Nm
+.Cm play
+.Op Fl -volume Ar percent
+.Ar target
+.Nm
+.Cm search
+.Op Fl -source Ar id
+.Op Fl -limit Ar n
+.Ar text
+.Nm
+.Cm stations
+.Op Fl -search Ar text
+.Nm
+.Cm refresh
+.Op Ar target
+.Nm
+.Cm now
+.Op Fl -json
+.Nm
+.Cm ctl
+.Ar command
+.Op Ar argument
+.Sh DESCRIPTION
+.Nm
+plays network radio streams on macOS: Icecast and Shoutcast, HLS, plain HTTP
+audio, playlist files
+.Pq Pa .pls , .m3u , .xspf , .asx ,
+BBC radio with programme and track information, stations of the
+radio-browser.info directory and of user scripts.
+Audio is decoded by libmpv (FFmpeg) and played through CoreAudio.
+.Pp
+Without a command
+.Nm
+starts its terminal interface.
+Keys:
+.Bl -tag -width "+ = / -" -compact
+.It Ic space
+play or pause
+.It Ic + = / -
+volume up / down
+.It Ic m
+mute
+.It Ic n / p
+next / previous station
+.It Ic s
+station list
+.It Ic \&/
+search radio-browser.info
+.It Ic o
+open a URL
+.It Ic d
+output device
+.It Ic t
+next theme
+.It Ic b
+line speed of terminal themes
+.It Ic \&] / \&[
+show track information later / earlier
+.It Ic \&?
+help
+.It Ic q
+quit
+.El
+.Pp
+Keys can be changed in
+.Pa config.toml .
+Media keys, headphone buttons and Control Center control playback.
+.Sh COMMANDS
+.Bl -tag -width Ds
+.It Cm play Oo Fl -volume Ar percent Oc Ar target
+Play
+.Ar target ,
+a URL, a local file, a station id from
+.Pa stations.toml ,
+or
+.Li radio-browser: Ns Ar uuid ,
+with one status line per change on standard output until it ends, fails
+or Ctrl-C is pressed.
+A live stream that drops is reconnected.
+.It Cm search Oo Fl -source Ar id Oc Oo Fl -limit Ar n Oc Ar text
+Search a source, by default radio-browser.info, and print the stations
+with a ready
+.Pa stations.toml
+entry.
+.It Cm stations Op Fl -search Ar text
+List the stations of
+.Pa stations.toml .
+.It Cm refresh Op Ar target
+Re-discover the stream URLs of one station or URL, or of all stations,
+bypassing the cache.
+.It Cm now Op Fl -json
+Print what the running
+.Nm
+plays, or its full status as JSON.
+.It Cm ctl Ar command Op Ar argument
+Send a command to the running
+.Nm :
+.Cm toggle_pause , next , prev , mute , quit ,
+.Cm volume Ar 0-100 ,
+.Cm play Ar station-id .
+.El
+.Sh OPTIONS
+.Bl -tag -width Ds
+.It Fl -theme Ar name
+Start with this theme: plain, pdp11-vt100, pdp11-vt100-amber,
+pdp11-vt100-green, pdp11-bsd, pdp11-teletype, zx80, zx-spectrum,
+bbc-mode7, or a user theme.
+.It Fl -volume Ar percent
+App volume 0\(en100, independent of the system volume
+.Pq Cm play .
+.It Fl h , Fl -help
+Print help.
+.It Fl V , Fl -version
+Print the version.
+.El
+.Sh ENVIRONMENT
+.Bl -tag -width XDG_CONFIG_HOME
+.It Ev XDG_CONFIG_HOME , XDG_CACHE_HOME , XDG_STATE_HOME
+Base directories instead of
+.Pa ~/.config , ~/.cache , ~/.local/state .
+.It Ev TTNR_LOG
+Log filter, for example
+.Li ttnr=debug,info .
+.It Ev NO_COLOR
+Monochrome output.
+.It Ev TMPDIR
+Directory of the control socket.
+.El
+.Sh FILES
+.Bl -tag -width Ds -compact
+.It Pa ~/.config/ttnr/config.toml
+settings
+.It Pa ~/.config/ttnr/stations.toml
+stations
+.It Pa ~/.config/ttnr/themes/*.toml
+user themes
+.It Pa ~/.cache/ttnr/resolve.json
+cached stream URLs
+.It Pa ~/.local/state/ttnr/ttnr.*.log
+logs
+.It Pa $TMPDIR/ttnr-<uid>.sock
+control socket (JSON lines)
+.El
+.Sh EXIT STATUS
+.Ex -std
+.Sh EXAMPLES
+.Bd -literal -offset indent
+ttnr play https://somafm.com/groovesalad.pls
+ttnr search jazz --limit 10
+ttnr --theme bbc-mode7
+ttnr ctl volume 40
+.Ed
+.Sh SEE ALSO
+.Xr mpv 1
+.Pp
+docs/CONFIG.md, docs/SOURCES.md, docs/THEME-GUIDE.md in the source tree.
+.Sh AUTHORS
+.An Sergii Solianyk
+.Sh CAVEATS
+A compiled binary links GPL builds of libmpv and FFmpeg and is, as a
+combined work, distributable under GPL-3.0-or-later terms; the source is
+BSD 2-Clause.

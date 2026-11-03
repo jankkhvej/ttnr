@@ -2,6 +2,12 @@
 
 Newest entry on top. Each entry: date · milestone/task · what changed · how to try it · next step · open questions for the owner.
 
+## 2026-11-03 · M8 · Documentation
+- README rewritten (what it is, install, quick start, keys, CLI, config, themes, sources, release build, development, licence); `docs/CONFIG.md` (config.toml, `[keys]`, `[sync_offset]`, `[sources.*]`, stations.toml, files, environment); `docs/THEME-GUIDE.md` (tutorial); `docs/ttnr.1` (mdoc, `mandoc -T lint` clean except style notes); THEMES.md schema gains `boot_text`.
+- Fixed `examples/config.toml`: the commented `[sync_offset]` table stood before plain settings (uncommenting it would have swallowed them); theme list updated.
+- Test `docs_cover_commands_keys_and_settings`: every subcommand in ttnr.1 and README, every key action and setting in CONFIG.md and the example config.
+- Next: M8 task 2 – release profile, install instructions, local Homebrew formula draft.
+
 ## 2026-11-03 · M8 prep · `ttnr play` on the app state machine
 - `src/runtime.rs` shared by TUI and `play`; `play` runs `App` + a `Printer` (same output lines), gains reconnects, the control socket and Now Playing (ADR-043). Live-vs-file rule fixed (`seekable` or `file-size`, not `duration`); HTTP errors without repeated FFmpeg detail; unified failover texts; refresh failures name the original error; socket removed on every exit.
 - Tests: Printer lines, `is_finite`, core (Icecast without size reconnects, HTTP file with size ends), translator `file-size`; CLI suite incl. reworked ICY test (title → "stream ended; retry in" → Ctrl-C exits 0). Live: `ttnr play` SomaFM + `ttnr now` + `ttnr ctl quit` (socket gone).
