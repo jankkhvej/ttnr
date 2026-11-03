@@ -33,7 +33,8 @@ pub struct EngineConfig {
     /// Initial app volume in percent (`0.0..=100.0`).
     pub volume: f32,
     /// Exclusive (hog) mode: mpv `audio-exclusive` – CoreAudio output goes
-    /// directly to the device, other apps are silent meanwhile (SPEC F2.3).
+    /// directly to the device; macOS moves other apps' sound to another
+    /// output meanwhile (observed on macOS 27) (SPEC F2.3).
     pub exclusive: bool,
     /// Match the device's physical format (sample rate) to the stream:
     /// mpv `coreaudio-change-physical-format`, a system-wide change that

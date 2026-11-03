@@ -94,7 +94,8 @@ pub struct Config {
     /// Pinned output device at start (its name in the device picker, or
     /// mpv's device name); unset = follow the system default.
     pub output_device: Option<String>,
-    /// Exclusive (hog) output mode – other apps are silent (default off).
+    /// Exclusive (hog) output mode – other apps move to another output
+    /// while ttnr plays (default off).
     pub exclusive: Option<bool>,
     /// Switch the device's sample rate to the stream's (default off).
     pub match_sample_rate: Option<bool>,

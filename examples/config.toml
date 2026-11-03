@@ -41,8 +41,8 @@
 # output_device = "AirPods Pro"
 
 # Bit-perfect-friendly output (both off by default):
-# exclusive: ttnr takes the device for itself (CoreAudio hog mode); other
-#   apps are silent while ttnr plays.
+# exclusive: ttnr takes the device for itself (CoreAudio hog mode); macOS
+#   moves other apps' sound to another output while ttnr plays.
 # match_sample_rate: switch the device's sample rate to the stream's (no
 #   resampling); a system-wide change (like Audio MIDI Setup) that mpv
 #   reverts when it stops.
