@@ -40,6 +40,15 @@
 # the system default output.
 # output_device = "AirPods Pro"
 
+# Bit-perfect-friendly output (both off by default):
+# exclusive: ttnr takes the device for itself (CoreAudio hog mode); other
+#   apps are silent while ttnr plays.
+# match_sample_rate: switch the device's sample rate to the stream's (no
+#   resampling); a system-wide change (like Audio MIDI Setup) that mpv
+#   reverts when it stops.
+# exclusive = false
+# match_sample_rate = false
+
 # Key bindings (SPEC F5.3 defaults shown). Giving an action replaces its
 # default keys; use a string or a list. Key names: a single character,
 # space, enter, tab, backspace, esc, up, down, left, right, home, end,

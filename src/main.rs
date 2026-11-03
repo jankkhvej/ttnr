@@ -105,12 +105,14 @@ fn run_app(cli: Cli, media: Option<ttnr_platform::MediaLink>) -> Result<()> {
     let runtime = tokio::runtime::Builder::new_current_thread()
         .enable_all()
         .build()?;
+    // Audio options from config.toml (a broken config is reported by the
+    // command itself).
+    let mut engine = EngineConfig::default();
+    if let Ok(c) = config::load() {
+        c.apply_audio(&mut engine);
+    }
     match cli.command {
-        None => runtime.block_on(tui::run(
-            &EngineConfig::default(),
-            cli.theme.as_deref(),
-            media,
-        )),
+        None => runtime.block_on(tui::run(&engine, cli.theme.as_deref(), media)),
         Some(Command::Play(args)) => {
             let cfg = EngineConfig {
                 audio_output: match args.audio_output {
@@ -118,7 +120,7 @@ fn run_app(cli: Cli, media: Option<ttnr_platform::MediaLink>) -> Result<()> {
                     Output::Null => AudioOutput::Null,
                 },
                 volume: args.volume,
-                ..EngineConfig::default()
+                ..engine
             };
             runtime.block_on(play::run(&args.target, &cfg, media))
         }

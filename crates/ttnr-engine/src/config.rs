@@ -32,6 +32,13 @@ pub struct EngineConfig {
     pub audio_channels: String,
     /// Initial app volume in percent (`0.0..=100.0`).
     pub volume: f32,
+    /// Exclusive (hog) mode: mpv `audio-exclusive` – CoreAudio output goes
+    /// directly to the device, other apps are silent meanwhile (SPEC F2.3).
+    pub exclusive: bool,
+    /// Match the device's physical format (sample rate) to the stream:
+    /// mpv `coreaudio-change-physical-format`, a system-wide change that
+    /// mpv reverts when it closes the output (SPEC F2.3).
+    pub match_sample_rate: bool,
 }
 
 impl Default for EngineConfig {
@@ -40,6 +47,8 @@ impl Default for EngineConfig {
             audio_output: AudioOutput::default(),
             audio_channels: "auto-safe".to_owned(),
             volume: 100.0,
+            exclusive: false,
+            match_sample_rate: false,
         }
     }
 }

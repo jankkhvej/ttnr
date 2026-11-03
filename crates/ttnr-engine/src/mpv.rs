@@ -131,6 +131,11 @@ impl MpvPlayer {
             set("ao", cfg.audio_output.mpv_name())?;
             set("audio-channels", &cfg.audio_channels)?;
             set("volume", &clamp_volume(cfg.volume).to_string())?;
+            set("audio-exclusive", if cfg.exclusive { "yes" } else { "no" })?;
+            set(
+                "coreaudio-change-physical-format",
+                if cfg.match_sample_rate { "yes" } else { "no" },
+            )?;
             for (name, value) in SCRIPT_OPTIONS {
                 match init.set_option(name, *value) {
                     Err(libmpv2::Error::Raw(libmpv2::mpv_error::OptionNotFound)) => {}

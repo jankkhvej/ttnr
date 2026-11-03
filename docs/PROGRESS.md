@@ -2,6 +2,9 @@
 
 Newest entry on top. Each entry: date · milestone/task · what changed · how to try it · next step · open questions for the owner.
 
+## 2026-11-03 · M6 · Exclusive mode and sample-rate matching
+- Config `exclusive` (mpv `audio-exclusive`, CoreAudio hog mode) and `match_sample_rate` (mpv `coreaudio-change-physical-format`), both off by default, for TUI and `ttnr play` (ADR-039). Test: options read back from libmpv. Waiting for the owner's check by ear / Audio MIDI Setup – then M6 is complete.
+
 ## 2026-11-03 · M6 · Task 3 done – owner test
 - Sleep: woke → immediate reconnect, works. Wi-Fi off ~20 s on BBC HLS: mpv buffered, FFmpeg's HLS demuxer resumed by itself and skipped expired segments (log), so no reconnect was needed – correct. The reconnect path (stream really lost) was verified with a local dropping server; visible live with an Icecast station and a longer outage. Next: M6 task 4 – optional exclusive mode and sample-rate matching.
 

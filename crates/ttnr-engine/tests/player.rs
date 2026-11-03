@@ -153,3 +153,26 @@ fn real_output_opens_for_44k_mp3() {
         )
     });
 }
+
+/// SPEC F2.3 options reach mpv (values read back; audible effect checked
+/// by the owner with CoreAudio).
+#[test]
+fn exclusive_and_sample_rate_matching_options_are_set() {
+    let cfg = EngineConfig {
+        audio_output: AudioOutput::Null,
+        exclusive: true,
+        match_sample_rate: true,
+        ..EngineConfig::default()
+    };
+    let player = MpvPlayer::new(&cfg).unwrap();
+    assert_eq!(
+        player.property_string("audio-exclusive").as_deref(),
+        Some("yes")
+    );
+    assert_eq!(
+        player
+            .property_string("coreaudio-change-physical-format")
+            .as_deref(),
+        Some("yes")
+    );
+}

@@ -94,6 +94,10 @@ pub struct Config {
     /// Pinned output device at start (its name in the device picker, or
     /// mpv's device name); unset = follow the system default.
     pub output_device: Option<String>,
+    /// Exclusive (hog) output mode – other apps are silent (default off).
+    pub exclusive: Option<bool>,
+    /// Switch the device's sample rate to the stream's (default off).
+    pub match_sample_rate: Option<bool>,
     /// macOS Now Playing / Control Center and media keys; default on.
     pub media_controls: Option<bool>,
     /// Key bindings: action → key(s); replaces that action's defaults.
@@ -108,6 +112,12 @@ pub struct Config {
 pub const DEFAULT_SYNC_OFFSETS: &[(&str, u32)] = &[];
 
 impl Config {
+    /// Apply the audio options (`exclusive`, `match_sample_rate`) to `cfg`.
+    pub fn apply_audio(&self, cfg: &mut ttnr_engine::EngineConfig) {
+        cfg.exclusive = self.exclusive.unwrap_or(false);
+        cfg.match_sample_rate = self.match_sample_rate.unwrap_or(false);
+    }
+
     /// Whether to integrate with Now Playing and media keys (default true).
     pub fn media_controls_enabled(&self) -> bool {
         self.media_controls.unwrap_or(true)
