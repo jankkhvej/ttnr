@@ -2,6 +2,9 @@
 
 Newest entry on top. Each entry: date · milestone/task · what changed · how to try it · next step · open questions for the owner.
 
+## 2026-11-03 · M5 · Fix: list highlight showed through boot animations
+- Owner: the station list's highlight was visible during every boot sequence. Cause: effect cells were style-*patched* over the UI, keeping its reverse-video modifier. Cells are now reset before painting; regression test `boot_frames_hide_the_ui_below` (fails without the fix).
+
 ## 2026-11-03 · M5 · Spectrum tweaks (owner)
 - Boot: static garbage → black with red `¦` lines → copyright, 1.4 s (was 2.6 s with moving garbage).
 - `[screen] margin_x`/`margin_y`: `zx-spectrum` has 2 columns / 1 row of paper around the text, so the tape stripes keep their distance (margins drop first below 36×26).

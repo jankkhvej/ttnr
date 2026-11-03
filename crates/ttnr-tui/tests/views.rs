@@ -216,3 +216,51 @@ fn title_bar_survives_mono() {
     assert_eq!(bar_of(ColorDepth::Ansi16), (Color::Black, false));
     assert_eq!(bar_of(ColorDepth::Mono), (Color::Reset, true));
 }
+
+/// Animation frames cover the UI completely: nothing of the view below
+/// (e.g. the station list's reverse-video highlight) shows through.
+#[test]
+fn boot_frames_hide_the_ui_below() {
+    use ratatui::style::Modifier;
+    use std::time::Duration;
+    use ttnr_themes::{BootEffect, ColorDepth, ThemeSet};
+    use ttnr_tui::{Extras, Fx, FxFrame};
+    let set = ThemeSet::builtin();
+    let fx = Fx::new(true, ColorDepth::TrueColor);
+    let mut s = state();
+    s.view = View::Stations { selected: 0 };
+    for i in 0..set.len() {
+        let theme = set.get(i).for_depth(ColorDepth::TrueColor);
+        let effect = theme.effects.boot;
+        if effect == BootEffect::None {
+            continue;
+        }
+        let f = FxFrame::Boot {
+            effect,
+            t: Duration::from_millis(600),
+            seed: 1,
+        };
+        let mut t = Terminal::new(TestBackend::new(100, 30)).unwrap();
+        t.draw(|frame| {
+            let extras = Extras {
+                printout: &[],
+                fx: Some((&fx, f)),
+            };
+            ttnr_tui::draw_with(frame, &s, &theme, &Keymap::default(), &extras);
+        })
+        .unwrap();
+        let buf = t.backend().buffer();
+        let reversed = buf
+            .content()
+            .iter()
+            .filter(|c| c.modifier.contains(Modifier::REVERSED))
+            .count();
+        // At most the boot's own cursor cell.
+        assert!(reversed <= 1, "{}: {reversed} reversed cells", theme.name);
+        assert!(
+            !buf.content()
+                .iter()
+                .any(|c| c.symbol() == "S" && c.modifier.contains(Modifier::REVERSED))
+        );
+    }
+}

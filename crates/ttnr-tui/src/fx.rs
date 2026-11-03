@@ -481,6 +481,9 @@ impl Rng {
 
 fn put(buf: &mut Buffer, x: u16, y: u16, symbol: &str, style: Style) {
     if let Some(cell) = buf.cell_mut((x, y)) {
+        // Reset first: `set_style` patches, so modifiers of the UI below
+        // (the list highlight's reverse video) would show through.
+        cell.reset();
         cell.set_symbol(symbol).set_style(style);
     }
 }
