@@ -63,7 +63,7 @@ Work top to bottom. Tick `[x]` when a task meets its acceptance criteria and
 
 ## M8 — Polish & release
 - [x] README, man page, config reference, theme authoring guide.
-- [ ] Release profile, `cargo install --path .` instructions, local Homebrew formula draft.
+- [x] Release profile, `cargo install --path .` instructions, local Homebrew formula draft.
 - [ ] Final licence audit (`cargo deny`), third-party notices file.
 
 ## M9 — Optional diagnostics indicators (owner request 2026-11-03; after M8)

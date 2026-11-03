@@ -106,6 +106,8 @@ cargo build --release          # target/release/ttnr
 
 The binary links libmpv by absolute path (the local build in
 `third_party/mpv/prefix` or Homebrew's), so keep that library where it is.
+A Homebrew formula draft (not published) is in
+`packaging/homebrew/ttnr.rb`.
 
 ## Development
 

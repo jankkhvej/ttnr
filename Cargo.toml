@@ -85,3 +85,11 @@ missing_docs = "warn"
 [workspace.lints.clippy]
 unwrap_used = "warn"
 expect_used = "warn"
+
+# Release builds (ADR-044): smaller and a little faster; keep unwinding –
+# panics cross the app/AppKit threads (resume_unwind) and the TUI's panic
+# hook restores the terminal.
+[profile.release]
+lto = "thin"
+codegen-units = 1
+strip = "symbols"

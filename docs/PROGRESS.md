@@ -2,6 +2,10 @@
 
 Newest entry on top. Each entry: date · milestone/task · what changed · how to try it · next step · open questions for the owner.
 
+## 2026-11-03 · M8 · Release profile and formula draft
+- Release profile (thin LTO, 1 CGU, stripped: 6.8 → 4.2 MB); `cargo install --path . --locked` verified into a temp root; `packaging/homebrew/ttnr.rb` draft with placeholders (ADR-044).
+- Next: M8 task 3 – final licence audit and third-party notices.
+
 ## 2026-11-03 · M8 · Documentation
 - README rewritten (what it is, install, quick start, keys, CLI, config, themes, sources, release build, development, licence); `docs/CONFIG.md` (config.toml, `[keys]`, `[sync_offset]`, `[sources.*]`, stations.toml, files, environment); `docs/THEME-GUIDE.md` (tutorial); `docs/ttnr.1` (mdoc, `mandoc -T lint` clean except style notes); THEMES.md schema gains `boot_text`.
 - Fixed `examples/config.toml`: the commented `[sync_offset]` table stood before plain settings (uncommenting it would have swallowed them); theme list updated.
