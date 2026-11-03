@@ -2,6 +2,7 @@
 //! `radio-browser`, `exec`) lives in its own module and implements the
 //! `Source` / `MetadataProvider` traits from `ttnr-core`.
 
+pub mod bbc;
 pub mod hls_id3;
 pub mod http;
 pub mod id3;
@@ -9,6 +10,7 @@ pub mod playlist;
 pub mod stations;
 pub mod url_source;
 
+pub use bbc::BbcSource;
 pub use hls_id3::HlsId3Provider;
 pub use http::ReqwestHttp;
 pub use stations::StationsSource;

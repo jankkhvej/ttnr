@@ -21,8 +21,10 @@ name   = "FIP (Radio France)"
 source = "url"
 url    = "https://stream.radiofrance.fr/fip/fip.m3u8?id=radiofrance"   # HLS AAC (checked 2026-11-02)
 
-# BBC stations need the `bbc` source (milestone M4). The ids follow BBC's
-# service ids seen in community tools – UNVERIFIED until M4 research.
+# BBC stations: `id` is BBC's service id (verified 2026-11-03 against
+# rms.api.bbc.co.uk/v2/networks; e.g. bbc_radio_fourfm, bbc_radio_two,
+# bbc_world_service). Streams come from BBC itself for your location;
+# stations BBC does not offer where you are fail with a clear message.
 [[station]]
 id     = "bbc_6music"
 name   = "BBC Radio 6 Music"

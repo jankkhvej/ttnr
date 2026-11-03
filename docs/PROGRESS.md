@@ -2,6 +2,12 @@
 
 Newest entry on top. Each entry: date · milestone/task · what changed · how to try it · next step · open questions for the owner.
 
+## 2026-11-03 · M4 · BBC resolver
+- `ttnr-sources::bbc`: `BbcSource` (list from `/v2/networks`, one station per service; discovery = token → media selector v3; highest bitrate, HLS, https, one URL per CDN as failover candidates; refusals final with clear messages; no patterns – ADR-029). Registered for `play`, `refresh` and the TUI.
+- Tests: recorded fixtures (networks, 6 Music selection, geolocation and unavailable refusals; fake token), registry chain (bearer token sent, cached, refusal → override only, no probing), ignored live smoke tests (pass from Kraków).
+- Live: `ttnr play bbc_6music` from Kraków → HE-AAC 48 kHz stereo ~102 kbps.
+- Next: M4 task 3 – BBC now-playing provider.
+
 ## 2026-11-03 · M4 · BBC research
 - Verified from Kraków: station list (`rms /v2/networks`, 66 networks), stream discovery as BBC's web player does it (token → media selector v3 → `nonuk` HLS, 96k HE-AAC, plays in mpv), 5 Sports Extra refused (`403 geolocation`), now-playing (`segments/latest`) and programme (`broadcasts/latest`) without keys. Old `pool_904` URLs → 410.
 - Owner decision: use the web-player flow, refusals final, no patterns/spoofing (ADR-029).

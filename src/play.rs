@@ -10,7 +10,7 @@ use ttnr_core::{
     StreamDescriptor,
 };
 use ttnr_engine::{EngineConfig, EngineEvent, MpvPlayer, Player};
-use ttnr_sources::{ReqwestHttp, StationsSource, UrlSource};
+use ttnr_sources::{BbcSource, ReqwestHttp, StationsSource, UrlSource};
 
 use crate::{paths, stations};
 
@@ -204,6 +204,7 @@ pub fn setup() -> Result<(SourceRegistry, ResolveCtx)> {
     let mut registry = SourceRegistry::new();
     registry.register(Arc::new(UrlSource));
     registry.register(Arc::new(StationsSource::default()));
+    registry.register(Arc::new(BbcSource));
     Ok((registry, ctx))
 }
 

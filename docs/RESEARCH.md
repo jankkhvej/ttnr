@@ -182,7 +182,7 @@ anything older than ~3 months before relying on it.
 | Fact | Source | Status |
 |---|---|---|
 | `toml` 1.1.8 implements TOML spec 1.1.0 (crate version suffix `+spec-1.1.0`) | https://crates.io/crates/toml | VERIFIED 2026-11-02 |
-| BBC service ids `bbc_6music`, `bbc_radio_three` in `examples/stations.toml` come from community tools | planning notes | UNVERIFIED (M4) |
+| BBC service ids `bbc_6music`, `bbc_radio_three` in `examples/stations.toml` | `rms.api.bbc.co.uk/v2/networks` | VERIFIED 2026-11-03 |
 
 ### 2026-11-02 · In-stream metadata: ICY and HLS ID3
 

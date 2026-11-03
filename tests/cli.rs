@@ -217,7 +217,7 @@ fn play_by_station_id() {
         dir.path(),
         &format!(
             "[[station]]\nid='local'\nname='Local Silence'\nsource='url'\nurl='{}'\n\
-             [[station]]\nid='bbc_6music'\nname='BBC Radio 6 Music'\nsource='bbc'\n",
+             [[station]]\nid='dab_x'\nname='Some DAB Station'\nsource='dab'\n",
             wav.display()
         ),
     );
@@ -227,13 +227,10 @@ fn play_by_station_id() {
     assert!(stdout.starts_with("ttnr: Local Silence\n"), "{stdout}");
     assert!(stdout.contains("[end of stream]"), "{stdout}");
 
-    let out = ttnr(
-        dir.path(),
-        &["play", "bbc_6music", "--audio-output", "null"],
-    );
+    let out = ttnr(dir.path(), &["play", "dab_x", "--audio-output", "null"]);
     assert!(!out.status.success());
     assert!(
-        text(&out.stderr).contains("needs the `bbc` source"),
+        text(&out.stderr).contains("needs the `dab` source"),
         "{}",
         text(&out.stderr)
     );
@@ -241,7 +238,7 @@ fn play_by_station_id() {
     let out = ttnr(dir.path(), &["play", "nope", "--audio-output", "null"]);
     assert!(!out.status.success());
     assert!(
-        text(&out.stderr).contains("unknown station \"nope\"; known: local, bbc_6music"),
+        text(&out.stderr).contains("unknown station \"nope\"; known: local, dab_x"),
         "{}",
         text(&out.stderr)
     );
@@ -367,7 +364,7 @@ fn refresh_command() {
         dir.path(),
         &format!(
             "[[station]]\nid='loop'\nname='Loop FM'\nsource='url'\nurl='http://{addr}/list.pls'\n\
-             [[station]]\nid='bbc_6music'\nname='BBC Radio 6 Music'\nsource='bbc'\n"
+             [[station]]\nid='dab_x'\nname='Some DAB Station'\nsource='dab'\n"
         ),
     );
     let out = ttnr(dir.path(), &["refresh", "loop"]);
@@ -388,8 +385,7 @@ fn refresh_command() {
     assert!(!out.status.success());
     let stdout = text(&out.stdout);
     assert!(
-        stdout.contains("loop: http://")
-            && stdout.contains("bbc_6music: error: unknown source `bbc`"),
+        stdout.contains("loop: http://") && stdout.contains("dab_x: error: unknown source `dab`"),
         "{stdout}"
     );
     assert!(
