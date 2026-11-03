@@ -206,6 +206,7 @@ Amended 2026-11-03 (owner review): the Spectrum boot shows *static* garbage, the
 Context: owner wants a key to change the simulated speed for themes that imitate terminals.
 Decision: `AppState::baud` (core, like `theme_index`), `Command::CycleBaud` over `BAUD_STEPS` = 0, 9600, 1200, 300, 110 (start value from config `baud`); key `b` (`cycle_baud`, remappable). Themes opt in with `[chrome] serial = true`. Printout themes use `Printout`'s character queue (speed changes are printed as a line; 0 flushes the queue). Screen themes go through `SlowScreen`: the app renders as usual, then the frame shown is the previous one with changed cells copied in row-major order at baud/10 per second; ticks only while cells are pending; idle time is not banked; boot frames bypass it (and re-sync). The speed is shown next to the volume on serial themes.
 Rejected: emulating the exact escape-sequence byte stream (cursor addressing, attributes) – more faithful timing, much more code, no visible benefit.
-Consequences: at 9600 baud a full 80×24 redraw takes ~2 s, like a real VT100; resizes retype the screen.
+Consequences: at 9600 baud a full 80×24 change takes ~2 s, like a real VT100.
 Amended 2026-11-03 (owner): while cells are pending, a reverse-video block cursor marks the next cell to arrive (only in the frame shown, not in the received screen), so slow redraws don't look hung.
+Amended 2026-11-03 (owner): whole-screen redraws – first frame, terminal resize, speed switched on – are shown at once (pending cells dropped); only UI changes travel at the line speed. Retyping the whole screen after a resize was accurate but annoying.
 

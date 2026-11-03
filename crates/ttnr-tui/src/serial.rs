@@ -1,8 +1,9 @@
 //! Slow serial line for terminal-like themes (VT100): what the terminal
 //! shows lags behind what the app drew, and changed cells arrive one by
 //! one, row by row, at the line speed – like a real terminal receiving a
-//! screen update at 9600 or 300 baud. (Cursor-positioning bytes are not
-//! counted: a simplification.)
+//! screen update at 9600 or 300 baud. Whole-screen redraws (first frame,
+//! resize, speed switched on) appear at once; only UI changes are slowed.
+//! (Cursor-positioning bytes are not counted: a simplification.)
 
 use std::time::{Duration, Instant};
 
@@ -20,9 +21,6 @@ pub struct SlowScreen {
     last: Option<Instant>,
     budget: Duration,
     pending: bool,
-    /// The last frame was shown instantly (speed off): when a speed is
-    /// switched on, continue from that screen instead of a blank one.
-    shown_instantly: bool,
 }
 
 impl SlowScreen {
@@ -51,7 +49,6 @@ impl SlowScreen {
     /// Show `target` at once (and remember it as received).
     pub fn sync(&mut self, target: &Buffer) {
         self.shown = (self.cps > 0).then(|| target.clone());
-        self.shown_instantly = self.cps == 0;
         self.pending = false;
         self.last = None;
     }
@@ -60,26 +57,21 @@ impl SlowScreen {
     /// `None` = the frame itself (no speed set).
     pub fn present(&mut self, target: &Buffer, now: Instant) -> Option<Buffer> {
         if self.cps == 0 {
-            self.shown_instantly = true;
             return None;
         }
         let shown = match &mut self.shown {
             Some(b) if b.area == target.area => b,
             _ => {
-                // Speed switched on mid-session: continue from the screen
-                // as shown. Otherwise (start, resize) the screen starts
-                // blank and is typed out.
+                // Whole-screen redraws (first frame, resize, speed switched
+                // on) appear at once; only later UI changes travel at the
+                // line speed (owner: retyping the screen is annoying).
                 self.budget = Duration::ZERO;
                 self.last = None;
-                let start = if self.shown_instantly && self.shown.is_none() {
-                    target.clone()
-                } else {
-                    Buffer::empty(target.area)
-                };
-                self.shown.insert(start)
+                self.pending = false;
+                self.shown = Some(target.clone());
+                return self.shown.clone();
             }
         };
-        self.shown_instantly = false;
         // Time only counts while characters are on their way.
         let elapsed = match (self.pending, self.last) {
             (true, Some(last)) => now.saturating_duration_since(last),
@@ -118,7 +110,6 @@ impl SlowScreen {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use ratatui::layout::Rect;
 
     fn buffer(lines: &[&str]) -> Buffer {
         Buffer::with_lines(lines.iter().copied())
@@ -129,22 +120,26 @@ mod tests {
         let t0 = Instant::now();
         let mut s = SlowScreen::default();
         s.set_baud(300); // 30 characters per second
-        let target = buffer(&["abc", "def"]);
-        // First frame: nothing yet, characters on their way.
-        let mut shown = s.present(&target, t0).unwrap();
-        assert!(
-            shown[(0, 0)].modifier.contains(Modifier::REVERSED),
-            "cursor at the start"
+        let first = buffer(&["...", "..."]);
+        assert_eq!(
+            s.present(&first, t0),
+            Some(first.clone()),
+            "first frame at once"
         );
+        assert_eq!(s.tick(), None);
+        let target = buffer(&["abc", "def"]);
+        // The change starts arriving: nothing yet, cursor on the first cell.
+        let mut shown = s.present(&target, t0).unwrap();
+        assert!(shown[(0, 0)].modifier.contains(Modifier::REVERSED));
         shown[(0, 0)].modifier.remove(Modifier::REVERSED);
-        assert_eq!(shown, Buffer::empty(Rect::new(0, 0, 3, 2)));
+        assert_eq!(shown, first);
         assert_eq!(s.tick(), Some(Duration::from_secs(1) / 30));
         let step = Duration::from_secs(1) / 30;
         let mut shown = s.present(&target, t0 + step * 4).unwrap();
         // Cursor on the next cell to arrive ("e").
         assert!(shown[(1, 1)].modifier.contains(Modifier::REVERSED));
         shown[(1, 1)].modifier.remove(Modifier::REVERSED);
-        assert_eq!(shown, buffer(&["abc", "d  "]));
+        assert_eq!(shown, buffer(&["abc", "d.."]));
         let shown = s.present(&target, t0 + step * 6).unwrap();
         assert_eq!(shown, target);
         assert_eq!(s.tick(), None);
@@ -160,6 +155,19 @@ mod tests {
             Some(next),
             "done: no cursor"
         );
+    }
+
+    #[test]
+    fn resize_redraws_at_once() {
+        let t0 = Instant::now();
+        let mut s = SlowScreen::default();
+        s.set_baud(110);
+        s.present(&buffer(&["ab", "cd"]), t0);
+        s.present(&buffer(&["xy", "zw"]), t0); // in flight
+        assert!(s.tick().is_some());
+        let resized = buffer(&["abc", "def", "ghi"]);
+        assert_eq!(s.present(&resized, t0), Some(resized.clone()));
+        assert_eq!(s.tick(), None, "nothing pending after a resize");
     }
 
     #[test]

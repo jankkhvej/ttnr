@@ -2,6 +2,9 @@
 
 Newest entry on top. Each entry: date · milestone/task · what changed · how to try it · next step · open questions for the owner.
 
+## 2026-11-03 · M5 · Slow line: no retyping on resize (owner)
+- With a line speed set, resizing the window (and the first frame) no longer retypes the whole screen; the new layout appears at once and only later UI changes arrive slowly. Test `resize_redraws_at_once`.
+
 ## 2026-11-03 · M5 · `pdp11-bsd` theme (owner)
 - New built-in `pdp11-bsd`: 2.11BSD on a VT100 console – lower case, decimal, ASCII borders, getty banner, `% ttnr play ` URL prompt, `ttnr: …` errors, VT100 self-test + 2.11BSD boot transcript, speed key. Facts from the 2.11BSD source tree and emulator logs (RESEARCH.md).
 - Engine: `[effects] boot_text` (VT100 boot lines per theme; RSX lines moved into the `pdp11-vt100*` files; long transcripts speed up and scroll).

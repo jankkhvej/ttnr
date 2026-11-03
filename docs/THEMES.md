@@ -77,9 +77,8 @@ Added in M5 (all optional; `plain.toml` lists the defaults):
   be queued); screen themes receive their changed cells one by one, row by
   row (10 bits per character; cursor-addressing bytes not counted), with a
 block cursor on the next cell to arrive while the update is in progress. Boot
-  sequences run at their own pace; switching a speed on keeps the current
-  screen, only later changes arrive slowly; at start the screen is typed
-  out from blank.
+  sequences run at their own pace; whole-screen redraws (start, resize,
+  switching a speed on) appear at once – only UI changes arrive slowly.
 
 Real DECDHL double height is not used: ratatui cannot emit the line
 attribute escapes, so double height is emulated by two rows.
