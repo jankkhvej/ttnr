@@ -75,7 +75,8 @@ Added in M5 (all optional; `plain.toml` lists the defaults):
   `baud`), shown as `9600 BAUD` next to the volume. Printout themes print at
   that speed (old queued lines are printed at once when more than ~4 s would
   be queued); screen themes receive their changed cells one by one, row by
-  row (10 bits per character; cursor-addressing bytes not counted). Boot
+  row (10 bits per character; cursor-addressing bytes not counted), with a
+block cursor on the next cell to arrive while the update is in progress. Boot
   sequences run at their own pace; switching a speed on keeps the current
   screen, only later changes arrive slowly; at start the screen is typed
   out from blank.

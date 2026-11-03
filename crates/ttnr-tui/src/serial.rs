@@ -7,6 +7,7 @@
 use std::time::{Duration, Instant};
 
 use ratatui::buffer::Buffer;
+use ratatui::style::Modifier;
 
 /// Shortest interval between frames while characters are arriving.
 const MIN_TICK: Duration = Duration::from_millis(20);
@@ -87,8 +88,8 @@ impl SlowScreen {
         self.last = Some(now);
         let per_char = Duration::from_secs(1) / self.cps;
         self.budget += elapsed;
-        let mut pending = false;
-        for (have, want) in shown.content.iter_mut().zip(&target.content) {
+        let mut next = None;
+        for (i, (have, want)) in shown.content.iter_mut().zip(&target.content).enumerate() {
             if have == want {
                 continue;
             }
@@ -96,15 +97,21 @@ impl SlowScreen {
                 self.budget -= per_char;
                 *have = want.clone();
             } else {
-                pending = true;
+                next = Some(i);
                 break;
             }
         }
-        if !pending {
+        if next.is_none() {
             self.budget = Duration::ZERO;
         }
-        self.pending = pending;
-        Some(shown.clone())
+        self.pending = next.is_some();
+        let mut out = shown.clone();
+        // While characters are arriving, a block cursor sits where the
+        // next one will be written – the screen visibly isn't hung.
+        if let Some(cell) = next.and_then(|i| out.content.get_mut(i)) {
+            cell.modifier.toggle(Modifier::REVERSED);
+        }
+        Some(out)
     }
 }
 
@@ -124,11 +131,19 @@ mod tests {
         s.set_baud(300); // 30 characters per second
         let target = buffer(&["abc", "def"]);
         // First frame: nothing yet, characters on their way.
-        let shown = s.present(&target, t0).unwrap();
+        let mut shown = s.present(&target, t0).unwrap();
+        assert!(
+            shown[(0, 0)].modifier.contains(Modifier::REVERSED),
+            "cursor at the start"
+        );
+        shown[(0, 0)].modifier.remove(Modifier::REVERSED);
         assert_eq!(shown, Buffer::empty(Rect::new(0, 0, 3, 2)));
         assert_eq!(s.tick(), Some(Duration::from_secs(1) / 30));
         let step = Duration::from_secs(1) / 30;
-        let shown = s.present(&target, t0 + step * 4).unwrap();
+        let mut shown = s.present(&target, t0 + step * 4).unwrap();
+        // Cursor on the next cell to arrive ("e").
+        assert!(shown[(1, 1)].modifier.contains(Modifier::REVERSED));
+        shown[(1, 1)].modifier.remove(Modifier::REVERSED);
         assert_eq!(shown, buffer(&["abc", "d  "]));
         let shown = s.present(&target, t0 + step * 6).unwrap();
         assert_eq!(shown, target);
@@ -136,8 +151,15 @@ mod tests {
         // Only changed cells cost time; idle time is not banked.
         let next = buffer(&["abX", "def"]);
         let later = t0 + Duration::from_secs(60);
-        assert_eq!(s.present(&next, later), Some(target));
-        assert_eq!(s.present(&next, later + step), Some(next));
+        let mut shown = s.present(&next, later).unwrap();
+        assert!(shown[(2, 0)].modifier.contains(Modifier::REVERSED));
+        shown[(2, 0)].modifier.remove(Modifier::REVERSED);
+        assert_eq!(shown, target);
+        assert_eq!(
+            s.present(&next, later + step),
+            Some(next),
+            "done: no cursor"
+        );
     }
 
     #[test]
