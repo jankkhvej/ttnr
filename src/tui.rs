@@ -49,6 +49,11 @@ pub async fn run(
         })?,
     };
     let depth = config.color.depth();
+    tracing::info!(
+        terminal = std::env::var("TERM_PROGRAM").as_deref().unwrap_or("?"),
+        term = std::env::var("TERM").as_deref().unwrap_or("?"),
+        "terminal"
+    );
     tracing::info!(?depth, themes = ?themes.names(), "themes");
     let (stations, load_error) = match stations::load() {
         Ok(list) => (list.stations().to_vec(), None),
