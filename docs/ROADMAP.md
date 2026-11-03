@@ -70,4 +70,4 @@ Work top to bottom. Tick `[x]` when a task meets its acceptance criteria and
 ## M9 — Optional diagnostics indicators (owner request 2026-11-03; after M8)
 - [x] Optional, individually toggled indicators (all off by default, config + key): network activity, stream download rate (mpv cache/demuxer stats), metadata API requests (last poll, errors/backoff), a note when now-playing may be out of sync (e.g. BBC listing lag).
 - [x] No extra redraws when disabled; when enabled, refresh at most ~1 Hz and only on change.
-**Acceptance:** with indicators off the UI is unchanged (snapshots identical); each indicator can be enabled alone.
+**Acceptance:** with indicators off the UI is unchanged (snapshots identical); each indicator can be enabled alone. (Accepted 2026-11-04.)

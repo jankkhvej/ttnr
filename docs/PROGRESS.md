@@ -2,6 +2,10 @@
 
 Newest entry on top. Each entry: date · milestone/task · what changed · how to try it · next step · open questions for the owner.
 
+## 2026-11-04 · M9 complete – roadmap M0–M9 done
+- Owner: `i` works. All milestones accepted.
+- Open (owner decisions, nothing scheduled): public repository / release archive, project page on hcc07.org (formula homepage), publishing the Homebrew formula (tap + `brew audit`), binary-distribution duties (GPL-3.0 text, source offer, objc2 licence texts); Teletype "everything on paper" proposal (THEMES.md); drop the local libmpv build once Homebrew ships mpv ≥ 0.42.
+
 ## 2026-11-04 · M9 · Diagnostics indicators – **M9 complete, waiting for owner review**
 - `[diagnostics]` network / download / metadata / sync_note, `i` toggles (none configured = all); engine `Transfer` from `cache-speed` / `demuxer-cache-duration`; `ObservedHttp` records the last request; hidden = no state change (ADR-046).
 - Tests: translator rounding, ObservedHttp, core (hidden ignores data, toggle, config subset), each indicator alone, snapshots (only help changed with diagnostics off; new `main_diagnostics` case). Live (muted, local paced stream): `diag: … 16 kB/s buf 4 s · 127.0.0.1:18768 3 s ago ok`.
