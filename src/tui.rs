@@ -147,7 +147,6 @@ pub async fn run(
     let ui_options = UiOptions {
         effects: config.effects_enabled(),
         depth,
-        baud: config.baud.unwrap_or(0),
     };
     let ui = tokio::spawn(ui_loop(
         state_rx,
@@ -254,8 +253,6 @@ struct UiOptions {
     effects: bool,
     /// Colour depth (animations use fixed machine colours).
     depth: ttnr_themes::ColorDepth,
-    /// Simulated line speed for printout themes (0 = instant).
-    baud: u32,
 }
 
 async fn ui_loop(
@@ -269,7 +266,10 @@ async fn ui_loop(
     let result = async {
         let mut events = EventStream::new();
         let mut dirty = true;
-        let mut printout = ttnr_tui::Printout::with_baud(&themes[0], options.baud);
+        // Paper for printout themes; a fresh sheet with the theme's banner
+        // whenever such a theme becomes active (also at start).
+        let mut printout = ttnr_tui::Printout::default();
+        let mut paper_theme: Option<String> = None;
         let mut fx = ttnr_tui::Fx::new(options.effects, options.depth);
         let mut last_tick = Instant::now();
         let mut slow = ttnr_tui::SlowScreen::default();
@@ -287,7 +287,13 @@ async fn ui_loop(
                 // clear-on-resize. Terminals without it ignore the sequence.
                 crossterm::execute!(std::io::stdout(), BeginSynchronizedUpdate)?;
                 if theme.chrome.printout {
+                    if paper_theme.as_deref() != Some(theme.name.as_str()) {
+                        printout = ttnr_tui::Printout::with_baud(theme, state.baud);
+                        paper_theme = Some(theme.name.clone());
+                    }
                     printout.observe(&state, theme);
+                } else {
+                    paper_theme = None;
                 }
                 let fx_frame = fx.frame(now);
                 // Serial terminal themes (not printout ones, which print at

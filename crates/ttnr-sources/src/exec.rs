@@ -242,6 +242,17 @@ impl MetadataProvider for ExecNowPlaying {
         let Some(stdout) = child.stdout.take() else {
             return Ok(());
         };
+        // Drain stderr into the log: an unread pipe fills up (~64 KiB) and
+        // blocks a chatty script, silently stopping its updates.
+        if let Some(stderr) = child.stderr.take() {
+            let id = self.source.id;
+            tokio::spawn(async move {
+                let mut lines = BufReader::new(stderr).lines();
+                while let Ok(Some(line)) = lines.next_line().await {
+                    tracing::debug!(source = id, line, "exec now stderr");
+                }
+            });
+        }
         let mut lines = BufReader::new(stdout).lines();
         loop {
             tokio::select! {

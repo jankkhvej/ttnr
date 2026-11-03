@@ -176,3 +176,22 @@ async fn a_station_known_by_uuid_only_uses_the_click_url() {
         .unwrap_err();
     assert!(err.to_string().contains("no stream URL"), "{err}");
 }
+
+#[tokio::test]
+async fn the_fresh_click_url_wins_over_a_stale_search_result() {
+    let mut st = stations_from_search(&fixture("search_groove_salad.json")).unwrap()[0].clone();
+    st.params.insert(
+        "url_resolved".into(),
+        "https://ice1.somafm.com/moved-away".into(),
+    );
+    let d = RadioBrowserSource
+        .discover(&st, &ctx(FakeRb::new(true)))
+        .await
+        .unwrap()
+        .unwrap();
+    assert_eq!(
+        d.urls,
+        ["https://ice2.somafm.com/groovesalad-128-mp3"],
+        "from /json/url"
+    );
+}

@@ -133,3 +133,18 @@ async fn now_playing_lines_until_the_station_changes() {
         .unwrap()
         .unwrap();
 }
+
+#[tokio::test]
+async fn a_chatty_now_script_is_not_blocked_by_its_stderr() {
+    let s = source("chatty_now.sh");
+    let provider = s.metadata(&st("x"), &ctx()).unwrap();
+    let (tx, mut rx) = tokio::sync::mpsc::channel(8);
+    let task = tokio::spawn(provider.run(tx));
+    let np = tokio::time::timeout(std::time::Duration::from_secs(10), rx.recv())
+        .await
+        .expect("title arrives despite ~120 KiB on stderr")
+        .unwrap();
+    assert_eq!(np.title.as_deref(), Some("After the noise"));
+    drop(rx);
+    let _ = tokio::time::timeout(std::time::Duration::from_secs(5), task).await;
+}

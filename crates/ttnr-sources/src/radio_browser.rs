@@ -199,7 +199,10 @@ impl Source for RadioBrowserSource {
                 None
             }
         };
-        let Some(url) = st.params.get("url_resolved").cloned().or(clicked) else {
+        // The click answer is the directory's current URL (a forced refresh
+        // after a 403/404 must not replay a stale search result); the
+        // search's resolved URL is the fallback when the click fails.
+        let Some(url) = clicked.or_else(|| st.params.get("url_resolved").cloned()) else {
             return Err(SourceError::Other(format!(
                 "radio-browser has no stream URL for station {uuid}"
             )));
