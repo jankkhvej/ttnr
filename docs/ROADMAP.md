@@ -56,7 +56,7 @@ Work top to bottom. Tick `[x]` when a task meets its acceptance criteria and
 **Acceptance:** AirPods connect/disconnect while playing → audio follows; media keys work; laptop sleep → resumes. (Accepted 2026-11-03.)
 
 ## M7 — Extensibility
-- [ ] `radio-browser` source (search/browse the open directory).
+- [x] `radio-browser` source (search/browse the open directory).
 - [ ] `exec` source: external command protocol (JSON over stdout) + one example script; documented in `docs/SOURCES.md`.
 - [ ] `ttnr now --json`; control socket (JSON lines) with status/commands.
 **Acceptance:** a new source added as a 30-line script, no recompilation.

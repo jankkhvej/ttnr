@@ -10,7 +10,7 @@ use ttnr_core::{
     StreamDescriptor,
 };
 use ttnr_engine::{EngineConfig, EngineEvent, MpvPlayer, Player};
-use ttnr_sources::{BbcSource, ReqwestHttp, StationsSource, UrlSource};
+use ttnr_sources::{BbcSource, RadioBrowserSource, ReqwestHttp, StationsSource, UrlSource};
 
 use crate::{config, paths, stations};
 
@@ -218,6 +218,9 @@ pub async fn run(
 
 /// A URL or path plays as is; anything else must be a station id.
 fn station_for(target: &str) -> Result<Station> {
+    if let Some(uuid) = target.strip_prefix("radio-browser:") {
+        return Ok(RadioBrowserSource::station(uuid, None));
+    }
     if looks_like_url_or_path(target) {
         return Ok(UrlSource::station(target));
     }
@@ -286,6 +289,7 @@ pub fn setup() -> Result<(SourceRegistry, ResolveCtx)> {
     registry.register(Arc::new(UrlSource));
     registry.register(Arc::new(StationsSource::default()));
     registry.register(Arc::new(BbcSource));
+    registry.register(Arc::new(RadioBrowserSource));
     Ok((registry, ctx))
 }
 
@@ -340,6 +344,55 @@ fn describe(event: &EngineEvent) -> Option<String> {
         | EngineEvent::Error { .. }
         | EngineEvent::Shutdown => return None,
     })
+}
+
+/// `ttnr search <query>`: search radio-browser.info and print the stations
+/// with a ready-to-paste `stations.toml` entry for each.
+pub async fn search(query: &str, limit: usize) -> Result<()> {
+    let (registry, ctx) = setup()?;
+    let source = registry
+        .get(ttnr_sources::radio_browser::ID)
+        .context("radio-browser source missing")?;
+    let q = ttnr_core::ListQuery {
+        search: Some(query.to_owned()),
+        limit: Some(limit),
+    };
+    let list = source
+        .list(&q, &ctx)
+        .await
+        .context("radio-browser search failed")?;
+    if list.is_empty() {
+        println!("no stations found for {query:?}");
+        return Ok(());
+    }
+    for st in &list {
+        let detail = st.params.get("detail").map(String::as_str).unwrap_or("");
+        println!("{}  {}  [{detail}]", st.id, st.name);
+    }
+    println!();
+    println!("play: ttnr play radio-browser:<uuid>   ·   or add to stations.toml:");
+    if let Some(st) = list.first() {
+        println!(
+            "[[station]]\nid     = \"{}\"\nname   = {:?}\nsource = \"radio-browser\"\nparams = {{ uuid = \"{}\" }}",
+            slug(&st.name),
+            st.name,
+            st.id
+        );
+    }
+    Ok(())
+}
+
+/// A short id from a station name ("SomaFM Groove Salad" → "somafm-groove-salad").
+fn slug(name: &str) -> String {
+    let mut out = String::new();
+    for c in name.chars() {
+        if c.is_ascii_alphanumeric() {
+            out.push(c.to_ascii_lowercase());
+        } else if !out.ends_with('-') && !out.is_empty() {
+            out.push('-');
+        }
+    }
+    out.trim_end_matches('-').to_owned()
 }
 
 #[cfg(test)]

@@ -97,6 +97,22 @@ fn playing() -> AppState {
     }
 }
 
+fn search_results() -> Vec<Station> {
+    [
+        ("SomaFM Groove Salad (128k MP3)", "MP3 128k US"),
+        ("SomaFM Groove Salad (128k AAC)", "AAC 128k US"),
+        ("Soma FM Groove Salad 320K AAC HLS", "MP4 320k HLS US"),
+    ]
+    .into_iter()
+    .enumerate()
+    .map(|(i, (name, detail))| {
+        let mut st = station(&format!("rb{i}"), name, "radio-browser");
+        st.params.insert("detail".into(), detail.into());
+        st
+    })
+    .collect()
+}
+
 fn buffering() -> AppState {
     AppState {
         status: Status::Reconnecting("HTTP 404 Not Found; next stream".into()),
@@ -139,6 +155,24 @@ fn cases() -> Vec<(&'static str, AppState)> {
                 },
             ),
         ),
+        (
+            "search",
+            with(
+                playing(),
+                View::Search {
+                    input: "groove salad".into(),
+                },
+            ),
+        ),
+        ("results", {
+            let mut s = with(playing(), View::Results { selected: 1 });
+            s.search = ttnr_core::app::SearchState {
+                query: "groove salad".into(),
+                results: search_results(),
+                note: None,
+            };
+            s
+        }),
         ("help", with(playing(), View::Help)),
         ("devices", with(playing(), View::Devices { selected: 0 })),
     ]

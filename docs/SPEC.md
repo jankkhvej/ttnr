@@ -73,7 +73,8 @@ track and programme information — which the BBC streams themselves do not carr
 - F5.3 Keys (defaults, remappable): `space` play/pause, `+`/`-` volume,
   `m` mute, `n`/`p` next/prev station, `s` station list, `o` open URL,
   `d` output device, `t` cycle theme, `?` help, `q` quit; added later:
-  `]`/`[` sync offset, `b` line speed of terminal themes.
+  `]`/`[` sync offset, `b` line speed of terminal themes, `/` search the
+  radio-browser directory.
 - F5.4 Works from 32×16 up to any size; adapts layout; no flicker.
 
 ### F6 Themes (text-only, as faithful as possible)

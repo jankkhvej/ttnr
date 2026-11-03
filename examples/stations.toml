@@ -34,3 +34,11 @@ source = "bbc"
 id     = "bbc_radio_three"
 name   = "BBC Radio 3"
 source = "bbc"
+
+# radio-browser.info directory stations: find them with `/` in the TUI or
+# `ttnr search <text>`, which prints a ready entry like this one.
+[[station]]
+id     = "somafm-groove-salad-128k-aac"
+name   = "SomaFM Groove Salad (128k AAC)"
+source = "radio-browser"
+params = { uuid = "962aa032-0601-11e8-ae97-52543be04c81" }

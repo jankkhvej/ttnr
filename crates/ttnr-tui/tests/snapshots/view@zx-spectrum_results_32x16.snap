@@ -1,0 +1,19 @@
+---
+source: crates/ttnr-tui/tests/snapshots.rs
+---
+" BBC Radio 6 Music              "
+"                                "
+"Lauren Laverne                  "
+"                                "
+"The Strokes - Someday           "
+"   SomaFM Groove Salad (128k ..."
+">  SomaFM Groove Salad (128k ..."
+"   Soma FM Groove Salad 320K ..."
+"                                "
+"                                "
+"                                "
+"recent                          "
+"  Wet Leg - Chaise Longue       "
+"  Khruangbin - Time (You and I) "
+"  Fontaines D.C. - Starburster  "
+"spc play  ? help  q quit        "

@@ -9,6 +9,7 @@ source: crates/ttnr-tui/tests/snapshots.rs
 "p    PREVIOUS STATION           "
 "s    STATION LIST               "
 "o    OPEN URL                   "
+"/    SEARCH RADIO-BROWSER       "
 "d    OUTPUT DEVICE              "
 "t    NEXT THEME                 "
 "?    HELP                       "
@@ -16,4 +17,3 @@ source: crates/ttnr-tui/tests/snapshots.rs
 "]    TRACK INFO LATER (+1 S)    "
 "[    TRACK INFO EARLIER (-1 S)  "
 "b    LINE SPEED (TERMINAL THE..."
-"                                "

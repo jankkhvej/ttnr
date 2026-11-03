@@ -36,6 +36,14 @@ enum Command {
         /// Station id or URL; all stations if omitted.
         target: Option<String>,
     },
+    /// Search the radio-browser.info directory.
+    Search {
+        /// Text to look for in station names.
+        query: String,
+        /// Maximum number of results.
+        #[arg(long, default_value_t = 20)]
+        limit: usize,
+    },
     /// List the stations from stations.toml.
     Stations {
         /// Only stations whose id or name contains this text.
@@ -47,7 +55,8 @@ enum Command {
 #[derive(Debug, Args)]
 struct PlayArgs {
     /// Stream or playlist URL (Icecast/Shoutcast, HLS, .pls, .m3u, .xspf,
-    /// .asx), a local file, or a station id from stations.toml.
+    /// .asx), a local file, a station id from stations.toml, or
+    /// `radio-browser:<uuid>` (see `ttnr search`).
     target: String,
     /// App volume in percent (0–100), independent of the system volume.
     #[arg(long, default_value_t = 100.0, value_parser = parse_volume)]
@@ -125,6 +134,7 @@ fn run_app(cli: Cli, media: Option<ttnr_platform::MediaLink>) -> Result<()> {
             runtime.block_on(play::run(&args.target, &cfg, media))
         }
         Some(Command::Refresh { target }) => runtime.block_on(play::refresh(target.as_deref())),
+        Some(Command::Search { query, limit }) => runtime.block_on(play::search(&query, limit)),
         Some(Command::Stations { search }) => stations::print(search),
     }
 }

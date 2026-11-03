@@ -90,6 +90,8 @@ pub fn draw_with(
         View::Main => {}
         View::Stations { selected } => stations(frame, inner, state, *selected, theme),
         View::OpenUrl { input } => open_url(frame, inner, input, theme),
+        View::Search { input } => prompt_popup(frame, inner, "search radio-browser", input, theme),
+        View::Results { selected } => results(frame, inner, state, *selected, theme),
         View::Help => help_overlay(frame, inner, theme, keymap),
         View::Devices { selected } => devices(frame, inner, state, *selected, theme),
     }
@@ -487,6 +489,39 @@ fn stations(frame: &mut Frame, area: Rect, state: &AppState, selected: usize, th
     }
 }
 
+/// Directory search results: name and directory details per row; a note
+/// while searching or when nothing / an error came back.
+fn results(frame: &mut Frame, area: Rect, state: &AppState, selected: usize, theme: &Theme) {
+    let search = &state.search;
+    let current = state.station.as_ref().map(ttnr_core::Station::key);
+    let rows: Vec<(bool, String)> = search
+        .results
+        .iter()
+        .map(|s| {
+            let text = match s.params.get("detail") {
+                Some(d) => format!("{}{}{d}", s.name, theme.glyphs.separator),
+                None => s.name.clone(),
+            };
+            (Some(s.key()) == current, text)
+        })
+        .collect();
+    let h = u16::try_from(rows.len())
+        .unwrap_or(u16::MAX)
+        .saturating_add(2)
+        .max(3);
+    let title = format!("radio-browser: {}", search.query);
+    let inner = popup(frame, area, 64, h, &title, theme);
+    if rows.is_empty() {
+        let msg = search.note.as_deref().unwrap_or("no stations found");
+        frame.render_widget(
+            Paragraph::new(theme.fit(msg, usize::from(inner.width))).style(dim(theme)),
+            inner,
+        );
+    } else {
+        list(frame, inner, &rows, selected, theme);
+    }
+}
+
 fn devices(frame: &mut Frame, area: Rect, state: &AppState, selected: usize, theme: &Theme) {
     let mut rows = vec![(state.device.is_none(), "system default".to_owned())];
     rows.extend(state.devices.iter().map(|d| {
@@ -503,7 +538,12 @@ fn devices(frame: &mut Frame, area: Rect, state: &AppState, selected: usize, the
 }
 
 fn open_url(frame: &mut Frame, area: Rect, input: &str, theme: &Theme) {
-    let inner = popup(frame, area, 64, 3, "open URL", theme);
+    prompt_popup(frame, area, "open URL", input, theme);
+}
+
+/// A one-line text prompt in a popup (open URL, search).
+fn prompt_popup(frame: &mut Frame, area: Rect, title: &str, input: &str, theme: &Theme) {
+    let inner = popup(frame, area, 64, 3, title, theme);
     let w = usize::from(inner.width);
     let prompt = theme.chrome.prompt.as_deref().unwrap_or("> ");
     // The input is shown verbatim, not through the theme's text rules: an

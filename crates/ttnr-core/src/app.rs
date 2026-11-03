@@ -68,6 +68,16 @@ pub enum View {
         /// Input text.
         input: String,
     },
+    /// Directory search prompt with the text typed so far.
+    Search {
+        /// Input text.
+        input: String,
+    },
+    /// Directory search results with the highlighted row.
+    Results {
+        /// Highlighted index.
+        selected: usize,
+    },
     /// Key help overlay.
     Help,
     /// Output device picker; index 0 = "system default".
@@ -75,6 +85,17 @@ pub enum View {
         /// Highlighted index.
         selected: usize,
     },
+}
+
+/// The last directory search (radio-browser).
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
+pub struct SearchState {
+    /// What was searched for.
+    pub query: String,
+    /// Stations found.
+    pub results: Vec<Station>,
+    /// "searching…", "no stations found", or an error.
+    pub note: Option<String>,
 }
 
 /// Everything the UI shows. Plain data: compared to decide redraws.
@@ -106,6 +127,9 @@ pub struct AppState {
     pub devices: Vec<Device>,
     /// Stations for the list and next/previous.
     pub stations: Vec<Station>,
+    /// Last directory search: query, results, and a note while searching
+    /// or when nothing / an error came back.
+    pub search: SearchState,
     /// Current screen.
     pub view: View,
     /// Theme selection, an index into the UI's theme list (wraps around).
@@ -187,6 +211,8 @@ pub enum Command {
     OpenStations,
     /// Show the open-URL prompt.
     OpenUrl,
+    /// Show the directory search prompt.
+    OpenSearch,
     /// Show the device picker.
     OpenDevices,
     /// Toggle the help overlay.
@@ -259,6 +285,13 @@ pub enum Msg {
     },
     /// The computer woke from sleep: reconnect a live stream at once.
     Woke,
+    /// A directory search finished.
+    SearchResults {
+        /// The query it answers.
+        query: String,
+        /// Stations or an error message.
+        result: Result<Vec<Station>, String>,
+    },
     /// A user command.
     Command(Command),
 }
@@ -287,6 +320,8 @@ pub enum Effect {
     SetDevice(Option<String>),
     /// Start the station's metadata provider (stop any previous one).
     StartMetadata(Station),
+    /// Search the station directory for this text.
+    Search(String),
     /// Deliver `msg` back to [`App::update`] after `after`.
     Delay {
         /// How long to wait.
@@ -395,6 +430,23 @@ impl App {
                     return vec![];
                 }
                 self.reconnect_now("reconnecting")
+            }
+            Msg::SearchResults { query, result } => {
+                if query != self.state.search.query {
+                    return vec![]; // an older search
+                }
+                let search = &mut self.state.search;
+                match result {
+                    Ok(list) => {
+                        search.note = list.is_empty().then(|| "no stations found".to_owned());
+                        search.results = list;
+                    }
+                    Err(e) => {
+                        search.results.clear();
+                        search.note = Some(e);
+                    }
+                }
+                vec![]
             }
             Msg::Woke => {
                 let live = matches!(
@@ -661,7 +713,46 @@ impl App {
                 }
                 return self.play(Station::from_url(&url));
             }
-            (View::Stations { selected } | View::Devices { selected }, Command::Up) => {
+            (View::Search { input }, Command::Input(c)) => {
+                input.push(*c);
+                return vec![];
+            }
+            (View::Search { input }, Command::Backspace) => {
+                input.pop();
+                return vec![];
+            }
+            (View::Search { input }, Command::Select) => {
+                let query = input.trim().to_owned();
+                if query.is_empty() {
+                    self.state.view = View::Main;
+                    return vec![];
+                }
+                self.state.search = SearchState {
+                    query: query.clone(),
+                    results: Vec::new(),
+                    note: Some("searching…".to_owned()),
+                };
+                self.state.view = View::Results { selected: 0 };
+                return vec![Effect::Search(query)];
+            }
+            (View::Results { selected }, Command::Down) => {
+                let max = self.state.search.results.len().saturating_sub(1);
+                *selected = (*selected + 1).min(max);
+                return vec![];
+            }
+            (View::Results { selected }, Command::Select) => {
+                let st = self.state.search.results.get(*selected).cloned();
+                return match st {
+                    Some(st) => self.play(st),
+                    None => vec![],
+                };
+            }
+            (
+                View::Stations { selected }
+                | View::Devices { selected }
+                | View::Results { selected },
+                Command::Up,
+            ) => {
                 *selected = selected.saturating_sub(1);
                 return vec![];
             }
@@ -697,7 +788,7 @@ impl App {
                 self.state.view = View::Main;
                 return vec![];
             }
-            (View::OpenUrl { .. }, _) => return vec![], // other keys are text
+            (View::OpenUrl { .. } | View::Search { .. }, _) => return vec![], // other keys are text
             _ => {}
         }
         match cmd {
@@ -747,6 +838,12 @@ impl App {
                     .and_then(|s| self.state.stations.iter().position(|x| x.key() == s.key()))
                     .unwrap_or(0);
                 self.state.view = View::Stations { selected };
+                vec![]
+            }
+            Command::OpenSearch => {
+                self.state.view = View::Search {
+                    input: self.state.search.query.clone(),
+                };
                 vec![]
             }
             Command::OpenUrl => {

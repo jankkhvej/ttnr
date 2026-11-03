@@ -1,0 +1,19 @@
+---
+source: crates/ttnr-tui/tests/snapshots.rs
+---
+"┌ TTNR ────────────────────────┐"
+"│RSX-11M V4.6 BL56   TTNR V0.1 │"
+"│                              │"
+"│BBC RADIO 6 MUSIC             │"
+"│LAUREN LAVERNE                │"
+"│┌ RADIO-BROWSER: GROOVE... ──┐│"
+"││   SOMAFM GROOVE SALAD (1...││"
+"││>  SOMAFM GROOVE SALAD (1...││"
+"││   SOMA FM GROOVE SALAD 3...││"
+"│└────────────────────────────┘│"
+"│◆ PLAYING                     │"
+"│VOL 120  MAJOR IV             │"
+"│RECENT                        │"
+"│  WET LEG - CHAISE LONGUE     │"
+"│SPC PLAY  ? HELP  Q QUIT      │"
+"└──────────────────────────────┘"

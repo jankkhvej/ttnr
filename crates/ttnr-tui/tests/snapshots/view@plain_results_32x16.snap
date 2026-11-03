@@ -1,0 +1,19 @@
+---
+source: crates/ttnr-tui/tests/snapshots.rs
+---
+"┌ ttnr ────────────────────────┐"
+"│BBC Radio 6 Music             │"
+"│Lauren Laverne                │"
+"│                              │"
+"│The Strokes – Someday         │"
+"│┌ radio-browser: groove s… ──┐│"
+"││   SomaFM Groove Salad (128…││"
+"││›  SomaFM Groove Salad (128…││"
+"││   Soma FM Groove Salad 320…││"
+"│└────────────────────────────┘│"
+"│                              │"
+"│recent                        │"
+"│  Wet Leg – Chaise Longue     │"
+"│  Khruangbin – Time (You and …│"
+"│spc play · ? help · q quit    │"
+"└──────────────────────────────┘"

@@ -334,3 +334,11 @@ anything older than ~3 months before relying on it.
 | mpv 0.41.0: `--audio-exclusive` works for `coreaudio` (redirect to `coreaudio_exclusive`, "direct device access and exclusive mode (bypasses the sound server)"); `--coreaudio-change-physical-format` (default no) "will change the system-wide audio settings", equivalent to the Format setting in Audio MIDI Setup; values read back from libmpv | `DOCS/man/options.rst:2053-2060`, `DOCS/man/ao.rst:130-150`, `audio/out/ao_coreaudio.c:158-170` (local source); engine test | VERIFIED 2026-11-03 |
 | Exclusive (hog) mode on macOS 27: other apps are not muted; macOS reroutes them to another available output while ttnr holds the device and moves them back afterwards (Safari/YouTube: external speakers → MacBook speakers → back) | owner's test 2026-11-03 | VERIFIED (observation) 2026-11-03 |
 
+### 2026-11-03 · radio-browser.info API (M7)
+
+| Fact | Source | Status |
+|---|---|---|
+| Server selection: DNS lookup of `all.api.radio-browser.info` + reverse lookup, done by the client (`/json/servers` only if DNS is impossible); descriptive User-Agent `appname/appversion`; `/json/url/<stationuuid>` "should be called everytime when a user starts playing a stream"; search params `name`, `tag`, `country`, `countrycode`, `language`, `order`, `reverse`, `limit`, `offset`, `hidebroken`; station fields `stationuuid`, `name`, `url`, `url_resolved`, `codec`, `bitrate`, `hls`, `lastcheckok`, `countrycode`, `tags`, `favicon` | https://docs.radio-browser.info/ | VERIFIED 2026-11-03 |
+| `all.api.radio-browser.info` → 91.98.4.78 → `de1.api.radio-browser.info` (one server at check time); TLS certificate SAN `*.api.radio-browser.info`, `*.radio-browser.info`; HTTPS to `all.api…` verifies | `dig`, `openssl s_client`, `curl` | VERIFIED 2026-11-03 |
+| Recorded answers: search "groove salad" (5 stations; one entry has `bitrate` 320000 – user-entered bit/s), `/json/url/<uuid>` → `{"ok":true,"message":"retrieved station url",…,"url":…}`, empty search `[]` | `tests/fixtures/radio-browser/` | VERIFIED 2026-11-03 |
+

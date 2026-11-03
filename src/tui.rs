@@ -222,6 +222,10 @@ impl Runtime {
                 self.start_metadata(&st);
                 Ok(())
             }
+            Effect::Search(query) => {
+                self.search(query);
+                Ok(())
+            }
             Effect::Delay { after, msg } => {
                 let tx = self.msg_tx.clone();
                 tokio::spawn(async move {
@@ -241,6 +245,22 @@ impl Runtime {
                 message: e.to_string(),
             }));
         }
+    }
+
+    /// Search the station directory; the answer comes back as a message.
+    fn search(&self, query: String) {
+        let (registry, ctx, tx) = (self.registry.clone(), self.ctx.clone(), self.msg_tx.clone());
+        tokio::spawn(async move {
+            let q = ttnr_core::ListQuery {
+                search: Some(query.clone()),
+                limit: Some(50),
+            };
+            let result = match registry.get(ttnr_sources::radio_browser::ID) {
+                Some(source) => source.list(&q, &ctx).await.map_err(|e| e.to_string()),
+                None => Err("the radio-browser source is not available".to_owned()),
+            };
+            let _ = tx.send(Msg::SearchResults { query, result });
+        });
     }
 
     fn resolve(&self, st: ttnr_core::Station, refresh: bool) {

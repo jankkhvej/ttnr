@@ -65,6 +65,12 @@ const ACTIONS: &[Action] = &[
         defaults: &["o"],
     },
     Action {
+        name: "search",
+        command: Command::OpenSearch,
+        help: "search radio-browser",
+        defaults: &["/"],
+    },
+    Action {
         name: "devices",
         command: Command::OpenDevices,
         help: "output device",
@@ -118,6 +124,7 @@ const FOOTER: &[(&[&str], &str)] = &[
     (&["next_station", "prev_station"], "station"),
     (&["stations"], "list"),
     (&["open_url"], "url"),
+    (&["search"], "find"),
     (&["devices"], "device"),
     (&["cycle_theme"], "theme"),
 ];
@@ -307,8 +314,11 @@ impl Keymap {
         if k.ctrl && k.code == KeyCode::Char('c') {
             return Some(Command::Quit); // raw mode: Ctrl-C is a key
         }
-        let list = matches!(view, View::Stations { .. } | View::Devices { .. });
-        let prompt = matches!(view, View::OpenUrl { .. });
+        let list = matches!(
+            view,
+            View::Stations { .. } | View::Devices { .. } | View::Results { .. }
+        );
+        let prompt = matches!(view, View::OpenUrl { .. } | View::Search { .. });
         match key.code {
             KeyCode::Char(c) if prompt && !k.ctrl && !k.alt => return Some(Command::Input(c)),
             KeyCode::Backspace if prompt => return Some(Command::Backspace),

@@ -1,0 +1,19 @@
+---
+source: crates/ttnr-tui/tests/snapshots.rs
+---
+"┌ ttnr ────────────────────────┐"
+"│BBC Radio 6 Music             │"
+"│Lauren Laverne                │"
+"│                              │"
+"│The Strokes – Someday         │"
+"│Is This It (20th Anniversary …│"
+"│┌ search radio-browser ──────┐│"
+"││> groove salad              ││"
+"│└────────────────────────────┘│"
+"│vol 80% · MAJOR IV            │"
+"│                              │"
+"│recent                        │"
+"│  Wet Leg – Chaise Longue     │"
+"│  Khruangbin – Time (You and …│"
+"│spc play · ? help · q quit    │"
+"└──────────────────────────────┘"

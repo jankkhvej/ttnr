@@ -525,3 +525,77 @@ fn resolution_failure_while_reconnecting_retries() {
     });
     assert_eq!(retry_of(&fx).0, 2);
 }
+
+#[test]
+fn directory_search_flow() {
+    let mut a = app();
+    a.update(Msg::Command(Command::OpenSearch));
+    assert_eq!(
+        a.state.view,
+        View::Search {
+            input: String::new()
+        }
+    );
+    for c in "jazz".chars() {
+        a.update(Msg::Command(Command::Input(c)));
+    }
+    a.update(Msg::Command(Command::Input('n'))); // keys are text in the prompt
+    a.update(Msg::Command(Command::Backspace));
+    assert_eq!(
+        a.update(Msg::Command(Command::Select)),
+        [Effect::Search("jazz".into())]
+    );
+    assert_eq!(a.state.view, View::Results { selected: 0 });
+    assert_eq!(a.state.search.note.as_deref(), Some("searching…"));
+    // An older search's answer is ignored.
+    a.update(Msg::SearchResults {
+        query: "rock".into(),
+        result: Ok(stations()),
+    });
+    assert!(a.state.search.results.is_empty());
+    let found: Vec<Station> = stations().into_iter().take(2).collect();
+    a.update(Msg::SearchResults {
+        query: "jazz".into(),
+        result: Ok(found.clone()),
+    });
+    assert_eq!(a.state.search.results, found);
+    assert_eq!(a.state.search.note, None);
+    a.update(Msg::Command(Command::Down));
+    a.update(Msg::Command(Command::Down));
+    assert_eq!(a.state.view, View::Results { selected: 1 }, "clamped");
+    assert_eq!(
+        a.update(Msg::Command(Command::Select)),
+        [Effect::Stop, Effect::Resolve(found[1].clone())]
+    );
+    // Reopening the prompt offers the last query.
+    a.update(Msg::Command(Command::OpenSearch));
+    assert_eq!(
+        a.state.view,
+        View::Search {
+            input: "jazz".into()
+        }
+    );
+}
+
+#[test]
+fn directory_search_errors_and_empty_results() {
+    let mut a = app();
+    a.update(Msg::Command(Command::OpenSearch));
+    a.update(Msg::Command(Command::Input('x')));
+    a.update(Msg::Command(Command::Select));
+    a.update(Msg::SearchResults {
+        query: "x".into(),
+        result: Ok(Vec::new()),
+    });
+    assert_eq!(a.state.search.note.as_deref(), Some("no stations found"));
+    assert_eq!(
+        a.update(Msg::Command(Command::Select)),
+        [],
+        "nothing to play"
+    );
+    a.update(Msg::SearchResults {
+        query: "x".into(),
+        result: Err("http: timeout".into()),
+    });
+    assert_eq!(a.state.search.note.as_deref(), Some("http: timeout"));
+}
