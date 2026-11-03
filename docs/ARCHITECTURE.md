@@ -83,10 +83,11 @@ strategies, with a small on-disk cache:
 
 1. **Cache** — last good URL if younger than its TTL.
 2. **Discovery** — the source's authoritative lookup. For BBC: the same
-   machine-readable endpoint BBC's own web player uses to find live streams
-   (identify and verify it in M4; prefer JSON APIs over HTML scraping).
-3. **Patterns** — known URL templates (e.g. BBC's Akamai HLS layout with
-   region `ww`/`uk` and bitrate variants), probed in order.
+   flow BBC's own web player uses (anonymous token → media selector v3;
+   verified in M4, ADR-029). Refusals are final.
+3. **Patterns** — known URL templates, probed in order (not used for BBC:
+   guessed URLs would bypass BBC's location decisions and pool URLs change;
+   ADR-029).
 4. **Override** — a URL pinned by the user in `stations.toml`.
 
 The engine reports `EngineEvent::Error(Http403 | Http404 | Unreachable)`;

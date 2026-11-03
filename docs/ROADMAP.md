@@ -36,7 +36,7 @@ Work top to bottom. Tick `[x]` when a task meets its acceptance criteria and
 **Acceptance:** owner uses it for an hour with no glitches; resize is clean.
 
 ## M4 — BBC source
-- [ ] Research & verify (log in RESEARCH.md): list of BBC national/local stations and IDs; how BBC's own player discovers live stream URLs (machine-readable endpoint); current URL patterns, regions (`ww`/`uk`) and bitrates; geo-restrictions for listeners outside the UK.
+- [x] Research & verify (log in RESEARCH.md): list of BBC national/local stations and IDs; how BBC's own player discovers live stream URLs (machine-readable endpoint); current URL patterns, regions (`ww`/`uk`) and bitrates; geo-restrictions for listeners outside the UK.
 - [ ] Resolver: discovery → patterns → override, with quality/region fallback; works from Poland (international streams).
 - [ ] Now-playing provider: current track + programme (BBC Radio & Music Services endpoints), handles empty responses (speech programmes), backoff, fixtures.
 - [ ] Sync offset default for BBC measured by ear with the owner; configurable.
