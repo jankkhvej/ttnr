@@ -271,39 +271,67 @@ fn help_back_quit() {
     assert!(a.state.quit);
 }
 
+fn external(title: &str, at: SystemTime) -> NowPlaying {
+    NowPlaying {
+        title: Some(title.into()),
+        ..NowPlaying::empty(InfoSource::External, at)
+    }
+}
+
+fn delay_of(fx: &[Effect]) -> (std::time::Duration, Msg) {
+    match fx {
+        [Effect::Delay { after, msg }] => (*after, (**msg).clone()),
+        other => panic!("expected one delay, got {other:?}"),
+    }
+}
+
 #[test]
-fn provider_now_playing_is_delayed_by_the_sync_offset() {
+fn provider_update_is_shown_at_its_time_plus_offset() {
     use std::collections::BTreeMap;
     use std::time::Duration;
     let mut a = App::new(stations(), 50, 2)
         .with_sync_offsets(BTreeMap::from([("url".into(), Duration::from_secs(20))]));
     a.update(Msg::Play(a.state.stations[0].clone()));
     assert_eq!(a.state.sync_offset, Duration::from_secs(20));
-    let np = NowPlaying {
-        title: Some("Later".into()),
-        ..NowPlaying::empty(InfoSource::External, SystemTime::now())
-    };
-    let fx = a.update(Msg::NowPlaying(np.clone()));
-    let [Effect::Delay { after, msg }] = fx.as_slice() else {
-        panic!("{fx:?}")
-    };
-    assert_eq!(*after, Duration::from_secs(20));
-    assert!(a.state.now.is_none(), "not shown yet");
-    a.update((**msg).clone());
-    assert_eq!(
-        a.state.now.as_ref().unwrap().title.as_deref(),
-        Some("Later")
-    );
 
-    // A due update for a station we left is dropped.
-    let Msg::NowPlayingDue { np: due_np, .. } = (**msg).clone() else {
-        panic!()
-    };
-    a.update(Msg::Play(a.state.stations[1].clone()));
-    a.update(Msg::NowPlayingDue {
-        key: "url:http://a/s".into(),
-        np: due_np,
-    });
+    // Track started 5 s ago: due in ~15 s.
+    let started = SystemTime::now() - Duration::from_secs(5);
+    let (after, due) = delay_of(&a.update(Msg::NowPlaying(external("Song", started))));
+    assert!(
+        (Duration::from_secs(14)..=Duration::from_secs(15)).contains(&after),
+        "{after:?}"
+    );
+    assert!(a.state.now.is_none(), "not shown yet");
+
+    // Lowering the offset re-times it: now overdue → shown at once.
+    for _ in 0..20 {
+        a.update(Msg::Command(Command::SyncEarlier));
+    }
+    assert_eq!(a.state.now.as_ref().unwrap().title.as_deref(), Some("Song"));
+    // The old timer fires later: stale generation, nothing happens.
+    assert_eq!(a.update(due), []);
+
+    // An update that is already overdue is shown immediately.
+    let mut b = App::new(stations(), 50, 2)
+        .with_sync_offsets(BTreeMap::from([("url".into(), Duration::from_secs(20))]));
+    b.update(Msg::Play(b.state.stations[0].clone()));
+    let long_ago = SystemTime::now() - Duration::from_secs(60);
+    assert_eq!(b.update(Msg::NowPlaying(external("Old", long_ago))), []);
+    assert_eq!(b.state.now.as_ref().unwrap().title.as_deref(), Some("Old"));
+}
+
+#[test]
+fn raising_the_offset_postpones_and_station_change_cancels() {
+    use std::time::Duration;
+    let mut a = app();
+    a.update(Msg::Play(a.state.stations[0].clone()));
+    a.update(Msg::Command(Command::SyncLater)); // 1 s
+    let (_, first) = delay_of(&a.update(Msg::NowPlaying(external("Song", SystemTime::now()))));
+    let (after, _) = delay_of(&a.update(Msg::Command(Command::SyncLater))); // 2 s
+    assert!(after > Duration::from_millis(1500), "{after:?}");
+    assert_eq!(a.update(first), [], "superseded timer");
+    // Switching station drops the pending update.
+    a.update(Msg::Command(Command::NextStation));
     assert!(a.state.now.is_none());
 }
 

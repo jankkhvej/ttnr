@@ -69,12 +69,16 @@ pub async fn run(target: &str, cfg: &EngineConfig) -> Result<()> {
                 tracing::warn!(error = %e, "metadata provider stopped");
             }
         });
-        // Delay provider updates by the source's sync offset.
+        // Show provider updates when they become true on air plus the
+        // source's sync offset (same rule as the TUI).
         tokio::spawn(async move {
             while let Some(np) = raw_rx.recv().await {
                 let tx = np_tx.clone();
+                let wait = (np.at + offset)
+                    .duration_since(std::time::SystemTime::now())
+                    .unwrap_or_default();
                 tokio::spawn(async move {
-                    tokio::time::sleep(offset).await;
+                    tokio::time::sleep(wait).await;
                     let _ = tx.send(np).await;
                 });
             }

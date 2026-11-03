@@ -265,7 +265,9 @@ use std::time::SystemTime;
 use tokio::sync::mpsc::Sender;
 use ttnr_core::{InfoSource, MetadataProvider, NowPlaying};
 
-const POLL: Duration = Duration::from_secs(30);
+/// Poll often: BBC lists a track only once it is playing, and the exact
+/// start time (not the poll time) decides when it is shown.
+const POLL: Duration = Duration::from_secs(10);
 const MAX_BACKOFF: Duration = Duration::from_secs(300);
 /// Artwork size for `{recipe}` in BBC image URLs.
 const ARTWORK_RECIPE: &str = "320x320";
@@ -289,6 +291,9 @@ struct Segment {
 struct Offset {
     #[serde(default)]
     now_playing: bool,
+    /// Seconds since the start of the broadcast.
+    start: Option<u64>,
+    end: Option<u64>,
 }
 
 #[derive(Debug, Default, Deserialize)]
@@ -306,6 +311,7 @@ struct Broadcasts {
 #[derive(Debug, Deserialize)]
 struct Broadcast {
     programme: Programme,
+    start: Option<String>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -314,37 +320,114 @@ struct Programme {
     titles: Titles,
 }
 
-/// The track playing now, if BBC says one is (`data` is empty during
-/// speech programmes): (artist, title, artwork URL).
+/// What `segments/latest` says about the newest segment.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct SegmentNow {
+    /// (artist, title, artwork URL) if a music track is playing now.
+    pub track: Option<(String, String, Option<String>)>,
+    /// Seconds into the broadcast when the newest segment started/ended.
+    pub start: Option<u64>,
+    /// See `start`.
+    pub end: Option<u64>,
+}
+
+/// Parse `segments/latest` (`data` is empty during speech programmes).
+pub fn segment_now(json: &[u8]) -> Result<SegmentNow, SourceError> {
+    let s: Segments = serde_json::from_slice(json).map_err(|e| parse_err("BBC segments", e))?;
+    let Some(seg) = s.data.into_iter().next() else {
+        return Ok(SegmentNow {
+            track: None,
+            start: None,
+            end: None,
+        });
+    };
+    let (now, start, end) = seg
+        .offset
+        .map_or((false, None, None), |o| (o.now_playing, o.start, o.end));
+    let music = seg.segment_type.is_empty() || seg.segment_type == "music";
+    let track = match (now && music, seg.titles.primary, seg.titles.secondary) {
+        (true, Some(artist), Some(title)) => Some((
+            artist,
+            title,
+            seg.image_url.map(|u| u.replace("{recipe}", ARTWORK_RECIPE)),
+        )),
+        _ => None,
+    };
+    Ok(SegmentNow { track, start, end })
+}
+
+/// The track playing now, if BBC says one is: (artist, title, artwork).
 pub fn track_from_segments(
     json: &[u8],
 ) -> Result<Option<(String, String, Option<String>)>, SourceError> {
-    let s: Segments = serde_json::from_slice(json).map_err(|e| parse_err("BBC segments", e))?;
-    Ok(s.data.into_iter().find_map(|seg| {
-        let now = seg.offset.is_some_and(|o| o.now_playing);
-        let music = seg.segment_type.is_empty() || seg.segment_type == "music";
-        match (now && music, seg.titles.primary, seg.titles.secondary) {
-            (true, Some(artist), Some(title)) => Some((
-                artist,
-                title,
-                seg.image_url.map(|u| u.replace("{recipe}", ARTWORK_RECIPE)),
-            )),
-            _ => None,
-        }
-    }))
+    Ok(segment_now(json)?.track)
 }
 
 /// The programme on air now: "Presenter – Show" / "Show – Episode".
 pub fn programme_from_broadcasts(json: &[u8]) -> Result<Option<String>, SourceError> {
+    Ok(broadcast_now(json)?.0)
+}
+
+/// Programme text and broadcast start time from `broadcasts/latest`.
+fn broadcast_now(json: &[u8]) -> Result<(Option<String>, Option<SystemTime>), SourceError> {
     let b: Broadcasts = serde_json::from_slice(json).map_err(|e| parse_err("BBC broadcasts", e))?;
-    Ok(b.data.into_iter().next().and_then(|b| {
-        let t = b.programme.titles;
-        match (t.primary, t.secondary) {
-            (Some(p), Some(s)) if !s.trim().is_empty() => Some(format!("{p} – {s}")),
-            (Some(p), _) => Some(p),
-            (None, s) => s,
-        }
-    }))
+    let Some(b) = b.data.into_iter().next() else {
+        return Ok((None, None));
+    };
+    let start = b.start.as_deref().and_then(parse_rfc3339);
+    let t = b.programme.titles;
+    let text = match (t.primary, t.secondary) {
+        (Some(p), Some(s)) if !s.trim().is_empty() => Some(format!("{p} – {s}")),
+        (Some(p), _) => Some(p),
+        (None, s) => s,
+    };
+    Ok((text, start))
+}
+
+/// Parse an RFC 3339 timestamp as BBC sends it (`2026-11-03T05:00:00Z`,
+/// optional fraction, `Z` or `±HH:MM`).
+pub fn parse_rfc3339(s: &str) -> Option<SystemTime> {
+    let s = s.trim();
+    let (date, rest) = s.split_once('T')?;
+    let mut d = date.split('-').map(str::parse::<i64>);
+    let (y, mo, da) = (d.next()?.ok()?, d.next()?.ok()?, d.next()?.ok()?);
+    let (time, offset_secs) = if let Some(t) = rest.strip_suffix('Z') {
+        (t, 0)
+    } else {
+        let i = rest.rfind(['+', '-'])?;
+        let (t, off) = rest.split_at(i);
+        let sign = if off.starts_with('-') { -1 } else { 1 };
+        let mut hm = off[1..].split(':').map(str::parse::<i64>);
+        (
+            t,
+            sign * (hm.next()?.ok()? * 3600 + hm.next().unwrap_or(Ok(0)).ok()? * 60),
+        )
+    };
+    let mut t = time.split(':');
+    let (h, mi) = (
+        t.next()?.parse::<i64>().ok()?,
+        t.next()?.parse::<i64>().ok()?,
+    );
+    let sec: f64 = t.next()?.parse().ok()?;
+    if !(1..=12).contains(&mo)
+        || !(1..=31).contains(&da)
+        || h > 23
+        || mi > 59
+        || !(0.0..61.0).contains(&sec)
+    {
+        return None;
+    }
+    // Days from civil (Howard Hinnant's algorithm).
+    let y = if mo <= 2 { y - 1 } else { y };
+    let era = y.div_euclid(400);
+    let yoe = y - era * 400;
+    let mp = (mo + 9) % 12;
+    let doy = (153 * mp + 2) / 5 + da - 1;
+    let doe = yoe * 365 + yoe / 4 - yoe / 100 + doy;
+    let days = era * 146_097 + doe - 719_468;
+    let secs = days * 86_400 + h * 3600 + mi * 60 - offset_secs;
+    let whole = u64::try_from(secs).ok()?;
+    Some(SystemTime::UNIX_EPOCH + Duration::from_secs(whole) + Duration::from_secs_f64(sec))
 }
 
 /// Polls BBC's now-playing and programme endpoints for one service.
@@ -377,19 +460,30 @@ impl BbcNowPlaying {
 
     async fn poll(&self) -> Result<NowPlaying, SourceError> {
         let service = &self.service;
-        let programme = programme_from_broadcasts(
+        let (programme, started) = broadcast_now(
             &self
                 .fetch(&format!(
                     "{RMS}/broadcasts/latest?service={service}&on_air=now"
                 ))
                 .await?,
         )?;
-        let track = track_from_segments(
+        let seg = segment_now(
             &self
                 .fetch(&format!("{RMS}/services/{service}/segments/latest?limit=1"))
                 .await?,
         )?;
-        let (artist, title, artwork_url) = match track {
+        // When this information became true on air: the track's start, or
+        // the end of the last track; else now. The app adds the sync offset.
+        let offset = if seg.track.is_some() {
+            seg.start
+        } else {
+            seg.end
+        };
+        let at = match (started, offset) {
+            (Some(start), Some(secs)) => start + Duration::from_secs(secs),
+            _ => SystemTime::now(),
+        };
+        let (artist, title, artwork_url) = match seg.track {
             Some((a, t, art)) => (Some(a), Some(t), art),
             None => (None, None, None),
         };
@@ -399,7 +493,7 @@ impl BbcNowPlaying {
             artist,
             title,
             artwork_url,
-            ..NowPlaying::empty(InfoSource::External, SystemTime::now())
+            ..NowPlaying::empty(InfoSource::External, at)
         })
     }
 }

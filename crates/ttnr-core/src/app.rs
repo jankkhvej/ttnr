@@ -207,12 +207,13 @@ pub enum Msg {
     },
     /// Now-playing from a metadata provider (subject to the sync offset).
     NowPlaying(NowPlaying),
-    /// A delayed now-playing update is due (for the station with this key).
+    /// Time to re-check the pending now-playing update (scheduled by
+    /// [`Effect::Delay`]); stale generations are ignored.
     NowPlayingDue {
         /// [`Station::key`] it belongs to.
         key: String,
-        /// The update.
-        np: NowPlaying,
+        /// Pending-update generation it was scheduled for.
+        generation: u64,
     },
     /// The output device list changed.
     Devices(Vec<Device>),
@@ -264,6 +265,9 @@ pub struct App {
     merger: Merger,
     history_len: usize,
     sync_offsets: BTreeMap<String, Duration>,
+    /// Latest provider update not shown yet, and its generation.
+    pending: Option<NowPlaying>,
+    generation: u64,
 }
 
 impl App {
@@ -279,6 +283,8 @@ impl App {
             merger: Merger::default(),
             history_len,
             sync_offsets: BTreeMap::new(),
+            pending: None,
+            generation: 0,
         }
     }
 
@@ -296,29 +302,57 @@ impl App {
             Msg::Resolved { key, result } => self.on_resolved(&key, result, false),
             Msg::Refreshed { key, result } => self.on_resolved(&key, result, true),
             Msg::NowPlaying(np) => {
-                let Some(key) = self.current_key() else {
-                    return vec![];
-                };
-                if self.state.sync_offset.is_zero() {
-                    self.show_now(np);
+                if self.current_key().is_none() {
                     return vec![];
                 }
-                vec![Effect::Delay {
-                    after: self.state.sync_offset,
-                    msg: Box::new(Msg::NowPlayingDue { key, np }),
-                }]
+                // Only the newest provider update matters (it describes now).
+                self.pending = Some(np);
+                self.generation += 1;
+                self.check_pending()
             }
-            Msg::NowPlayingDue { key, np } => {
-                if self.current_key().as_deref() == Some(key.as_str()) {
-                    self.show_now(np);
+            Msg::NowPlayingDue { key, generation } => {
+                if self.current_key().as_deref() != Some(key.as_str())
+                    || generation != self.generation
+                {
+                    return vec![];
                 }
-                vec![]
+                self.check_pending()
             }
             Msg::Devices(devices) => {
                 self.state.devices = devices;
                 vec![]
             }
             Msg::Command(cmd) => self.on_command(cmd),
+        }
+    }
+
+    /// Show the pending update if its time has come (`at` + sync offset),
+    /// otherwise schedule a re-check for the remaining time.
+    fn check_pending(&mut self) -> Vec<Effect> {
+        let Some(np) = &self.pending else {
+            return vec![];
+        };
+        let due = np.at + self.state.sync_offset;
+        match due.duration_since(SystemTime::now()) {
+            // Not yet (allow 50 ms of timer slack).
+            Ok(left) if left > Duration::from_millis(50) => {
+                let Some(key) = self.current_key() else {
+                    return vec![];
+                };
+                vec![Effect::Delay {
+                    after: left,
+                    msg: Box::new(Msg::NowPlayingDue {
+                        key,
+                        generation: self.generation,
+                    }),
+                }]
+            }
+            _ => {
+                if let Some(np) = self.pending.take() {
+                    self.show_now(np);
+                }
+                vec![]
+            }
         }
     }
 
@@ -332,6 +366,8 @@ impl App {
             .get(&st.source)
             .copied()
             .unwrap_or_default();
+        self.pending = None;
+        self.generation += 1;
         self.state.station = Some(st.clone());
         self.state.status = Status::Resolving;
         self.state.now = None;
@@ -605,7 +641,9 @@ impl App {
                 if let Some(st) = &self.state.station {
                     self.sync_offsets.insert(st.source.clone(), next);
                 }
-                vec![]
+                // Re-time the pending update with the new offset.
+                self.generation += 1;
+                self.check_pending()
             }
             Command::CycleTheme => {
                 self.state.theme_index = self.state.theme_index.wrapping_add(1);

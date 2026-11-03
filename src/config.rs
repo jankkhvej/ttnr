@@ -67,7 +67,8 @@ pub struct Config {
 }
 
 /// Built-in sync offsets (seconds) per source, overridable in config.
-/// Values come from listening tests with the owner (ROADMAP M4).
+/// None: by the owner's choice track info is shown as soon as it is known
+/// (ADR-032); the offset is opt-in.
 pub const DEFAULT_SYNC_OFFSETS: &[(&str, u32)] = &[];
 
 impl Config {

@@ -354,13 +354,73 @@ async fn provider_backs_off_and_recovers() {
         tokio::spawn(Box::new(BbcNowPlaying::new(&station("bbc_6music", None), http)).run(tx));
     let np = rx.recv().await.unwrap();
     assert_eq!(np.title.as_deref(), Some("When We First Met"));
-    // 3 failures: waits of 60 + 120 + 240 s before the successful poll.
+    // 3 failures (poll interval 10 s, doubled): 20 + 40 + 80 s before the
+    // successful poll.
     assert!(
-        start.elapsed() >= std::time::Duration::from_secs(420),
+        start.elapsed() >= std::time::Duration::from_secs(140),
         "{:?}",
         start.elapsed()
     );
     drop(rx);
     tokio::time::advance(std::time::Duration::from_secs(600)).await;
+    task.await.unwrap().unwrap();
+}
+
+#[test]
+fn rfc3339_parsing() {
+    use std::time::{Duration, UNIX_EPOCH};
+    use ttnr_sources::bbc::parse_rfc3339;
+    let t = |s| parse_rfc3339(s).map(|t| t.duration_since(UNIX_EPOCH).unwrap());
+    // 2026-11-03T05:00:00Z = 1793682000 (date -u -j -f … +%s)
+    assert_eq!(
+        t("2026-11-03T05:00:00Z"),
+        Some(Duration::from_secs(1_793_682_000))
+    );
+    assert_eq!(
+        t("2026-11-03T06:00:00+01:00"),
+        Some(Duration::from_secs(1_793_682_000))
+    );
+    assert_eq!(
+        t("2026-11-03T04:30:00-00:30"),
+        Some(Duration::from_secs(1_793_682_000))
+    );
+    assert_eq!(
+        t("2026-11-03T05:00:06.400Z"),
+        Some(Duration::from_millis(1_793_682_006_400))
+    );
+    assert_eq!(
+        t("2024-02-29T00:00:00Z"),
+        Some(Duration::from_secs(1_709_164_800))
+    );
+    assert_eq!(t("2026-13-03T05:00:00Z"), None);
+    assert_eq!(t("yesterday"), None);
+}
+
+#[tokio::test(start_paused = true)]
+async fn provider_times_updates_by_track_start() {
+    use std::time::{Duration, UNIX_EPOCH};
+    let http = Arc::new(FakeNow {
+        segments: Mutex::new(vec![playing_segment(), fixture("segments_6music.json")]),
+        fail: Mutex::new(0),
+        calls: Mutex::new(0),
+    });
+    let (tx, mut rx) = tokio::sync::mpsc::channel(8);
+    let task =
+        tokio::spawn(Box::new(BbcNowPlaying::new(&station("bbc_6music", None), http)).run(tx));
+    // Broadcast started 05:00:00Z; the track at offset 3286 s → 05:54:46Z.
+    let playing = rx.recv().await.unwrap();
+    assert_eq!(
+        playing.at.duration_since(UNIX_EPOCH).unwrap(),
+        Duration::from_secs(1_793_682_000 + 3286)
+    );
+    // The same segment, ended (now_playing false): valid from its end, 3399 s.
+    let ended = rx.recv().await.unwrap();
+    assert_eq!(ended.title, None);
+    assert_eq!(
+        ended.at.duration_since(UNIX_EPOCH).unwrap(),
+        Duration::from_secs(1_793_682_000 + 3399)
+    );
+    drop(rx);
+    tokio::time::advance(Duration::from_secs(60)).await;
     task.await.unwrap().unwrap();
 }

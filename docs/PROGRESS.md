@@ -2,6 +2,10 @@
 
 Newest entry on top. Each entry: date · milestone/task · what changed · how to try it · next step · open questions for the owner.
 
+## 2026-11-03 · M4 · Now-playing timing fix
+- Owner test: offset keys seemed to do nothing; titles late. Fixed: BBC polling 10 s, updates stamped with on-air time (broadcast start + segment offset), shown at `at + offset` with one re-timable pending update; `ttnr play` uses the same rule (ADR-032). Default offset 0 (owner's preference).
+- Tests: timed display, re-timing on `]`/`[`, stale timers ignored, RFC 3339 parser, provider timestamps from recorded fixtures.
+
 ## 2026-11-03 · M4 · Sync offset mechanism
 - Per-source sync offset (`[sync_offset]`, live `]`/`[` keys, shown in the view; applied in TUI and `ttnr play`) (ADR-031). BBC default awaits the owner's ears.
 - Tests: delayed/dropped provider updates, key adjustment per source, view, config; help snapshots updated (two new bindings, cut first at 32×16).
