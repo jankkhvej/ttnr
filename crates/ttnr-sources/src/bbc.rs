@@ -251,4 +251,191 @@ impl Source for BbcSource {
             ..StreamDescriptor::default()
         }))
     }
+
+    fn metadata(&self, st: &Station, ctx: &ResolveCtx) -> Option<Box<dyn MetadataProvider>> {
+        Some(Box::new(BbcNowPlaying::new(st, ctx.http.clone())))
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Now playing (RESEARCH.md: rms `segments/latest`, `broadcasts/latest`)
+
+use std::time::SystemTime;
+
+use tokio::sync::mpsc::Sender;
+use ttnr_core::{InfoSource, MetadataProvider, NowPlaying};
+
+const POLL: Duration = Duration::from_secs(30);
+const MAX_BACKOFF: Duration = Duration::from_secs(300);
+/// Artwork size for `{recipe}` in BBC image URLs.
+const ARTWORK_RECIPE: &str = "320x320";
+
+#[derive(Debug, Deserialize)]
+struct Segments {
+    #[serde(default)]
+    data: Vec<Segment>,
+}
+
+#[derive(Debug, Deserialize)]
+struct Segment {
+    #[serde(default)]
+    segment_type: String,
+    titles: Titles,
+    image_url: Option<String>,
+    offset: Option<Offset>,
+}
+
+#[derive(Debug, Deserialize)]
+struct Offset {
+    #[serde(default)]
+    now_playing: bool,
+}
+
+#[derive(Debug, Default, Deserialize)]
+struct Titles {
+    primary: Option<String>,
+    secondary: Option<String>,
+}
+
+#[derive(Debug, Deserialize)]
+struct Broadcasts {
+    #[serde(default)]
+    data: Vec<Broadcast>,
+}
+
+#[derive(Debug, Deserialize)]
+struct Broadcast {
+    programme: Programme,
+}
+
+#[derive(Debug, Deserialize)]
+struct Programme {
+    #[serde(default)]
+    titles: Titles,
+}
+
+/// The track playing now, if BBC says one is (`data` is empty during
+/// speech programmes): (artist, title, artwork URL).
+pub fn track_from_segments(
+    json: &[u8],
+) -> Result<Option<(String, String, Option<String>)>, SourceError> {
+    let s: Segments = serde_json::from_slice(json).map_err(|e| parse_err("BBC segments", e))?;
+    Ok(s.data.into_iter().find_map(|seg| {
+        let now = seg.offset.is_some_and(|o| o.now_playing);
+        let music = seg.segment_type.is_empty() || seg.segment_type == "music";
+        match (now && music, seg.titles.primary, seg.titles.secondary) {
+            (true, Some(artist), Some(title)) => Some((
+                artist,
+                title,
+                seg.image_url.map(|u| u.replace("{recipe}", ARTWORK_RECIPE)),
+            )),
+            _ => None,
+        }
+    }))
+}
+
+/// The programme on air now: "Presenter – Show" / "Show – Episode".
+pub fn programme_from_broadcasts(json: &[u8]) -> Result<Option<String>, SourceError> {
+    let b: Broadcasts = serde_json::from_slice(json).map_err(|e| parse_err("BBC broadcasts", e))?;
+    Ok(b.data.into_iter().next().and_then(|b| {
+        let t = b.programme.titles;
+        match (t.primary, t.secondary) {
+            (Some(p), Some(s)) if !s.trim().is_empty() => Some(format!("{p} – {s}")),
+            (Some(p), _) => Some(p),
+            (None, s) => s,
+        }
+    }))
+}
+
+/// Polls BBC's now-playing and programme endpoints for one service.
+pub struct BbcNowPlaying {
+    service: String,
+    station_name: String,
+    http: std::sync::Arc<dyn ttnr_core::Http>,
+}
+
+impl BbcNowPlaying {
+    /// Provider for `st` (a `bbc` station).
+    pub fn new(st: &Station, http: std::sync::Arc<dyn ttnr_core::Http>) -> Self {
+        Self {
+            service: st.id.clone(),
+            station_name: st.name.clone(),
+            http,
+        }
+    }
+
+    async fn fetch(&self, url: &str) -> Result<Vec<u8>, SourceError> {
+        let resp = self.http.get(url, &[]).await?;
+        if !resp.is_success() {
+            return Err(SourceError::Status {
+                status: resp.status,
+                url: url.to_owned(),
+            });
+        }
+        Ok(resp.body)
+    }
+
+    async fn poll(&self) -> Result<NowPlaying, SourceError> {
+        let service = &self.service;
+        let programme = programme_from_broadcasts(
+            &self
+                .fetch(&format!(
+                    "{RMS}/broadcasts/latest?service={service}&on_air=now"
+                ))
+                .await?,
+        )?;
+        let track = track_from_segments(
+            &self
+                .fetch(&format!("{RMS}/services/{service}/segments/latest?limit=1"))
+                .await?,
+        )?;
+        let (artist, title, artwork_url) = match track {
+            Some((a, t, art)) => (Some(a), Some(t), art),
+            None => (None, None, None),
+        };
+        Ok(NowPlaying {
+            station: Some(self.station_name.clone()),
+            programme,
+            artist,
+            title,
+            artwork_url,
+            ..NowPlaying::empty(InfoSource::External, SystemTime::now())
+        })
+    }
+}
+
+#[async_trait]
+impl MetadataProvider for BbcNowPlaying {
+    async fn run(self: Box<Self>, tx: Sender<NowPlaying>) -> Result<(), SourceError> {
+        let mut last: Option<NowPlaying> = None;
+        let mut wait = POLL;
+        loop {
+            match self.poll().await {
+                Ok(np) => {
+                    wait = POLL;
+                    let changed = last.as_ref().is_none_or(|l| {
+                        NowPlaying {
+                            at: np.at,
+                            ..l.clone()
+                        } != np
+                    });
+                    if changed {
+                        last = Some(np.clone());
+                        if tx.send(np).await.is_err() {
+                            return Ok(());
+                        }
+                    }
+                }
+                Err(e) => {
+                    // A provider failure degrades silently (ARCHITECTURE.md).
+                    tracing::debug!(service = %self.service, error = %e, ?wait, "BBC now-playing poll failed");
+                    wait = (wait * 2).min(MAX_BACKOFF);
+                }
+            }
+            if tx.is_closed() {
+                return Ok(());
+            }
+            tokio::time::sleep(wait).await;
+        }
+    }
 }

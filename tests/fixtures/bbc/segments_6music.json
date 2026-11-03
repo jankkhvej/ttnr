@@ -1,0 +1,29 @@
+{
+    "$schema": "https://rms.api.bbc.co.uk/docs/swagger.json#/definitions/SegmentItemsResponse",
+    "total": 1,
+    "limit": 1,
+    "offset": 0,
+    "data": [
+        {
+            "type": "segment_item",
+            "id": "p0pkzb9y",
+            "urn": "urn:bbc:radio:segment:music:n9czqz",
+            "segment_type": "music",
+            "titles": {
+                "primary": "twisted teens",
+                "secondary": "When We First Met",
+                "tertiary": null,
+                "entity_title": "twisted teens"
+            },
+            "synopses": null,
+            "image_url": "https://ichef.bbci.co.uk/images/ic/{recipe}/p0pk0t3q.jpg",
+            "offset": {
+                "start": 3286,
+                "end": 3399,
+                "label": "Less Than a Minute Ago",
+                "now_playing": false
+            },
+            "uris": []
+        }
+    ]
+}

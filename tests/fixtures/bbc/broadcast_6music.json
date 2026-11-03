@@ -1,0 +1,90 @@
+{
+    "$schema": "https://rms.api.bbc.co.uk/docs/swagger.json#/definitions/BroadcastsResponse",
+    "total": 1,
+    "limit": 30,
+    "offset": 0,
+    "data": [
+        {
+            "type": "broadcast",
+            "pid": "p0pfqm70",
+            "start": "2026-11-03T05:00:00Z",
+            "end": "2026-11-03T07:00:00Z",
+            "service_id": "bbc_6music",
+            "duration": 7200,
+            "progress": 3454,
+            "live": true,
+            "blanked": false,
+            "repeat": false,
+            "critical": false,
+            "on_air": true,
+            "programme": {
+                "type": "episode",
+                "id": "m0033f9c",
+                "urn": "urn:bbc:radio:episode:m0033f9c",
+                "network": {
+                    "id": "bbc_6music",
+                    "key": "6music",
+                    "short_title": "Radio 6 Music",
+                    "long_title": "BBC Radio 6 Music",
+                    "group": "radio",
+                    "active": true
+                },
+                "media_type": "audio",
+                "release_date": "2026-11-03T00:00:00Z",
+                "siblings_count": 0,
+                "position": {
+                    "position": null,
+                    "total": null
+                },
+                "titles": {
+                    "primary": "Chris Hawkins",
+                    "secondary": "The biggest tunes to start the day",
+                    "tertiary": null,
+                    "entity_title": "The biggest tunes to start the day",
+                    "display_title": "Chris Hawkins - The biggest tunes to start the day",
+                    "primary_title": "Chris Hawkins",
+                    "secondary_title": null
+                },
+                "synopses": {
+                    "short": "The biggest tunes to start the day, plus there's your chance to vote on a Lost Love.",
+                    "medium": "The biggest tunes to start the day, plus there's your chance to vote on a Lost Love.",
+                    "long": "The biggest tunes to start the day, your chance to vote on a Lost Love, plus will your track get a spin on the wheel?\n\nGet involved Text 64046 or Whatsapp 03700 100 600\n\nProduced in Salford by Audio Always for BBC Radio 6 Music."
+                },
+                "images": [
+                    {
+                        "type": "standard",
+                        "id": "p0m53mxl",
+                        "url": "https://ichef.bbci.co.uk/images/ic/{recipe}/p0m53mxl.jpg"
+                    }
+                ],
+                "categories": [
+                    {
+                        "type": "genre",
+                        "id": "music",
+                        "key": "music",
+                        "title": "Music"
+                    },
+                    {
+                        "type": "genre",
+                        "id": "music-rockandindie",
+                        "key": "rockandindie",
+                        "title": "Rock & Indie"
+                    }
+                ],
+                "ancestors": [
+                    {
+                        "type": "brand",
+                        "id": "b0072l8y",
+                        "title": "Chris Hawkins",
+                        "synopses": {
+                            "short": "Chris Hawkins starts your day with new music, forgotten classics and session tracks.",
+                            "medium": "Chris Hawkins starts your day with a mix of the best new music, forgotten classics and session tracks from the BBC archive across the week.",
+                            "long": "Chris Hawkins starts your day with a mix of the best new music, forgotten classics and session tracks from the BBC archive across the week."
+                        }
+                    }
+                ],
+                "availability": null
+            }
+        }
+    ]
+}

@@ -62,8 +62,16 @@ pub async fn run(target: &str, cfg: &EngineConfig) -> Result<()> {
         });
     }
     let mut merger = Merger::default();
-    let show = |np: NowPlaying, merger: &mut Merger| {
-        if let Some(line) = merger.update(np).and_then(now_line) {
+    let mut programme: Option<String> = None;
+    let mut show = |np: NowPlaying, merger: &mut Merger| {
+        let Some(best) = merger.update(np) else {
+            return;
+        };
+        if best.programme.is_some() && best.programme != programme {
+            programme.clone_from(&best.programme);
+            println!("on air: {}", programme.as_deref().unwrap_or_default());
+        }
+        if let Some(line) = now_line(best) {
             println!("{line}");
         }
     };

@@ -212,3 +212,155 @@ async fn list_with_search() {
         ["bbc_6music"]
     );
 }
+
+// --- now playing -------------------------------------------------------
+
+use ttnr_core::{InfoSource, MetadataProvider};
+use ttnr_sources::bbc::{BbcNowPlaying, programme_from_broadcasts, track_from_segments};
+
+/// The recorded 6 Music segment, with `now_playing` switched on.
+fn playing_segment() -> Vec<u8> {
+    String::from_utf8(fixture("segments_6music.json"))
+        .unwrap()
+        .replace("\"now_playing\": false", "\"now_playing\": true")
+        .into_bytes()
+}
+
+#[test]
+fn track_parsing() {
+    // Recorded just after a track ended: no current track.
+    assert_eq!(
+        track_from_segments(&fixture("segments_6music.json")).unwrap(),
+        None
+    );
+    let (artist, title, art) = track_from_segments(&playing_segment()).unwrap().unwrap();
+    assert_eq!(
+        (artist.as_str(), title.as_str()),
+        ("twisted teens", "When We First Met")
+    );
+    assert_eq!(
+        art.as_deref(),
+        Some("https://ichef.bbci.co.uk/images/ic/320x320/p0pk0t3q.jpg")
+    );
+    // Speech programme (recorded on Radio 4): empty data.
+    assert_eq!(
+        track_from_segments(&fixture("segments_radio4.json")).unwrap(),
+        None
+    );
+}
+
+#[test]
+fn programme_parsing() {
+    assert_eq!(
+        programme_from_broadcasts(&fixture("broadcast_6music.json"))
+            .unwrap()
+            .as_deref(),
+        Some("Chris Hawkins – The biggest tunes to start the day")
+    );
+    assert!(
+        programme_from_broadcasts(&fixture("broadcast_radio4.json"))
+            .unwrap()
+            .unwrap()
+            .starts_with("Farming Today – 03/11/26")
+    );
+    assert_eq!(programme_from_broadcasts(br#"{"data":[]}"#).unwrap(), None);
+}
+
+/// Now-playing endpoints; segment answers are consumed in order (the last
+/// repeats); `fail` makes the next N requests fail.
+struct FakeNow {
+    segments: Mutex<Vec<Vec<u8>>>,
+    fail: Mutex<u32>,
+    calls: Mutex<u32>,
+}
+
+#[async_trait]
+impl Http for FakeNow {
+    async fn get(&self, url: &str, _: &[(String, String)]) -> Result<HttpResponse, HttpError> {
+        *self.calls.lock().unwrap() += 1;
+        {
+            let mut fail = self.fail.lock().unwrap();
+            if *fail > 0 {
+                *fail -= 1;
+                return Err(HttpError("timed out".into()));
+            }
+        }
+        let body = if url.contains("/broadcasts/latest") {
+            fixture("broadcast_6music.json")
+        } else {
+            let mut s = self.segments.lock().unwrap();
+            if s.len() > 1 {
+                s.remove(0)
+            } else {
+                s[0].clone()
+            }
+        };
+        Ok(HttpResponse {
+            status: 200,
+            final_url: url.to_owned(),
+            content_type: None,
+            body,
+            streaming: false,
+        })
+    }
+    async fn probe(&self, _: &str, _: &[(String, String)]) -> Result<u16, HttpError> {
+        Ok(200)
+    }
+}
+
+#[tokio::test(start_paused = true)]
+async fn provider_reports_changes_and_speech() {
+    let http = Arc::new(FakeNow {
+        segments: Mutex::new(vec![
+            playing_segment(),
+            playing_segment(),
+            fixture("segments_radio4.json"),
+        ]),
+        fail: Mutex::new(0),
+        calls: Mutex::new(0),
+    });
+    let mut st = station("bbc_6music", None);
+    st.name = "BBC Radio 6 Music".into();
+    let (tx, mut rx) = tokio::sync::mpsc::channel(8);
+    let task = tokio::spawn(Box::new(BbcNowPlaying::new(&st, http.clone())).run(tx));
+
+    let first = rx.recv().await.unwrap();
+    assert_eq!(first.source, InfoSource::External);
+    assert_eq!(first.station.as_deref(), Some("BBC Radio 6 Music"));
+    assert_eq!(
+        first.programme.as_deref(),
+        Some("Chris Hawkins – The biggest tunes to start the day")
+    );
+    assert_eq!(first.title.as_deref(), Some("When We First Met"));
+    // The second poll repeats the track (not re-sent); the third is speech.
+    let second = rx.recv().await.unwrap();
+    assert_eq!((second.artist, second.title), (None, None));
+    assert!(second.programme.is_some(), "programme stays");
+    drop(rx);
+    tokio::time::advance(std::time::Duration::from_secs(120)).await;
+    task.await.unwrap().unwrap();
+}
+
+#[tokio::test(start_paused = true)]
+async fn provider_backs_off_and_recovers() {
+    let http = Arc::new(FakeNow {
+        segments: Mutex::new(vec![playing_segment()]),
+        fail: Mutex::new(3),
+        calls: Mutex::new(0),
+    });
+    let (tx, mut rx) = tokio::sync::mpsc::channel(8);
+    let start = tokio::time::Instant::now();
+    let task =
+        tokio::spawn(Box::new(BbcNowPlaying::new(&station("bbc_6music", None), http)).run(tx));
+    let np = rx.recv().await.unwrap();
+    assert_eq!(np.title.as_deref(), Some("When We First Met"));
+    // 3 failures: waits of 60 + 120 + 240 s before the successful poll.
+    assert!(
+        start.elapsed() >= std::time::Duration::from_secs(420),
+        "{:?}",
+        start.elapsed()
+    );
+    drop(rx);
+    tokio::time::advance(std::time::Duration::from_secs(600)).await;
+    task.await.unwrap().unwrap();
+}

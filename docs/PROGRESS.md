@@ -2,6 +2,12 @@
 
 Newest entry on top. Each entry: date · milestone/task · what changed · how to try it · next step · open questions for the owner.
 
+## 2026-11-03 · M4 · BBC now-playing
+- `BbcNowPlaying` provider (programme + current track, speech handling, backoff), `ttnr play` prints `on air:` (ADR-030).
+- Tests: recorded fixtures (6 Music music/just-ended, Radio 4 speech, both programme formats), provider with virtual time (change-only, speech → programme only, backoff 60/120/240 s, stop).
+- Live from Kraków: 6 Music shows programme + track; Radio 4 shows programme during speech.
+- Next: M4 task 4 – sync offset (needs the owner's ears).
+
 ## 2026-11-03 · M4 · BBC resolver
 - `ttnr-sources::bbc`: `BbcSource` (list from `/v2/networks`, one station per service; discovery = token → media selector v3; highest bitrate, HLS, https, one URL per CDN as failover candidates; refusals final with clear messages; no patterns – ADR-029). Registered for `play`, `refresh` and the TUI.
 - Tests: recorded fixtures (networks, 6 Music selection, geolocation and unavailable refusals; fake token), registry chain (bearer token sent, cached, refusal → override only, no probing), ignored live smoke tests (pass from Kraków).

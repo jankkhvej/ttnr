@@ -1,0 +1,102 @@
+{
+    "$schema": "https://rms.api.bbc.co.uk/docs/swagger.json#/definitions/BroadcastsResponse",
+    "total": 1,
+    "limit": 30,
+    "offset": 0,
+    "data": [
+        {
+            "type": "broadcast",
+            "pid": "p0pgw5bp",
+            "start": "2026-11-03T05:45:00Z",
+            "end": "2026-11-03T06:00:00Z",
+            "service_id": "bbc_radio_fourfm",
+            "duration": 900,
+            "progress": 755,
+            "live": false,
+            "blanked": false,
+            "repeat": false,
+            "critical": false,
+            "on_air": true,
+            "programme": {
+                "type": "episode",
+                "id": "m0033p9j",
+                "urn": "urn:bbc:radio:episode:m0033p9j",
+                "network": {
+                    "id": "bbc_radio_four",
+                    "key": "radio4",
+                    "short_title": "Radio 4",
+                    "long_title": "BBC Radio 4",
+                    "group": "",
+                    "active": true
+                },
+                "media_type": "audio",
+                "release_date": "2026-11-03T00:00:00Z",
+                "siblings_count": 0,
+                "position": {
+                    "position": null,
+                    "total": null
+                },
+                "titles": {
+                    "primary": "Farming Today",
+                    "secondary": "03/11/26 Farm reservoirs, rainwater harvesting, quinoa.",
+                    "tertiary": null,
+                    "entity_title": "03/11/26 Farm reservoirs, rainwater harvesting, quinoa.",
+                    "display_title": "Farming Today - 03/11/26 Farm reservoirs, rainwater harvesting, quinoa.",
+                    "primary_title": "Farming Today",
+                    "secondary_title": null
+                },
+                "synopses": {
+                    "short": "What's involved in building a farm reservoir - and what could be done to make it easier?",
+                    "medium": "What's involved in building a farm reservoir - and what could be done to make it easier?",
+                    "long": "Too much water, too little water: UK farmers have experienced both extremes in the last few years. All week we're hearing about on-farm water management.  Heavy rain in the North West of England means that the region is no longer classified as being in drought, but 82% of the country remains in drought. England still needs at least 120% of average rainfall for the next six months, to be considered out of drought by the spring. \n\nWe hear from a group of Cumbrian farmers who are working together to harvest rain water. Also we speak to a big veg producer who created a reservoir on their farm and used it for the first time this summer to water crops like potatoes, carrots and parsnips.\n\nIf you\u2019re a farmer looking for a new crop to grow - particularly as we get hotter summers - then you might want to consider the South American health food quinoa. We speak to a farmer in Shropshire who first tried growing it nearly 20 years ago. Now he oversees the production of around 1200 acres in the UK and is looking for additional farmers to grow more.\n \nPresenter = Anna Hill\nProducer = Rebecca Rooney"
+                },
+                "images": [
+                    {
+                        "type": "standard",
+                        "id": "p0m2f6hf",
+                        "url": "https://ichef.bbci.co.uk/images/ic/{recipe}/p0m2f6hf.jpg"
+                    }
+                ],
+                "categories": [
+                    {
+                        "type": "genre",
+                        "id": "factual",
+                        "key": "factual",
+                        "title": "Factual"
+                    },
+                    {
+                        "type": "genre",
+                        "id": "factual-scienceandnature",
+                        "key": "scienceandnature",
+                        "title": "Science & Nature"
+                    },
+                    {
+                        "type": "genre",
+                        "id": "factual-scienceandnature-natureandenvironment",
+                        "key": "natureandenvironment",
+                        "title": "Nature & Environment"
+                    },
+                    {
+                        "type": "format",
+                        "id": "magazinesandreviews",
+                        "key": "magazinesandreviews",
+                        "title": "Magazines & Reviews"
+                    }
+                ],
+                "ancestors": [
+                    {
+                        "type": "brand",
+                        "id": "b006qj8q",
+                        "title": "Farming Today",
+                        "synopses": {
+                            "short": "The latest news about food, farming and the countryside",
+                            "medium": "The latest news about food, farming and the countryside",
+                            "long": null
+                        }
+                    }
+                ],
+                "availability": null
+            }
+        }
+    ]
+}
