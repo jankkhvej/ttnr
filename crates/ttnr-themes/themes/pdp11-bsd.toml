@@ -1,0 +1,91 @@
+# ttnr theme: pdp11-bsd – 2.11BSD Unix on a PDP-11, VT100 console.
+# Researched 2026-11-03 (2.11BSD source tree, emulator boot logs;
+# RESEARCH.md): console declared "vt100" at 9600 baud in /etc/ttys; Unix
+# output is lower case and decimal; csh prompt "% "; getty banner
+# "2.11 BSD UNIX (host) (console)"; errors "name: message".
+name  = "pdp11-bsd"
+title = "ttnr"
+
+[palette]                       # VT100 P4 white phosphor on black
+fg     = "#e8eef8"
+bg     = "#000000"
+accent = "#ffffff"
+dim    = "#8e949c"
+warn   = "#ffffff"
+error  = "#ffffff"
+
+[palette_16]
+fg     = "white"
+accent = "bright_white"
+dim    = "bright_black"
+warn   = "bright_white"
+error  = "bright_white"
+
+[glyphs]                        # plain ASCII, as curses programs drew it
+borders   = "ascii"
+ellipsis  = "..."
+dash      = " - "
+separator = "  "
+playing   = ">"
+paused    = "="
+busy      = "*"
+stopped   = "-"
+error     = "?"
+current   = "*"
+cursor    = ">"
+
+[screen]
+width  = 80
+height = 24
+border = "#000000"
+
+[text]
+ascii_only = true
+
+[chrome]
+banner       = ["2.11 BSD UNIX (ttnr) (console)", ""]
+prompt       = "% ttnr play "   # csh prompt, then the command being typed
+cursor       = "block"
+cursor_blink = true
+serial       = true             # speed key: 9600 baud like the console
+
+[status]                        # Unix tools: terse, "name: message"
+idle         = "{glyph} idle"
+resolving    = "{glyph} resolving..."
+loading      = "{glyph} loading..."
+buffering    = "{glyph} buffering{percent}"
+playing      = "{glyph} playing"
+paused       = "{glyph} stopped"
+reconnecting = "ttnr: {message}; retrying"
+ended        = "ttnr: end of stream"
+error        = "ttnr: {message}"
+
+[effects]
+boot      = "vt100"
+boot_text = [                   # 2.11BSD boot (emulator log, RESEARCH.md)
+  "70Boot from xp(0,1,0) at 0176700",
+  "Press <CR> to boot, or any other key to abort: 0",
+  ": xp(0,1,0)unix",
+  "Boot: bootdev=05010 bootcsr=0176700",
+  "",
+  "2.11 BSD UNIX #115: Sat Apr 22 19:07:25 PDT 2000",
+  "    sms1@curly.2bsd.com:/usr/src/sys/GENERIC",
+  "",
+  "phys mem  = 3915776",
+  "avail mem = 3684480",
+  "user mem  = 307200",
+  "",
+  "rl 0 csr 174400 vector 160 attached",
+  "xp 0 csr 176700 vector 254 attached",
+  "Automatic reboot in progress...",
+  "checking quotas: done.",
+  "checking for core dump...",
+  "preserving editor files",
+  "clearing /tmp",
+  "standard daemons: update cron accounting.",
+  "starting lpd",
+  "",
+  "2.11 BSD UNIX (ttnr) (console)",
+  "",
+  "login: ",
+]

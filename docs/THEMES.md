@@ -110,6 +110,22 @@ trailing `(8)`-free DEC style (e.g. `VOL 144`); errors as `?TTNR-F-…`;
 title line double-height where the terminal supports DECDHL.
 UNVERIFIED: exact RT-11 V5.x banner string; MCR error texts.
 
+### `pdp11-bsd` – 2.11BSD Unix on a PDP-11, VT100 console (owner request, researched 2026-11-03)
+Facts (2.11BSD source tree, patch level 431; emulator boot logs): the
+console is declared `vt100` at 9600 baud in `/etc/ttys`; getty greets with
+`2.11 BSD UNIX (host) (console)` and `login:`; csh prompts `% ` (`# ` for
+root), sh `$ `; errors are terse `name: message` (`foo: Command not
+found.`, sh `foo: not found`, `ls`: `foo not found`); output is lower case
+and decimal (octal only for CSRs/vectors/modes). Boot: `70Boot from
+xp(0,1,0) at 0176700`, kernel banner, `phys mem  = …`, probe lines,
+`Automatic reboot in progress...`, `/etc/rc` messages, getty banner.
+Design: VT100 P4 palette, 80 columns, ASCII borders (as curses drew them),
+lower case, decimal, getty banner on top, URL prompt `% ttnr play `, Unix-
+style status (`ttnr: …`), VT100 self-test then the 2.11BSD boot transcript,
+speed key (9600 by default when switched on).
+UNVERIFIED: `fsck -p` lines (a clean disk prints none); host name `ttnr` is
+ours.
+
 ### `pdp11-teletype` — Teletype Model 33 ASR printout (researched 2026-11-03)
 Facts: prints **upper case only** (64-character ASCII subset), **72
 characters per line**, 10 characters per second (110 baud); 1963 ASCII had

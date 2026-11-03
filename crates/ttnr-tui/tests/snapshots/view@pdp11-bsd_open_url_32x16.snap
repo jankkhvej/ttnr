@@ -1,0 +1,19 @@
+---
+source: crates/ttnr-tui/tests/snapshots.rs
+---
+"+ ttnr ------------------------+"
+"|2.11 BSD UNIX (ttnr) (console)|"
+"|                              |"
+"|BBC Radio 6 Music             |"
+"|Lauren Laverne                |"
+"|                              |"
+"|+ open URL ------------------+|"
+"||% ttnr play ...ovesalad.pls ||"
+"|+----------------------------+|"
+"|HE-AAC  48 kHz  stereo  96 ...|"
+"|> playing                     |"
+"|vol 80%  MAJOR IV             |"
+"|recent                        |"
+"|  Wet Leg - Chaise Longue     |"
+"|spc play  ? help  q quit      |"
+"+------------------------------+"

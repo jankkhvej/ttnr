@@ -1,0 +1,19 @@
+---
+source: crates/ttnr-tui/tests/snapshots.rs
+---
+"+ ttnr ------------------------+"
+"|2.11 BSD UNIX (ttnr) (console)|"
+"|                              |"
+"|BBC Radio 6 Music             |"
+"|Lauren Laverne                |"
+"|                              |"
+"|The Strokes - Someday         |"
+"|Is This It (20th Anniversar...|"
+"|                              |"
+"|HE-AAC  48 kHz  stereo  96 ...|"
+"|> playing                     |"
+"|vol 80%  MAJOR IV             |"
+"|recent                        |"
+"|  Wet Leg - Chaise Longue     |"
+"|spc play  ? help  q quit      |"
+"+------------------------------+"

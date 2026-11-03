@@ -2,6 +2,10 @@
 
 Newest entry on top. Each entry: date · milestone/task · what changed · how to try it · next step · open questions for the owner.
 
+## 2026-11-03 · M5 · `pdp11-bsd` theme (owner)
+- New built-in `pdp11-bsd`: 2.11BSD on a VT100 console – lower case, decimal, ASCII borders, getty banner, `% ttnr play ` URL prompt, `ttnr: …` errors, VT100 self-test + 2.11BSD boot transcript, speed key. Facts from the 2.11BSD source tree and emulator logs (RESEARCH.md).
+- Engine: `[effects] boot_text` (VT100 boot lines per theme; RSX lines moved into the `pdp11-vt100*` files; long transcripts speed up and scroll).
+
 ## 2026-11-03 · M5 · Cursor during slow redraws (owner)
 - VT100 themes at a set line speed show a block cursor on the next cell to arrive while an update is in progress (owner: slow full redraws looked hung). Tests extended in `serial.rs`.
 

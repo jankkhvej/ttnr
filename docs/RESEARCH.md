@@ -295,3 +295,14 @@ anything older than ~3 months before relying on it.
 | Teletype Model 33: no text-visible power-on behaviour found | – | UNVERIFIED |
 | Printing terminals after the ASR-33 at 300 baud (e.g. DECwriter) | – | UNVERIFIED (only used as an example speed) |
 
+### 2026-11-03 · 2.11BSD on the PDP-11 (pdp11-bsd theme; research subagent read the source tree)
+
+| Fact | Source | Status |
+|---|---|---|
+| 2.11BSD tree, patch level 431 (April 2000): `/etc/ttys` console `"/usr/libexec/getty std.9600" vt100 on secure`; gettytab banner `2.11 BSD UNIX (%h) (%t)` then `login: ` | https://github.com/RetroBSD/2.11BSD (`usr/etc/ttys`, `usr/etc/gettytab`) | VERIFIED (source) 2026-11-03 |
+| csh prompt `% ` (`# ` for uid 0), sh `$ `; no host name in default prompts | same repo, `usr/bin/csh/sh.c`, `usr/bin/sh/msg.c` | VERIFIED 2026-11-03 |
+| Errors: csh `foo: Command not found.`; sh `foo: not found`; `ls foo` → `foo not found` | same repo, `usr/bin/csh/sh.exec.c`, `sh.err.c`, `usr/bin/sh/msg.c`, `usr/bin/ls/ls.c` | VERIFIED 2026-11-03 |
+| `/etc/rc` messages: `Automatic reboot in progress...`, `checking quotas: done.`, `checking for core dump...`, `preserving editor files`, `clearing /tmp`, `standard daemons: update cron accounting.`, `starting lpd` | same repo, `usr/etc/rc` | VERIFIED 2026-11-03 |
+| Boot transcript: `70Boot from xp(0,1,0) at 0176700`, `Press <CR> to boot, or any other key to abort: 0`, `: xp(0,1,0)unix`, `Boot: bootdev=05010 bootcsr=0176700`, `2.11 BSD UNIX #115: Sat Apr 22 19:07:25 PDT 2000` / `sms1@curly.2bsd.com:/usr/src/sys/GENERIC`, `phys mem  = 3915776`, `avail mem = 3684480`, `user mem  = 307200`, probe lines `rl 0 csr 174400 vector 160 attached` … | https://github.com/JamesHagerman/nankervis-pdp11-js/blob/master/ExampleBoots.md · https://sergev.org/pdp11/211bsd | seen 2026-11-03 (emulator logs) |
+| `fsck -p` prints nothing on a clean disk (two identical dates around it in the log); preen line format UNVERIFIED | same logs | seen 2026-11-03 |
+
