@@ -5,7 +5,7 @@ Newest entry on top. Each entry: date · milestone/task · what changed · how t
 ## 2026-11-03 · M5 · Retro themes implemented (milestone done, awaiting owner review)
 - Theme engine: optional `[screen]` (logical width/height, border colour), `[text]` (uppercase, ASCII-only transliteration, character map, octal), `[chrome]` (banner, prompt, cursor, double-height title bar, mosaic rule with quadrant fallback, printout mode), `[status]` templates (ADR-033). Border colour now follows colour-depth fallback; the title bar becomes inverse video in mono.
 - Built-ins: `pdp11-vt100` (+`-amber`, `-green`), `pdp11-teletype`, `zx80`, `bbc-mode7`; snapshots for every view × 3 sizes × theme, plus a Teletype printout session. `plain` unchanged.
-- Config: `mosaic = "auto|sextant|quadrant"`.
+- Config: `mosaic = "auto|sextant|quadrant"`; CLI: `ttnr --theme <name>` (SPEC F7) overrides config.
 - Next: owner review ("recognisable at a glance"), then M6.
 - Open questions: does Terminal.app with your font show the sextant rule in `bbc-mode7` (else set `mosaic = "quadrant"`)? Octal applies to volume/sync only – also wanted for bitrate/sample rate?
 

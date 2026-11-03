@@ -18,7 +18,8 @@ use ttnr_engine::{EngineConfig, EngineEvent, MpvPlayer, Player};
 use crate::{config, paths, play, stations};
 
 /// Run the TUI until the user quits.
-pub async fn run(cfg: &EngineConfig) -> Result<()> {
+/// `theme` (from `--theme`) overrides `theme` in config.toml.
+pub async fn run(cfg: &EngineConfig, theme: Option<&str>) -> Result<()> {
     // Config problems are reported before the terminal is taken over.
     let config = config::load()?;
     let keymap = ttnr_tui::Keymap::with_overrides(&config.key_overrides())
@@ -28,11 +29,15 @@ pub async fn run(cfg: &EngineConfig) -> Result<()> {
         Some(dir) => ttnr_themes::ThemeSet::load(dir),
         None => (ttnr_themes::ThemeSet::builtin(), Vec::new()),
     };
-    let theme_index = match &config.theme {
+    let (theme_name, theme_origin) = match theme {
+        Some(name) => (Some(name), "--theme"),
+        None => (config.theme.as_deref(), "config.toml"),
+    };
+    let theme_index = match theme_name {
         None => 0,
         Some(name) => themes.position(name).with_context(|| {
             format!(
-                "unknown theme `{name}` in config.toml (available: {})",
+                "unknown theme `{name}` in {theme_origin} (available: {})",
                 themes.names().join(", ")
             )
         })?,

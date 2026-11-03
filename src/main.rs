@@ -20,6 +20,9 @@ struct Cli {
     /// Without a subcommand, the interactive terminal UI starts.
     #[command(subcommand)]
     command: Option<Command>,
+    /// Theme for the terminal UI (overrides `theme` in config.toml).
+    #[arg(long, global = true, value_name = "NAME")]
+    theme: Option<String>,
 }
 
 #[derive(Debug, Subcommand)]
@@ -86,7 +89,7 @@ fn run(cli: Cli) -> Result<()> {
         .enable_all()
         .build()?;
     match cli.command {
-        None => runtime.block_on(tui::run(&EngineConfig::default())),
+        None => runtime.block_on(tui::run(&EngineConfig::default(), cli.theme.as_deref())),
         Some(Command::Play(args)) => {
             let cfg = EngineConfig {
                 audio_output: match args.audio_output {
@@ -111,6 +114,13 @@ mod tests {
     #[test]
     fn cli_definition_is_valid() {
         Cli::command().debug_assert();
+    }
+
+    #[test]
+    fn theme_flag() {
+        let cli = Cli::try_parse_from(["ttnr", "--theme", "zx80"]).unwrap();
+        assert_eq!(cli.theme.as_deref(), Some("zx80"));
+        assert!(cli.command.is_none());
     }
 
     #[test]
