@@ -64,7 +64,7 @@ Work top to bottom. Tick `[x]` when a task meets its acceptance criteria and
 ## M8 — Polish & release
 - [x] README, man page, config reference, theme authoring guide.
 - [x] Release profile, `cargo install --path .` instructions, local Homebrew formula draft.
-- [ ] Final licence audit (`cargo deny`), third-party notices file.
+- [x] Final licence audit (`cargo deny`), third-party notices file.
 
 ## M9 — Optional diagnostics indicators (owner request 2026-11-03; after M8)
 - [ ] Optional, individually toggled indicators (all off by default, config + key): network activity, stream download rate (mpv cache/demuxer stats), metadata API requests (last poll, errors/backoff), a note when now-playing may be out of sync (e.g. BBC listing lag).

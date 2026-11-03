@@ -11,4 +11,11 @@ if command -v cargo-deny >/dev/null; then
 else
   print "✗ cargo-deny missing: cargo install --locked cargo-deny"; exit 1
 fi
+# Third-party notices must match the dependency graph (needs Homebrew for
+# the native-library part; ADR-045).
+if command -v brew >/dev/null; then
+  print "▸ notices"; python3 -I scripts/notices.py --check
+else
+  print "▸ notices skipped (no Homebrew)"
+fi
 print "✓ all checks passed"

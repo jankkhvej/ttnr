@@ -2,6 +2,11 @@
 
 Newest entry on top. Each entry: date · milestone/task · what changed · how to try it · next step · open questions for the owner.
 
+## 2026-11-03 · M8 · Licence audit and notices – **M8 complete, waiting for owner review**
+- `cargo deny` clean; licence set recorded; `scripts/notices.py` → `THIRD_PARTY_NOTICES.md` (191 crates with texts, objc2 family listed with repositories, 29 Homebrew native libraries with licences); gate checks it is current (ADR-045).
+- M8 summary: `ttnr play` on the shared state machine (reconnects, socket, Now Playing; ADR-043); README, CONFIG.md, THEME-GUIDE.md, ttnr.1 with a drift test; release profile (4.2 MB) and Homebrew formula draft (ADR-044); licence audit and notices.
+- Open for the owner: binary distribution needs a public source archive (formula placeholders), GPL-3.0 text + source offer, objc2 licence texts; the project page on hcc07.org (homepage placeholder).
+
 ## 2026-11-03 · M8 · Release profile and formula draft
 - Release profile (thin LTO, 1 CGU, stripped: 6.8 → 4.2 MB); `cargo install --path . --locked` verified into a temp root; `packaging/homebrew/ttnr.rb` draft with placeholders (ADR-044).
 - Next: M8 task 3 – final licence audit and third-party notices.
