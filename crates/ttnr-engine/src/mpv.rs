@@ -85,6 +85,9 @@ const STREAM_INFO_PROPS: &[(&str, Format)] = &[
     ("audio-bitrate", Format::Double),
     // Live streams are not seekable (ICY and live HLS); files are.
     ("seekable", Format::Flag),
+    // Known size (Content-Length): files, also unseekable HTTP ones;
+    // unavailable for Icecast streams.
+    ("file-size", Format::Int64),
 ];
 
 /// Reply id for all [`STREAM_INFO_PROPS`] (events carry the name).

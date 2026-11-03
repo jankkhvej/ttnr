@@ -91,6 +91,11 @@ impl ErrorKind {
         )
     }
 
+    /// An HTTP status error (the message names the status already).
+    pub fn is_http(self) -> bool {
+        matches!(self, Self::Http403 | Self::Http404 | Self::Http(_))
+    }
+
     /// The URL itself is probably stale: re-resolve once (ADR-004).
     pub fn is_stale_hint(self) -> bool {
         matches!(self, Self::Http403 | Self::Http404 | Self::Unreachable)
@@ -363,6 +368,12 @@ impl Translator {
             "current-tracks/audio/demux-bitrate" => self.demux_bitrate = value.uint(),
             "current-tracks/audio/hls-bitrate" => self.hls_bitrate = value.uint(),
             "audio-bitrate" => self.measured_bitrate = smooth(self.measured_bitrate, value.uint()),
+            "file-size" => {
+                info.size_bytes = match value {
+                    PropValue::Int(n) => u64::try_from(n).ok().filter(|n| *n > 0),
+                    _ => None,
+                };
+            }
             "seekable" => {
                 if let PropValue::Int(i) = value {
                     info.seekable = Some(i != 0);
@@ -444,6 +455,7 @@ fn sticky(current: &StreamInfo, sent: &StreamInfo) -> StreamInfo {
         output_sample_rate: or(&current.output_sample_rate, &sent.output_sample_rate),
         output_channels: or(&current.output_channels, &sent.output_channels),
         seekable: or(&current.seekable, &sent.seekable),
+        size_bytes: or(&current.size_bytes, &sent.size_bytes),
     }
 }
 
@@ -700,6 +712,10 @@ mod tests {
         assert_eq!(t.info.seekable, Some(false));
         t.translate(prop("seekable", PropValue::Int(1)));
         assert_eq!(t.info.seekable, Some(true));
+        t.translate(prop("file-size", PropValue::Int(49_768)));
+        assert_eq!(t.info.size_bytes, Some(49_768));
+        t.translate(prop("file-size", PropValue::None));
+        assert_eq!(t.info.size_bytes, None, "Icecast: unavailable");
     }
 
     #[test]

@@ -112,6 +112,21 @@ pub struct StreamInfo {
     pub output_channels: Option<String>,
     /// Seekable (a file); live streams (ICY, live HLS) are not.
     pub seekable: Option<bool>,
+    /// Size in bytes when the server announced it (`Content-Length`):
+    /// files have it, Icecast streams never do.
+    pub size_bytes: Option<u64>,
+}
+
+impl StreamInfo {
+    /// A file that ends, not a live stream that dropped: seekable, or of
+    /// known size outside HLS (an HTTP file from a server without range
+    /// support is not seekable; HLS sizes are those of playlists).
+    /// `duration` cannot tell: live HLS reports its window, and mpv knows a
+    /// dropped Icecast stream's length once it has read it all.
+    pub fn is_finite(&self) -> bool {
+        self.seekable == Some(true)
+            || (self.size_bytes.is_some() && self.container.as_deref() != Some("hls"))
+    }
 }
 
 impl StreamInfo {
@@ -193,6 +208,27 @@ mod tests {
         assert_eq!(StreamInfo::bit_depth_of("u8"), Some(8));
         assert_eq!(StreamInfo::bit_depth_of("s32"), None);
         assert_eq!(StreamInfo::bit_depth_of("floatp"), None);
+    }
+
+    #[test]
+    fn finite_files_versus_live_streams() {
+        let info = |seekable, size_bytes, container: &str| StreamInfo {
+            seekable,
+            size_bytes,
+            container: Some(container.into()),
+            ..StreamInfo::default()
+        };
+        assert!(info(Some(true), None, "mp3").is_finite(), "seekable file");
+        assert!(
+            info(Some(false), Some(2), "wav").is_finite(),
+            "HTTP file without ranges"
+        );
+        assert!(!info(Some(false), None, "mp3").is_finite(), "Icecast");
+        assert!(
+            !info(Some(false), Some(6), "hls").is_finite(),
+            "live HLS window"
+        );
+        assert!(!StreamInfo::default().is_finite(), "nothing known yet");
     }
 
     #[test]

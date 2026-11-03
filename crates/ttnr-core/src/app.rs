@@ -357,6 +357,8 @@ pub struct App {
     retry_attempt: u32,
     /// Reconnection generation (stale `Msg::Retry` are ignored).
     retry_gen: u64,
+    /// The playback failure that led to a refresh (for its error message).
+    last_failure: Option<String>,
 }
 
 /// Waits between reconnection attempts; the last repeats forever.
@@ -380,6 +382,7 @@ impl App {
             played: false,
             retry_attempt: 0,
             retry_gen: 0,
+            last_failure: None,
         }
     }
 
@@ -591,11 +594,16 @@ impl App {
         if self.current_key().as_deref() != Some(key) {
             return vec![]; // a late answer for a station we left
         }
+        // After a playback failure, say what failed, then why recovery did.
+        let why = |e: &str| match (&self.last_failure, refresh) {
+            (Some(f), true) => format!("{f}; re-resolving failed: {e}"),
+            _ => e.to_owned(),
+        };
         let d = match result {
             Ok(d) => d,
             Err(e) if self.played && !refresh => return self.schedule_retry(&e),
             Err(e) => {
-                self.state.status = Status::Error(e);
+                self.state.status = Status::Error(why(&e));
                 return vec![];
             }
         };
@@ -608,7 +616,7 @@ impl App {
             url
         };
         let Some(url) = url else {
-            self.state.status = Status::Error("no stream found".into());
+            self.state.status = Status::Error(why("no stream found"));
             return vec![];
         };
         self.state.status = Status::Loading;
@@ -643,7 +651,11 @@ impl App {
             PlayerEvent::Ended => {
                 // A file ends; a live stream (not seekable) that "ends" lost
                 // its connection.
-                let file = self.state.stream.as_ref().and_then(|i| i.seekable) == Some(true);
+                let file = self
+                    .state
+                    .stream
+                    .as_ref()
+                    .is_some_and(StreamInfo::is_finite);
                 if self.played && !file {
                     return self.schedule_retry("stream ended");
                 }
@@ -654,18 +666,20 @@ impl App {
                 stale_hint,
                 message,
             } => {
+                self.last_failure = Some(message.clone());
                 let action = match (&mut self.failover, retryable) {
                     (Some(f), true) => f.on_failure(stale_hint),
                     _ => Action::GiveUp,
                 };
                 return match action {
                     Action::Play(url) => {
-                        self.state.status = Status::Reconnecting(format!("{message}; next stream"));
+                        self.state.status =
+                            Status::Reconnecting(format!("{message}; trying the next stream"));
                         self.start(url)
                     }
                     Action::Refresh => {
                         self.state.status =
-                            Status::Reconnecting(format!("{message}; re-resolving"));
+                            Status::Reconnecting(format!("{message}; re-resolving the station"));
                         self.state
                             .station
                             .clone()

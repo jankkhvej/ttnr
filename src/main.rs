@@ -6,6 +6,7 @@ mod logging;
 mod media;
 mod paths;
 mod play;
+mod runtime;
 mod stations;
 mod tui;
 

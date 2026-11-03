@@ -2,6 +2,11 @@
 
 Newest entry on top. Each entry: date · milestone/task · what changed · how to try it · next step · open questions for the owner.
 
+## 2026-11-03 · M8 prep · `ttnr play` on the app state machine
+- `src/runtime.rs` shared by TUI and `play`; `play` runs `App` + a `Printer` (same output lines), gains reconnects, the control socket and Now Playing (ADR-043). Live-vs-file rule fixed (`seekable` or `file-size`, not `duration`); HTTP errors without repeated FFmpeg detail; unified failover texts; refresh failures name the original error; socket removed on every exit.
+- Tests: Printer lines, `is_finite`, core (Icecast without size reconnects, HTTP file with size ends), translator `file-size`; CLI suite incl. reworked ICY test (title → "stream ended; retry in" → Ctrl-C exits 0). Live: `ttnr play` SomaFM + `ttnr now` + `ttnr ctl quit` (socket gone).
+- Next: M8 task 1 – README, man page, config reference, theme authoring guide.
+
 ## 2026-11-03 · M7 complete – accepted by the owner
 - Owner: radio-browser search, the SomaFM exec source (added to the owner's config.toml) and the control socket all work.
 - Next: M8 – polish & release; open follow-up: move `ttnr play` onto `App` (ADR-022).

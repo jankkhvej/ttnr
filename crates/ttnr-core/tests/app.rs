@@ -628,3 +628,31 @@ fn set_volume_clamps_and_unmutes() {
     assert!(!a.state.muted);
     assert_eq!(a.state.volume, 100);
 }
+
+#[test]
+fn an_icecast_stream_without_size_reconnects() {
+    let mut a = playing_app();
+    a.update(Msg::Player(PlayerEvent::StreamInfo(
+        ttnr_core::StreamInfo {
+            container: Some("mp3".into()),
+            seekable: Some(false),
+            ..ttnr_core::StreamInfo::default()
+        },
+    )));
+    assert_eq!(retry_of(&a.update(Msg::Player(PlayerEvent::Ended))).0, 1);
+}
+
+#[test]
+fn an_http_file_of_known_size_ends() {
+    let mut a = playing_app();
+    a.update(Msg::Player(PlayerEvent::StreamInfo(
+        ttnr_core::StreamInfo {
+            container: Some("wav".into()),
+            seekable: Some(false),
+            size_bytes: Some(192_044),
+            ..ttnr_core::StreamInfo::default()
+        },
+    )));
+    assert_eq!(a.update(Msg::Player(PlayerEvent::Ended)), []);
+    assert_eq!(a.state.status, Status::Ended);
+}

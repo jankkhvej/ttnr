@@ -1,26 +1,23 @@
 //! `ttnr play <target>`: headless playback with plain status lines on stdout.
 
 use std::sync::Arc;
-use std::time::SystemTime;
 
 use anyhow::{Context, Result, bail};
 use tokio::sync::mpsc;
-use ttnr_core::{
-    Action, Failover, Merger, NowPlaying, ResolveCache, ResolveCtx, SourceRegistry, Station,
-    StreamDescriptor,
-};
+use ttnr_core::app::{App, AppState, DEFAULT_HISTORY, Effect, Msg, Status};
+use ttnr_core::{NowPlaying, ResolveCache, ResolveCtx, SourceRegistry, Station, StreamInfo};
 use ttnr_engine::{EngineConfig, EngineEvent, MpvPlayer, Player};
 use ttnr_sources::{BbcSource, RadioBrowserSource, ReqwestHttp, StationsSource, UrlSource};
 
+use crate::runtime::{Runtime, engine_msg};
 use crate::{config, paths, stations};
 
-/// Play `target` – a URL, a file path or a station id from
-/// `stations.toml` – until it ends, fails, or Ctrl-C is pressed. Playlists
-/// are expanded; if one of several streams fails, the next is tried.
-/// Now-playing info from the stream (ICY, tags) and from the station's
-/// metadata provider is merged by priority.
-/// `media` connects to the system's Now Playing / media keys (macOS):
-/// play/pause work, next/previous are ignored (one target).
+/// Play `target` – a URL, a file path, a station id from `stations.toml`
+/// or `radio-browser:<uuid>` – until it ends, fails, or Ctrl-C is pressed.
+/// Runs the same state machine as the TUI (ADR-043): playlists fail over to
+/// the next stream, a stale URL is re-resolved once, a live stream that
+/// drops reconnects with backoff, now-playing is merged by priority and
+/// timed by the sync offset. Status lines come from state changes.
 pub async fn run(
     target: &str,
     cfg: &EngineConfig,
@@ -28,92 +25,46 @@ pub async fn run(
 ) -> Result<()> {
     let station = station_for(target)?;
     let mut player = MpvPlayer::new(cfg).context("cannot start the audio engine")?;
-    let mut events = player
+    let mut engine = player
         .take_events()
         .context("engine events already taken")?;
     tracing::info!(station = %station.key(), "play");
     println!("ttnr: {}", station.name);
 
     let (registry, ctx) = setup()?;
-    let resolved = resolve(&registry, &ctx, &station).await?;
-    if resolved.urls.len() > 1 {
-        println!("playlist: {} streams", resolved.urls.len());
+    let offsets = config::load().map(|c| c.sync_offsets()).unwrap_or_default();
+    // `cfg.volume` is validated to 0–100 by the CLI.
+    let volume = cfg.volume.round().clamp(0.0, 100.0) as u8;
+    let mut app = App::new(Vec::new(), volume, DEFAULT_HISTORY).with_sync_offsets(offsets);
+    let (msg_tx, mut msg_rx) = mpsc::unbounded_channel::<Msg>();
+    // The control socket (`ttnr now`, `ttnr ctl`) reads the published state.
+    let (state_tx, state_rx) = tokio::sync::watch::channel(app.state.clone());
+    let socket = crate::control::socket_path();
+    let mut _socket_cleanup = None;
+    match crate::control::bind(&socket).await {
+        Ok(Some(listener)) => {
+            _socket_cleanup = Some(crate::control::SocketCleanup(socket.clone()));
+            tokio::spawn(crate::control::serve(
+                listener,
+                socket,
+                state_rx,
+                msg_tx.clone(),
+            ));
+        }
+        Ok(None) => {
+            tracing::warn!(path = %socket.display(), "another ttnr owns the control socket")
+        }
+        Err(e) => tracing::warn!(error = %e, "no control socket"),
     }
-    let own_url = station.url.clone().unwrap_or_default();
-    let mut failover = Failover::new(&resolved);
-    let start = |player: &mut MpvPlayer, failover: &Failover, url: String| -> Result<()> {
-        if url != own_url {
-            println!("stream: {url}");
-        }
-        player.play(&StreamDescriptor {
-            urls: vec![url],
-            headers: failover.headers().to_vec(),
-            ..StreamDescriptor::default()
-        })?;
-        Ok(())
-    };
-    let first = failover.next_url().context("nothing to play")?;
-    start(&mut player, &failover, first)?;
+    let mut runtime = Runtime::new(Arc::new(registry), ctx, msg_tx);
+    let mut printer = Printer::new(&station);
 
-    // The provider stops by itself when `np_rx` is dropped.
-    let (np_tx, mut np_rx) = mpsc::channel::<NowPlaying>(8);
-    if let Some(provider) = registry
-        .get(&station.source)
-        .and_then(|s| s.metadata(&station, &ctx))
-    {
-        let offset = config::load()
-            .map(|c| {
-                c.sync_offsets()
-                    .get(&station.source)
-                    .copied()
-                    .unwrap_or_default()
-            })
-            .unwrap_or_default();
-        let (raw_tx, mut raw_rx) = mpsc::channel::<NowPlaying>(8);
-        tokio::spawn(async move {
-            if let Err(e) = provider.run(raw_tx).await {
-                tracing::warn!(error = %e, "metadata provider stopped");
-            }
-        });
-        // Show provider updates when they become true on air plus the
-        // source's sync offset (same rule as the TUI).
-        tokio::spawn(async move {
-            while let Some(np) = raw_rx.recv().await {
-                let tx = np_tx.clone();
-                let wait = (np.at + offset)
-                    .duration_since(std::time::SystemTime::now())
-                    .unwrap_or_default();
-                tokio::spawn(async move {
-                    tokio::time::sleep(wait).await;
-                    let _ = tx.send(np).await;
-                });
-            }
-        });
-    }
-    let mut merger = Merger::default();
-    let mut programme: Option<String> = None;
-    let mut show = |np: NowPlaying, merger: &mut Merger, latest: &mut Option<NowPlaying>| {
-        let Some(best) = merger.update(np) else {
-            return;
-        };
-        *latest = Some(best.clone());
-        if best.programme.is_some() && best.programme != programme {
-            programme.clone_from(&best.programme);
-            println!("on air: {}", programme.as_deref().unwrap_or_default());
-        }
-        if let Some(line) = now_line(best) {
-            println!("{line}");
-        }
-    };
-
-    let mut latest: Option<NowPlaying> = None;
-    let mut paused = false;
     let (remote_tx, mut remote_rx) = mpsc::unbounded_channel::<ttnr_platform::SystemEvent>();
     let updater = media.map(|link| {
         let updater = link.updater();
         std::thread::spawn(move || {
-            while let Ok(cmd) = link.events.recv() {
-                if remote_tx.send(cmd).is_err() {
+            while let Ok(event) = link.events.recv() {
+                if remote_tx.send(event).is_err() {
                     break;
                 }
             }
@@ -121,99 +72,182 @@ pub async fn run(
         updater
     });
     let mut published = None;
+
+    let mut next = Some(Msg::Play(station));
     loop {
-        if let Some(updater) = &updater {
-            let info = Some(crate::media::info(
-                &station.name,
-                latest.as_ref(),
-                !paused,
-                false,
-            ));
-            if info != published {
-                updater.update(info.clone());
-                published = info;
+        if let Some(msg) = next.take() {
+            if let Some(line) = printer.msg(&msg) {
+                println!("{line}");
             }
-        }
-        tokio::select! {
-            Some(event) = remote_rx.recv() => {
-                tracing::info!(?event, "system event");
-                use ttnr_platform::RemoteCommand::{Pause, Play, TogglePause};
-                use ttnr_platform::SystemEvent::Remote;
-                let want = match event {
-                    Remote(TogglePause) => !paused,
-                    Remote(Play) => false,
-                    Remote(Pause) => true,
-                    _ => continue,
-                };
-                if want != paused {
-                    player.pause(want)?;
+            let effects = app.update(msg);
+            // What happened first ("[…; trying the next stream]"), then
+            // what starts ("stream: …").
+            for line in printer.state(&app.state) {
+                println!("{line}");
+            }
+            for effect in effects {
+                if let Some(line) = printer.effect(&effect) {
+                    println!("{line}");
+                }
+                runtime.perform(effect, &mut player);
+            }
+            state_tx.send_if_modified(|shown| {
+                let changed = *shown != app.state;
+                if changed {
+                    shown.clone_from(&app.state);
+                }
+                changed
+            });
+            if let Some(updater) = &updater {
+                let info = crate::media::from_state(&app.state);
+                if info != published {
+                    updater.update(info.clone());
+                    published = info;
                 }
             }
-            event = events.recv() => {
+            if app.state.quit {
+                println!("[stopped]");
+                break;
+            }
+            match &app.state.status {
+                Status::Ended => break,
+                Status::Error(message) => {
+                    runtime.stop_metadata();
+                    bail!("{message}");
+                }
+                _ => {}
+            }
+        }
+        next = tokio::select! {
+            event = engine.recv() => {
                 let Some(event) = event else {
                     bail!("audio engine stopped unexpectedly");
                 };
                 tracing::info!(?event, "engine");
-                if let Some(line) = describe(&event) {
-                    println!("{line}");
-                }
-                match event {
-                    EngineEvent::Playing => tracing::info!(
+                if matches!(event, EngineEvent::Playing) {
+                    tracing::info!(
                         ao = player.property_string("current-ao").as_deref().unwrap_or("?"),
                         "audio output"
-                    ),
-                    EngineEvent::Tags(tags) => {
-                        if let Some(np) = NowPlaying::from_tags(&tags, SystemTime::now()) {
-                            show(np, &mut merger, &mut latest);
-                        }
-                    }
-                    EngineEvent::Paused(on) => paused = on,
-                    EngineEvent::Eof => return Ok(()),
-                    EngineEvent::Error { kind, detail } => {
-                        let action = if kind.is_retryable() {
-                            failover.on_failure(kind.is_stale_hint())
-                        } else {
-                            Action::GiveUp
-                        };
-                        let url = match action {
-                            Action::Play(url) => {
-                                println!("[{kind}; trying the next stream]");
-                                url
-                            }
-                            Action::Refresh => {
-                                println!("[{kind}; re-resolving the station]");
-                                let fresh = registry.refresh(&station, &ctx).await.with_context(|| {
-                                    format!("{kind}, and re-resolving failed")
-                                })?;
-                                tracing::info!(trace = %fresh.trace, urls = ?fresh.urls, "refreshed");
-                                failover.refreshed(&fresh).with_context(|| {
-                                    format!("{kind}, and re-resolving found no stream")
-                                })?
-                            }
-                            Action::GiveUp => match detail {
-                                Some(detail) => bail!("{kind} ({detail})"),
-                                None => bail!("{kind}"),
-                            },
-                        };
-                        merger.clear();
-                        latest = None;
-                        start(&mut player, &failover, url)?;
-                    }
-                    EngineEvent::Shutdown => bail!("audio engine shut down"),
-                    _ => {}
+                    );
                 }
+                engine_msg(event)
             }
-            Some(np) = np_rx.recv() => {
-                tracing::info!(?np, "provider");
-                show(np, &mut merger, &mut latest);
+            Some(msg) = msg_rx.recv() => Some(msg),
+            Some(event) = remote_rx.recv() => {
+                tracing::info!(?event, "system event");
+                match event {
+                    ttnr_platform::SystemEvent::Woke => Some(Msg::Woke),
+                    ttnr_platform::SystemEvent::Remote(remote) => {
+                        crate::media::command_for(remote, &app.state).map(Msg::Command)
+                    }
+                }
             }
             _ = tokio::signal::ctrl_c() => {
                 println!("[stopped]");
                 tracing::info!("stopped by Ctrl-C");
-                return Ok(());
+                break;
             }
+        };
+    }
+    runtime.stop_metadata();
+    state_tx.send_modify(|s| s.quit = true);
+    Ok(())
+}
+
+/// Turns the app's state changes (and a few effects/messages) into
+/// `ttnr play`'s status lines.
+#[derive(Debug, Default)]
+struct Printer {
+    /// The station's own URL (not repeated as `stream:`).
+    own_url: Option<String>,
+    status: Option<Status>,
+    format: String,
+    programme: Option<String>,
+    track: Option<String>,
+}
+
+impl Printer {
+    fn new(station: &Station) -> Self {
+        Self {
+            own_url: station.url.clone(),
+            ..Self::default()
         }
     }
+
+    /// `playlist: N streams` when a resolution yields mirrors.
+    fn msg(&self, msg: &Msg) -> Option<String> {
+        match msg {
+            Msg::Resolved { result: Ok(d), .. } | Msg::Refreshed { result: Ok(d), .. }
+                if d.urls.len() > 1 =>
+            {
+                Some(format!("playlist: {} streams", d.urls.len()))
+            }
+            _ => None,
+        }
+    }
+
+    /// `stream: <url>` when another URL than the station's own starts.
+    fn effect(&self, effect: &Effect) -> Option<String> {
+        match effect {
+            Effect::Play { url, .. } if self.own_url.as_deref() != Some(url.as_str()) => {
+                Some(format!("stream: {url}"))
+            }
+            _ => None,
+        }
+    }
+
+    /// Lines for what changed since the last call.
+    fn state(&mut self, s: &AppState) -> Vec<String> {
+        let mut lines = Vec::new();
+        if self.status.as_ref() != Some(&s.status) {
+            if let Some(line) = status_line(self.status.as_ref(), &s.status) {
+                lines.push(line);
+            }
+            self.status = Some(s.status.clone());
+        }
+        let format = s
+            .stream
+            .as_ref()
+            .map(StreamInfo::summary)
+            .unwrap_or_default();
+        if format != self.format {
+            if !format.is_empty() {
+                lines.push(format!("format: {format}"));
+            }
+            self.format = format;
+        }
+        let now = s.now.as_ref();
+        let programme = now.and_then(|n| n.programme.clone());
+        if programme.is_some() && programme != self.programme {
+            lines.push(format!(
+                "on air: {}",
+                programme.as_deref().unwrap_or_default()
+            ));
+            self.programme = programme;
+        }
+        let track = now.and_then(now_line);
+        if track.is_some() && track != self.track {
+            lines.extend(track.clone());
+            self.track = track;
+        }
+        lines
+    }
+}
+
+/// The line for a status change; errors are reported by the caller
+/// (stderr, exit code).
+fn status_line(prev: Option<&Status>, status: &Status) -> Option<String> {
+    Some(match status {
+        Status::Idle | Status::Resolving | Status::Error(_) => return None,
+        Status::Loading => "[loading]".into(),
+        Status::Playing if prev == Some(&Status::Paused) => "[resumed]".into(),
+        Status::Playing => "[playing]".into(),
+        Status::Buffering(Some(p)) => format!("[buffering {p}%]"),
+        Status::Buffering(None) => "[buffering]".into(),
+        Status::Paused => "[paused]".into(),
+        Status::Reconnecting(m) => format!("[{m}]"),
+        Status::Ended => "[end of stream]".into(),
+    })
 }
 
 /// A URL or path plays as is; anything else must be a station id.
@@ -300,23 +334,6 @@ pub fn setup() -> Result<(SourceRegistry, ResolveCtx)> {
     Ok((registry, ctx))
 }
 
-/// Resolve `station` through its source.
-async fn resolve(
-    registry: &SourceRegistry,
-    ctx: &ResolveCtx,
-    station: &Station,
-) -> Result<StreamDescriptor> {
-    let d = registry.resolve(station, ctx).await.map_err(|e| match e {
-        ttnr_core::ResolveError::UnknownSource(id) => anyhow::anyhow!(
-            "station {:?} needs the `{id}` source, which is not available yet",
-            station.id
-        ),
-        other => other.into(),
-    })?;
-    tracing::info!(trace = %d.trace, urls = ?d.urls, "resolved");
-    Ok(d)
-}
-
 /// `now: Artist – Title` (or just the title).
 fn now_line(np: &NowPlaying) -> Option<String> {
     match (&np.artist, &np.title) {
@@ -324,33 +341,6 @@ fn now_line(np: &NowPlaying) -> Option<String> {
         (None, Some(title)) => Some(format!("now: {title}")),
         _ => None,
     }
-}
-
-/// The status line for an engine event, if it deserves one. Errors are
-/// reported by the caller (stderr, exit code); now-playing goes through the
-/// merger.
-fn describe(event: &EngineEvent) -> Option<String> {
-    Some(match event {
-        EngineEvent::Loading => "[loading]".into(),
-        EngineEvent::Playing => "[playing]".into(),
-        EngineEvent::Buffering { percent: Some(p) } => format!("[buffering {p}%]"),
-        EngineEvent::Buffering { percent: None } => "[buffering]".into(),
-        EngineEvent::Paused(true) => "[paused]".into(),
-        EngineEvent::Paused(false) => "[resumed]".into(),
-        EngineEvent::StreamInfo(info) => {
-            let summary = info.summary();
-            if summary.is_empty() {
-                return None;
-            }
-            format!("format: {summary}")
-        }
-        EngineEvent::Eof => "[end of stream]".into(),
-        EngineEvent::Tags(_)
-        | EngineEvent::Devices(_)
-        | EngineEvent::Stopped
-        | EngineEvent::Error { .. }
-        | EngineEvent::Shutdown => return None,
-    })
 }
 
 /// `ttnr search <query>`: search radio-browser.info and print the stations
@@ -419,46 +409,61 @@ fn slug(name: &str) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use ttnr_core::{InfoSource, StreamInfo};
-    use ttnr_engine::ErrorKind;
+    use std::time::SystemTime;
+    use ttnr_core::InfoSource;
 
     #[test]
-    fn status_lines() {
-        assert_eq!(
-            describe(&EngineEvent::Loading).as_deref(),
-            Some("[loading]")
-        );
-        assert_eq!(
-            describe(&EngineEvent::Buffering { percent: Some(40) }).as_deref(),
-            Some("[buffering 40%]")
-        );
-        assert_eq!(
-            describe(&EngineEvent::Eof).as_deref(),
-            Some("[end of stream]")
-        );
-        let info = StreamInfo {
+    fn printer_lines_follow_state_changes() {
+        let st = Station::from_url("http://own/stream");
+        let mut p = Printer::new(&st);
+        let mut s = AppState {
+            station: Some(st),
+            status: Status::Loading,
+            ..AppState::default()
+        };
+        assert_eq!(p.state(&s), ["[loading]"]);
+        assert!(p.state(&s).is_empty(), "no change, no line");
+        s.status = Status::Playing;
+        s.stream = Some(StreamInfo {
             codec: Some("mp3".into()),
             sample_rate: Some(44_100),
             ..StreamInfo::default()
-        };
+        });
+        assert_eq!(p.state(&s), ["[playing]", "format: MP3 · 44.1 kHz"]);
+        s.status = Status::Paused;
+        assert_eq!(p.state(&s), ["[paused]"]);
+        s.status = Status::Playing;
+        assert_eq!(p.state(&s), ["[resumed]"]);
+        s.now = Some(NowPlaying {
+            programme: Some("Morning".into()),
+            artist: Some("A".into()),
+            title: Some("T".into()),
+            ..NowPlaying::empty(InfoSource::External, SystemTime::UNIX_EPOCH)
+        });
+        assert_eq!(p.state(&s), ["on air: Morning", "now: A – T"]);
+        s.status = Status::Reconnecting("HTTP 404 Not Found; trying the next stream".into());
         assert_eq!(
-            describe(&EngineEvent::StreamInfo(info)).as_deref(),
-            Some("format: MP3 · 44.1 kHz")
+            p.state(&s),
+            ["[HTTP 404 Not Found; trying the next stream]"]
         );
-    }
-
-    #[test]
-    fn silent_events() {
+        s.status = Status::Ended;
+        assert_eq!(p.state(&s), ["[end of stream]"]);
         assert_eq!(
-            describe(&EngineEvent::StreamInfo(StreamInfo::default())),
-            None
+            p.effect(&Effect::Play {
+                url: "http://own/stream".into(),
+                headers: vec![]
+            }),
+            None,
+            "own URL not repeated"
         );
-        assert_eq!(describe(&EngineEvent::Stopped), None);
-        let err = EngineEvent::Error {
-            kind: ErrorKind::Http403,
-            detail: None,
-        };
-        assert_eq!(describe(&err), None);
+        assert_eq!(
+            p.effect(&Effect::Play {
+                url: "http://mirror".into(),
+                headers: vec![]
+            })
+            .as_deref(),
+            Some("stream: http://mirror")
+        );
     }
 
     #[test]

@@ -452,12 +452,56 @@ fn pls_with_icy_titles() {
             }
         }
     });
+    // A live stream that drops is reconnected (SPEC F3.5), so `play` keeps
+    // going: wait for the title and the reconnect, then press Ctrl-C.
     let state = tempfile::tempdir().unwrap();
     let url = format!("http://{addr}/radio.pls");
-    let out = ttnr(state.path(), &["play", &url, "--audio-output", "null"]);
-    let stdout = text(&out.stdout);
-    assert!(out.status.success(), "{stdout}{}", text(&out.stderr));
-    assert!(stdout.contains("now: Artist One – Song A"), "{stdout}");
+    let mut child = Command::new(env!("CARGO_BIN_EXE_ttnr"))
+        .args(["play", &url, "--audio-output", "null"])
+        .env("XDG_STATE_HOME", state.path())
+        .env("XDG_CACHE_HOME", state.path())
+        .env("XDG_CONFIG_HOME", state.path())
+        .stdout(std::process::Stdio::piped())
+        .stderr(std::process::Stdio::piped())
+        .spawn()
+        .unwrap();
+    let stdout = child.stdout.take().unwrap();
+    let (tx, rx) = std::sync::mpsc::channel();
+    std::thread::spawn(move || {
+        use std::io::BufRead;
+        for line in std::io::BufReader::new(stdout)
+            .lines()
+            .map_while(Result::ok)
+        {
+            let _ = tx.send(line);
+        }
+    });
+    let mut seen = Vec::new();
+    let deadline = std::time::Instant::now() + std::time::Duration::from_secs(30);
+    while !(seen
+        .iter()
+        .any(|l: &String| l == "now: Artist One – Song A")
+        && seen.iter().any(|l| l.contains("stream ended; retry in")))
+    {
+        let left = deadline.saturating_duration_since(std::time::Instant::now());
+        match rx.recv_timeout(left) {
+            Ok(line) => seen.push(line),
+            Err(_) => {
+                let _ = child.kill();
+                panic!("no title + reconnect within 30 s: {seen:#?}");
+            }
+        }
+    }
+    let pid = child.id().to_string();
+    assert!(
+        Command::new("kill")
+            .args(["-INT", &pid])
+            .status()
+            .unwrap()
+            .success()
+    );
+    let status = child.wait().unwrap();
+    assert!(status.success(), "Ctrl-C exits cleanly: {status:?}");
 }
 
 /// A bad `[keys]` entry stops the TUI with a clear message before the

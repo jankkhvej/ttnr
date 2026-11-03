@@ -180,6 +180,16 @@ pub fn parse(line: &str) -> Result<Request, String> {
     }
 }
 
+/// Removes the socket file when dropped (any exit path, also errors).
+#[derive(Debug)]
+pub struct SocketCleanup(pub PathBuf);
+
+impl Drop for SocketCleanup {
+    fn drop(&mut self) {
+        let _ = std::fs::remove_file(&self.0);
+    }
+}
+
 /// Bind the socket unless another ttnr answers on it (a stale file from a
 /// crashed run is replaced). `None` = another instance owns it.
 pub async fn bind(path: &Path) -> Result<Option<UnixListener>> {
