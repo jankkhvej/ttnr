@@ -49,3 +49,6 @@ cursor_blink  = true
 title         = "banner"        # emulated double height
 rule          = "🬭"             # sextant: lower third (Unicode 13)
 rule_fallback = "▄"             # quadrant fallback for fonts without sextants
+
+[effects]
+boot    = "bbc-micro"

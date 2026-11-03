@@ -2,6 +2,12 @@
 
 Newest entry on top. Each entry: date · milestone/task · what changed · how to try it · next step · open questions for the owner.
 
+## 2026-11-03 · M5 · Owner feedback: Spectrum, animations, baud
+- Owner: new `zx-spectrum` theme (tape-loading border stripes), boot animations on theme switch, optional Teletype line speed; "everything on paper" kept as a proposal (THEMES.md).
+- Done: `VOL 144` without `%` in octal themes (`percent_sign`); `baud = 110|300|9600` for printout themes; `[effects]` with boot sequences (Spectrum RAM test → copyright, ZX80 K cursor, BBC banner, VT100 self-test → RSX-11M boot lines) and loading effects (Spectrum tape stripes, ZX80 blank); config `effects = false` disables all (ADR-034). Research via subagent logged in RESEARCH.md.
+- Tests: fx time model (boot once per switch, skip, disabled, tape phases/tail/error/mono, ZX80 blank, stripe heights), printout line speed and backlog, animation frame snapshots, pty run (boot → `t` → next boot → quit).
+- Open: the "exclamation marks" Spectrum boot pattern was not found in sources – which model/situation did you see it on?
+
 ## 2026-11-03 · M5 · Retro themes implemented (milestone done, awaiting owner review)
 - Theme engine: optional `[screen]` (logical width/height, border colour), `[text]` (uppercase, ASCII-only transliteration, character map, octal), `[chrome]` (banner, prompt, cursor, double-height title bar, mosaic rule with quadrant fallback, printout mode), `[status]` templates (ADR-033). Border colour now follows colour-depth fallback; the title bar becomes inverse video in mono.
 - Built-ins: `pdp11-vt100` (+`-amber`, `-green`), `pdp11-teletype`, `zx80`, `bbc-mode7`; snapshots for every view × 3 sizes × theme, plus a Teletype printout session. `plain` unchanged.

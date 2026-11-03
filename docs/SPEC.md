@@ -84,7 +84,9 @@ track and programme information — which the BBC streams themselves do not carr
   prompt string, cursor style, number formatting (e.g. octal), status
   message style, text effects (bold/reverse/blink/double-height emulation).
 - F6.3 Built-in themes: `plain` (default), `pdp11-vt100`, `pdp11-teletype`,
-  `zx80`, `bbc-mode7` (BBC Micro by Acorn). See THEMES.md.
+  `zx80`, `zx-spectrum` (owner, 2026-11-03), `bbc-mode7` (BBC Micro by
+  Acorn). See THEMES.md. Optional animations (boot sequences, tape-loading
+  border) are text and colour only and can be turned off.
 - F6.4 Colour depth fallback: truecolor → 256 → 16 → monochrome.
 
 ### F7 CLI and scripting

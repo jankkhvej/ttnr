@@ -1,0 +1,68 @@
+# ttnr theme: zx-spectrum – the Sinclair ZX Spectrum 48K.
+# Researched 2026-11-03 (BASIC manual, 48K ROM disassembly, WoS FAQ;
+# RESEARCH.md): 32×24 characters on white paper with a white border, black
+# ink, upper and lower case, ` shown as £ and ^ as ↑, reports "code text,
+# line:statement" at the bottom; tape loading paints red/cyan then
+# blue/yellow stripes in the border; power-on clears to the copyright line.
+# RGB at the non-bright level 0xD7 is a common emulator choice.
+name  = "zx-spectrum"
+title = ""
+
+[palette]
+fg     = "#000000"              # INK 0
+bg     = "#d7d7d7"              # PAPER 7
+accent = "#0000d7"              # station bar: PAPER 1 (blue)
+dim    = "#000000"
+warn   = "#d700d7"              # magenta
+error  = "#d70000"              # red
+
+[palette_16]
+fg     = "black"
+bg     = "white"
+accent = "blue"
+dim    = "black"
+warn   = "magenta"
+error  = "red"
+
+[glyphs]                        # Spectrum characters and block graphics
+borders   = "none"
+ellipsis  = "..."
+dash      = " - "
+separator = "  "
+playing   = "▶"
+paused    = "▌"
+busy      = "▒"
+stopped   = " "
+error     = "▒"
+current   = "█"
+cursor    = ">"
+
+[screen]
+width  = 32
+height = 24
+border = "#d7d7d7"              # BORDER 7
+
+[text]
+ascii_only = true
+map        = { "`" = "£", "^" = "↑" }
+
+[chrome]
+prompt       = ""               # the flashing L cursor is the prompt
+cursor       = "block"
+cursor_blink = true
+title        = "banner"
+
+[status]                        # reports (BASIC manual, appendix B)
+idle         = "0 OK, 0:1"
+resolving    = "LOAD \"\""
+loading      = "LOAD \"\""
+buffering    = "LOAD \"\"{percent}"
+playing      = "0 OK, 0:1"
+paused       = "D BREAK - CONT repeats, 0:1"
+reconnecting = "R Tape loading error, 0:1 {message}"
+ended        = "8 End of file, 0:1"
+error        = "R Tape loading error, 0:1 {message}"
+
+[effects]
+loading = "tape"
+boot    = "zx-spectrum"

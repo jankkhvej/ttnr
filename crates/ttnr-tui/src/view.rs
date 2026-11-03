@@ -13,6 +13,7 @@ use ttnr_core::NowPlaying;
 use ttnr_core::app::{AppState, Status, View};
 use ttnr_themes::{CursorShape, StatusKind, Theme, ThemeColor, TitleStyle};
 
+use crate::fx::{Fx, FxFrame};
 use crate::keys::Keymap;
 
 /// Draw the whole UI for `state` with `theme`; help texts follow `keymap`.
@@ -29,6 +30,27 @@ pub fn draw_with_printout(
     keymap: &Keymap,
     printout: &[String],
 ) {
+    draw_with(frame, state, theme, keymap, &Extras { printout, fx: None });
+}
+
+/// Optional extras for [`draw_with`].
+#[derive(Default)]
+pub struct Extras<'a> {
+    /// Printed lines for printout themes (oldest first).
+    pub printout: &'a [String],
+    /// An animation frame painted over the UI.
+    pub fx: Option<(&'a Fx, FxFrame)>,
+}
+
+/// [`draw`] with a printout and/or an animation frame.
+pub fn draw_with(
+    frame: &mut Frame,
+    state: &AppState,
+    theme: &Theme,
+    keymap: &Keymap,
+    extras: &Extras<'_>,
+) {
+    let printout = extras.printout;
     let full = frame.area();
     let area = logical_screen(full, theme);
     if area != full {
@@ -70,6 +92,9 @@ pub fn draw_with_printout(
         View::OpenUrl { input } => open_url(frame, inner, input, theme),
         View::Help => help_overlay(frame, inner, theme, keymap),
         View::Devices { selected } => devices(frame, inner, state, *selected, theme),
+    }
+    if let Some((fx, fx_frame)) = extras.fx {
+        fx.paint(fx_frame, frame.buffer_mut(), full, area, theme);
     }
 }
 

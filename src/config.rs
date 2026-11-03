@@ -86,6 +86,11 @@ pub struct Config {
     pub color: ColorSetting,
     /// Mosaic glyphs for retro themes: `auto` (default), `sextant`, `quadrant`.
     pub mosaic: MosaicSetting,
+    /// Theme animations (boot, tape loading, screen blanking); default on.
+    pub effects: Option<bool>,
+    /// Simulated line speed for printout themes (bits/s, e.g. 110, 300,
+    /// 9600); 0 or unset = print instantly.
+    pub baud: Option<u32>,
     /// Key bindings: action → key(s); replaces that action's defaults.
     pub keys: BTreeMap<String, Keys>,
     /// Delay (seconds) for external now-playing per source, e.g. `bbc = 25`.
@@ -98,6 +103,11 @@ pub struct Config {
 pub const DEFAULT_SYNC_OFFSETS: &[(&str, u32)] = &[];
 
 impl Config {
+    /// Whether theme animations run (`effects`, default true).
+    pub fn effects_enabled(&self) -> bool {
+        self.effects.unwrap_or(true)
+    }
+
     /// Effective sync offsets: built-in defaults, then `[sync_offset]`.
     pub fn sync_offsets(&self) -> BTreeMap<String, std::time::Duration> {
         let secs = |s: u32| std::time::Duration::from_secs(u64::from(s));

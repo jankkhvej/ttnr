@@ -3,6 +3,7 @@
 //! that redraws only when the state changes or the terminal is resized.
 
 use std::sync::Arc;
+use std::time::Instant;
 
 use anyhow::{Context, Result};
 use crossterm::cursor::MoveTo;
@@ -84,7 +85,18 @@ pub async fn run(cfg: &EngineConfig, theme: Option<&str>) -> Result<()> {
             }
         })
         .collect();
-    let ui = tokio::spawn(ui_loop(state_rx, msg_tx.clone(), keymap, resolved));
+    let ui_options = UiOptions {
+        effects: config.effects_enabled(),
+        depth,
+        baud: config.baud.unwrap_or(0),
+    };
+    let ui = tokio::spawn(ui_loop(
+        state_rx,
+        msg_tx.clone(),
+        keymap,
+        resolved,
+        ui_options,
+    ));
     let mut runtime = Runtime {
         registry,
         ctx,
@@ -275,24 +287,39 @@ fn engine_msg(ev: EngineEvent) -> Option<Msg> {
 /// The UI task: owns the terminal; redraws when the state changes or the
 /// terminal is resized; turns keys into commands. Restores the terminal on
 /// every exit path (ratatui's init also installs a panic hook for that).
+/// UI settings from the config.
+struct UiOptions {
+    /// Theme animations on/off.
+    effects: bool,
+    /// Colour depth (animations use fixed machine colours).
+    depth: ttnr_themes::ColorDepth,
+    /// Simulated line speed for printout themes (0 = instant).
+    baud: u32,
+}
+
 async fn ui_loop(
     mut state_rx: watch::Receiver<AppState>,
     msg_tx: mpsc::UnboundedSender<Msg>,
     keymap: ttnr_tui::Keymap,
     themes: Vec<ttnr_themes::Theme>,
+    options: UiOptions,
 ) -> Result<()> {
     let mut terminal = ratatui::try_init().context("cannot initialise the terminal")?;
     let result = async {
         let mut events = EventStream::new();
         let mut dirty = true;
-        let mut printout = ttnr_tui::Printout::new(&themes[0]);
+        let mut printout = ttnr_tui::Printout::with_baud(&themes[0], options.baud);
+        let mut fx = ttnr_tui::Fx::new(options.effects, options.depth);
+        let mut last_tick = Instant::now();
         loop {
             let state = state_rx.borrow_and_update().clone();
             if state.quit {
                 return Ok(());
             }
+            let theme = &themes[state.theme_index % themes.len()];
+            let now = Instant::now();
+            fx.observe(&state, theme, now);
             if dirty {
-                let theme = &themes[state.theme_index % themes.len()];
                 // Synchronized output (DEC mode 2026): the terminal shows the
                 // frame only when complete – no blank flash from ratatui's
                 // clear-on-resize. Terminals without it ignore the sequence.
@@ -300,8 +327,13 @@ async fn ui_loop(
                 if theme.chrome.printout {
                     printout.observe(&state, theme);
                 }
+                let fx_frame = fx.frame(now);
                 terminal.draw(|frame| {
-                    ttnr_tui::draw_with_printout(frame, &state, theme, &keymap, printout.lines());
+                    let extras = ttnr_tui::Extras {
+                        printout: printout.lines(),
+                        fx: fx_frame.map(|f| (&fx, f)),
+                    };
+                    ttnr_tui::draw_with(frame, &state, theme, &keymap, &extras);
                 })?;
                 // Park the (hidden) cursor top-left: some terminals
                 // (Terminal.app) scroll the screen to keep the cursor visible
@@ -309,7 +341,21 @@ async fn ui_loop(
                 crossterm::execute!(std::io::stdout(), MoveTo(0, 0), EndSynchronizedUpdate)?;
                 dirty = false;
             }
+            // Animations and simulated printing tick only while active.
+            if !printout.busy() {
+                last_tick = Instant::now();
+            }
+            let wake = [printout.tick(), fx.tick(Instant::now())]
+                .into_iter()
+                .flatten()
+                .min();
             tokio::select! {
+                () = sleep_or_never(wake) => {
+                    let now = Instant::now();
+                    printout.advance(now.saturating_duration_since(last_tick));
+                    last_tick = now;
+                    dirty = true;
+                }
                 changed = state_rx.changed() => {
                     if changed.is_err() {
                         return Ok(());
@@ -318,6 +364,11 @@ async fn ui_loop(
                 }
                 event = events.next() => match event {
                     Some(Ok(Event::Key(key))) => {
+                        if fx.booting(Instant::now()) {
+                            // Any key ends the boot sequence.
+                            fx.skip_boot();
+                            dirty = true;
+                        }
                         if let Some(cmd) = keymap.command_for(key, &state.view) {
                             let _ = msg_tx.send(Msg::Command(cmd));
                         }
@@ -345,6 +396,14 @@ async fn ui_loop(
     .await;
     ratatui::restore();
     result
+}
+
+/// Sleep for `d`, or forever when `None`.
+async fn sleep_or_never(d: Option<std::time::Duration>) {
+    match d {
+        Some(d) => tokio::time::sleep(d).await,
+        None => std::future::pending().await,
+    }
 }
 
 #[cfg(test)]

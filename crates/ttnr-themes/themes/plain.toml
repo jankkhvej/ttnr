@@ -66,3 +66,7 @@ cursor    = "›"
 # reconnecting = "{glyph} reconnecting: {message}"
 # ended        = "{glyph} stream ended"
 # error        = "{glyph} error: {message}"
+#
+# [effects]                # animations (config effects = false disables)
+# loading = "none"         # or "tape" (ZX Spectrum border), "blank" (ZX80)
+# boot    = "none"         # or "zx-spectrum", "zx80", "bbc-micro", "vt100"

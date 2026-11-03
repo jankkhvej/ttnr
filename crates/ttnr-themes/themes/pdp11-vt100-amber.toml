@@ -59,3 +59,6 @@ paused       = "{glyph} PAUSED"
 reconnecting = "?TTNR-W-{message}"
 ended        = "?TTNR-I-END OF STREAM"
 error        = "?TTNR-F-{message}"
+
+[effects]
+boot    = "vt100"

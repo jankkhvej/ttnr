@@ -275,3 +275,23 @@ anything older than ~3 months before relying on it.
 - `zx80`: 32×24 black on white with a white border, upper case, no colour, inverse-video station bar, block glyphs █ ▌ ▒, status as `n/m` report codes (0 = OK, 2 = not found, 4 = no room → network, 9 = STOP → paused) per the ZX80 Operating Manual. Exact code choice for resolving/loading/buffering (`0/10` …) is a design choice.
 - `bbc-mode7`: 40×25 on black, teletext colours, yellow double-height bar for the station, `BBC Computer 32K` / `BASIC` banner, `>` prompt with a flashing underline cursor, English teletext character map (`#`→£ …), sextant rule with a quadrant fallback.
 
+### 2026-11-03 · ZX Spectrum, power-on sequences (M5 additions; research subagent, sources read through a summarising fetch tool)
+
+| Fact | Source | Status |
+|---|---|---|
+| ROM message `© 1982 Sinclair Research Ltd` at 0x1539 (© = 0x7F), printed by NEW/START_NEW on the bottom line | https://skoolkid.github.io/rom/asm/1539.html · https://skoolkid.github.io/rom/asm/11B7.html | VERIFIED (ROM disassembly) 2026-11-03 |
+| START_NEW: border white (`OUT ($FE),7`), RAM_FILL writes 2 to every byte down to $4000, RAM_READ changes 2→1→0; then PAPER 7, INK 0, BORDER 7, CLS | https://skoolkid.github.io/rom/asm/11B7.html | VERIFIED 2026-11-03 |
+| Visible power-on: garbage, black screen with vertical red bars during the RAM check, then white with the copyright line (attributes 2 = red ink on black paper explains the bars – our inference) | https://spectrumcomputing.co.uk/forums/viewtopic.php?t=1216 | seen 2026-11-03 (forum); duration UNVERIFIED |
+| No source for an "exclamation marks" power-on pattern (the System Test ROM flashes black/white; 128K/+2 not researched) | https://worldofspectrum.org/pub/sinclair/games-info/s/SinclairZXSpectrumTestROM.txt | UNVERIFIED |
+| LD-BYTES border: white at entry, red while waiting for a leader, cyan on an edge (red/cyan stripes), blue/yellow from the sync on (`XOR $03`) | https://skoolkid.github.io/rom/asm/0556.html | VERIFIED 2026-11-03 |
+| Tape timing (T-states): pilot 2168, sync 667/735, bit 0 = 2 × 855, bit 1 = 2 × 1710; header pilot 8063 pulses, data 3223; 224 T-states per line, 312 lines, 69,888 per frame | https://worldofspectrum.org/faq/reference/48kreference.htm | VERIFIED 2026-11-03 |
+| Character set: 0x5E ↑, 0x60 £, 0x7F ©; 128–143 2 × 2 block graphics | https://en.wikipedia.org/wiki/ZX_Spectrum_character_set | seen 2026-11-03 (secondary) |
+| Reports 0–9, A–R with texts (`0 OK`, `D BREAK - CONT repeats`, `8 End of file`, `R Tape loading error` …), shown at the bottom until a key is pressed; cursor modes K/L/C/E/G as a flashing letter | https://worldofspectrum.org/ZXBasicManual/zxmanappb.html · https://worldofspectrum.org/ZXBasicManual/zxmanchap1.html | VERIFIED 2026-11-03; `, n:m` suffix from memory, UNVERIFIED |
+| RGB: no primary source; emulator palettes use 0xD7/0xD8/0xC8 for non-bright, 0xFF bright | https://www.turbodither.com/palettes/zx-spectrum · https://lospec.com/palette-list/zx-spectrum | seen 2026-11-03 – 0xD7 chosen |
+| ZX80: picture goes blank (white/grey) while busy; at power-on an inverse K cursor bottom left on a blank screen | http://blog.tynemouthsoftware.co.uk/2023/10/how-the-zx80-generates-video.html · ZX80 Operating Manual (search snippet) | seen 2026-11-03 |
+| BBC Micro power-on: `BBC Computer 32K`, `BASIC`, `>` (soft BREAK omits `32K`); beep via VDU 7 (single/double UNVERIFIED) | https://stardot.org.uk/forums/viewtopic.php?t=8884 | seen 2026-11-03 |
+| VT100 power-up self-test shows test data, erases, rings the bell and puts the cursor top left; errors show a code character top left | https://vt100.net/docs/vt100-ug/chapter1.html · https://vt100.net/docs/vt102-ug/chapter9.html | seen 2026-11-03 (secondary summary) |
+| RSX-11M V4.6 BL56 console boot (SIMH): `RSX-11M V4.6 BL56 128.K MAPPED`, `>RED DU:=SY:`, `>RED DU:=LB:`, `>MOU DU:RSXM56`, `>@DU:[1,2]STARTUP` (device names vary) | https://forum.vcfed.org/index.php?threads/booting-rsx11m-4-6-on-a-kdf11-be.46047/ · http://ancientbits.blogspot.com/2012/07/installing-rsx-11m-46-from-scratch-part_12.html | seen 2026-11-03 |
+| Teletype Model 33: no text-visible power-on behaviour found | – | UNVERIFIED |
+| Printing terminals after the ASR-33 at 300 baud (e.g. DECwriter) | – | UNVERIFIED (only used as an example speed) |
+

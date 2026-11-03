@@ -58,3 +58,7 @@ paused       = "9/0"            # 9 = STOP
 reconnecting = "4/0 {message}"  # 4 = no room (here: no stream)
 ended        = "0/-2"           # -2 = command completed
 error        = "2/0 {message}"  # 2 = not found
+
+[effects]
+loading = "blank"
+boot    = "zx80"

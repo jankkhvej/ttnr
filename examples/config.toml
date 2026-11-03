@@ -21,6 +21,16 @@
 # "sextant", "quadrant".
 # mosaic = "auto"
 
+# Theme animations: boot sequence when a retro theme is switched to,
+# ZX Spectrum tape-loading border stripes, ZX80 screen blanking while
+# loading. false = never animate.
+# effects = true
+
+# Printout themes (pdp11-teletype): simulated line speed in bits per
+# second, 10 bits per character – 110 = Teletype Model 33 (10 chars/s),
+# 300, 9600; 0 = print instantly.
+# baud = 0
+
 # Key bindings (SPEC F5.3 defaults shown). Giving an action replaces its
 # default keys; use a string or a list. Key names: a single character,
 # space, enter, tab, backspace, esc, up, down, left, right, home, end,

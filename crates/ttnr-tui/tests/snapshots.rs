@@ -196,3 +196,67 @@ fn printout_session() {
         }
     }
 }
+
+/// Animation frames: boot sequences at characteristic moments and the
+/// tape-loading border (characters only; colours in the fx unit tests).
+#[test]
+fn animation_frames() {
+    use std::time::Duration;
+    use ttnr_themes::BootEffect;
+    use ttnr_tui::{Extras, Fx, FxFrame};
+    let themes = ThemeSet::builtin();
+    let keymap = Keymap::default();
+    let fx = Fx::new(true, ColorDepth::TrueColor);
+    for i in 0..themes.len() {
+        let theme = themes.get(i).for_depth(ColorDepth::TrueColor);
+        let mut frames: Vec<(String, FxFrame)> = Vec::new();
+        let boot = theme.effects.boot;
+        if boot != BootEffect::None {
+            let moments: &[u64] = match boot {
+                BootEffect::ZxSpectrum => &[100, 600, 2000],
+                BootEffect::Vt100 => &[100, 600, 1500, 3000],
+                _ => &[100, 1000],
+            };
+            for ms in moments {
+                frames.push((
+                    format!("boot_{ms}ms"),
+                    FxFrame::Boot {
+                        effect: boot,
+                        t: Duration::from_millis(*ms),
+                        seed: 1,
+                    },
+                ));
+            }
+        }
+        if theme.effects.loading == ttnr_themes::LoadingEffect::Tape {
+            for (name, pilot) in [("tape_pilot", true), ("tape_data", false)] {
+                frames.push((
+                    name.into(),
+                    FxFrame::Tape {
+                        pilot,
+                        tape: 0.0,
+                        seed: 1,
+                    },
+                ));
+            }
+        }
+        for (name, f) in frames {
+            let mut t = Terminal::new(TestBackend::new(48, 30)).unwrap();
+            t.draw(|frame| {
+                let extras = Extras {
+                    printout: &[],
+                    fx: Some((&fx, f)),
+                };
+                ttnr_tui::draw_with(frame, &playing(), &theme, &keymap, &extras);
+            })
+            .unwrap();
+            insta::with_settings!({
+                snapshot_suffix => format!("{}_{name}", theme.name),
+                omit_expression => true,
+                prepend_module_to_snapshot => false,
+            }, {
+                insta::assert_snapshot!("fx", t.backend());
+            });
+        }
+    }
+}

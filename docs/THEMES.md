@@ -62,6 +62,15 @@ Added in M5 (all optional; `plain.toml` lists the defaults):
   config `mosaic = "auto|sextant|quadrant"` picks the fallback), `printout`
   (append changes as lines like paper instead of redrawing).
 - `[status]` templates per state with `{glyph}`, `{message}`, `{percent}`.
+- `[text] percent_sign = false` drops `%` (octal themes show `VOL 144`).
+- `[effects]` `loading` (`none`/`tape`/`blank`) and `boot` (`none`/
+  `zx-spectrum`/`zx80`/`bbc-micro`/`vt100`): a power-on sequence when the
+  theme is switched to (and at start; any key skips it) and an animation
+  while a station loads. Config `effects = false` turns all of them off;
+  the UI ticks (25 fps) only while one runs.
+- Config `baud = 110|300|9600|…` prints printout themes at that line speed
+  (10 bits per character; 0 = instant); old queued lines are printed at
+  once when more than ~4 s would be queued.
 
 Real DECDHL double height is not used: ratatui cannot emit the line
 attribute escapes, so double height is emulated by two rows.
@@ -117,6 +126,27 @@ status as a report code line (`0/0` playing, `2/0` station not found,
 change (respects reduced motion).
 UNVERIFIED: exact emulator colours (pure #000/#FFF chosen).
 
+### `zx-spectrum` – Sinclair ZX Spectrum 48K (researched 2026-11-03)
+Facts (BASIC manual, 48K ROM disassembly, World of Spectrum FAQ): white
+paper, black ink, white border after power-on; upper and lower case; `` ` ``
+shows as £, `^` as ↑, 127 as ©; 2 × 2 block graphics; reports `code text`
+at the bottom (`0 OK`, `D BREAK - CONT repeats`, `R Tape loading error` …).
+Tape loading (ROM LD-BYTES): border red while searching, red/cyan stripes
+during the pilot tone, blue/yellow during data; pilot pulse 2168 T-states
+(≈ 9.7 scan lines at 224 T-states per line), bits 855/1710 T-states per
+pulse. Power-on (START_NEW): border white, RAM filled with 2 and read back,
+then CLS and `© 1982 Sinclair Research Ltd` on the bottom line.
+Design: 32-column screen on a white border, blue double-height station bar,
+status as reports (`LOAD ""` while loading, `0 OK, 0:1` playing, `D BREAK -
+CONT repeats, 0:1` paused, `8 End of file` ended); tape stripes in the
+border while a station loads and ~2 s after the audio starts (half-block
+`▀` = two stripes per row); boot: garbage, red RAM-test lines (one thin
+line per cell, red on black – inferred from the bytes the ROM writes),
+then the copyright line.
+UNVERIFIED: the `, line:statement` suffix wording; exact RGB (0xD7 level
+used); the garbage/red-line look (forum accounts, consistent with the ROM).
+The "exclamation marks" pattern some remember was not found in sources.
+
 ### `bbc-mode7` — BBC Micro (Acorn) MODE 7 teletext (researched 2026-11-03)
 Facts: 40 × 25 SAA5050 teletext; colours black, red, green, yellow, blue,
 magenta, cyan, white (3-bit RGB); control codes occupy a cell (shown as a
@@ -134,6 +164,24 @@ banner + `>` prompt; mosaics as sextants with a quadrant fallback (`mosaic =
 "auto|sextant|quadrant"`, auto picks quadrants in Terminal.app).
 UNVERIFIED: blank-line layout of the banner; exact RGB (ideal 0/255 used);
 start line of the cursor (underline assumed).
+
+### Boot sequences of the other themes
+- `zx80`: blank picture, inverse `K` cursor bottom left (Operating Manual);
+  while a station loads the picture blanks, as the ZX80 did while busy.
+- `bbc-mode7`: `BBC Computer 32K`, `BASIC`, `>` with a flashing cursor.
+- `pdp11-vt100*`: VT100 self-test (test data, erase, cursor top left), then
+  RSX-11M console lines `RSX-11M V4.6 BL56 128.K MAPPED`, `>RED DU:=SY:`,
+  `>RED DU:=LB:`, `>MOU DU:RSXM56`, `>@DU:[1,2]STARTUP` (SIMH logs).
+- `pdp11-teletype`: none (the banner is printed, at `baud` speed if set).
+
+## Proposals (not scheduled)
+
+- **Teletype: everything on paper** (owner, 2026-11-03: keep as proposal).
+  Help, station list, devices and the URL prompt would be printed as lines
+  instead of popups: `?` prints the key table; `s`/`d` print a numbered list
+  and a `STATION? ` prompt answered by number + Enter; `o` prints `.` and
+  echoes the typed URL. Core state unchanged; work in the TUI printout
+  renderer and input handling (medium).
 
 ## Acceptance for every theme
 

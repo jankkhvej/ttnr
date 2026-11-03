@@ -23,6 +23,7 @@ const BUILTIN: &[&str] = &[
     include_str!("../themes/pdp11-vt100-green.toml"),
     include_str!("../themes/pdp11-teletype.toml"),
     include_str!("../themes/zx80.toml"),
+    include_str!("../themes/zx-spectrum.toml"),
     include_str!("../themes/bbc-mode7.toml"),
 ];
 
@@ -228,6 +229,46 @@ pub enum TitleStyle {
     Banner,
 }
 
+/// Animation while a station loads.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum LoadingEffect {
+    /// No animation.
+    #[default]
+    None,
+    /// ZX Spectrum tape loading: red/cyan then blue/yellow border stripes.
+    Tape,
+    /// ZX80: the picture blanks while the machine is busy.
+    Blank,
+}
+
+/// Power-on sequence shown when the theme is switched to.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Deserialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum BootEffect {
+    /// No boot sequence.
+    #[default]
+    None,
+    /// RAM test stripes, then the copyright line.
+    ZxSpectrum,
+    /// Empty screen with the inverse K cursor.
+    Zx80,
+    /// "BBC Computer 32K", "BASIC", ">".
+    BbcMicro,
+    /// VT100 self-test, then RSX-11M boot lines.
+    Vt100,
+}
+
+/// Theme animations (off globally with config `effects = false`).
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Deserialize)]
+#[serde(default, deny_unknown_fields)]
+pub struct Effects {
+    /// While loading a station.
+    pub loading: LoadingEffect,
+    /// When the theme is switched to (and at start).
+    pub boot: BootEffect,
+}
+
 /// Machine "chrome": banner, prompt, cursor, title style, decoration,
 /// printout mode.
 #[derive(Debug, Clone, Default, PartialEq, Eq, Deserialize)]
@@ -310,6 +351,8 @@ struct ThemeFile {
     chrome: Chrome,
     #[serde(default)]
     status: StatusTemplates,
+    #[serde(default)]
+    effects: Effects,
 }
 
 /// A complete theme.
@@ -331,6 +374,8 @@ pub struct Theme {
     pub screen: Screen,
     /// Banner, prompt, cursor, title style, decoration, printout.
     pub chrome: Chrome,
+    /// Animations.
+    pub effects: Effects,
     /// Status line templates.
     pub status: StatusTemplates,
 }
@@ -397,6 +442,7 @@ impl Theme {
             },
             screen: f.screen,
             chrome: f.chrome,
+            effects: f.effects,
             status: f.status,
         })
     }
@@ -608,6 +654,7 @@ mod tests {
                 "pdp11-vt100-green",
                 "pdp11-teletype",
                 "zx80",
+                "zx-spectrum",
                 "bbc-mode7"
             ]
         );
