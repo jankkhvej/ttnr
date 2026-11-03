@@ -616,3 +616,15 @@ fn added_stations_join_the_list_once() {
     a.update(Msg::AddStations(vec![extra]));
     assert_eq!(a.state.stations.len(), 4);
 }
+
+#[test]
+fn set_volume_clamps_and_unmutes() {
+    let mut a = app();
+    a.update(Msg::Command(Command::ToggleMute));
+    assert_eq!(
+        a.update(Msg::Command(Command::SetVolume(130))),
+        [Effect::SetVolume(100)]
+    );
+    assert!(!a.state.muted);
+    assert_eq!(a.state.volume, 100);
+}

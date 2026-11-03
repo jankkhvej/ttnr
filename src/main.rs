@@ -1,6 +1,7 @@
 //! `ttnr` – minimal, themeable terminal player for network music streams.
 
 mod config;
+mod control;
 mod logging;
 mod media;
 mod paths;
@@ -46,6 +47,20 @@ enum Command {
         /// Source to search, e.g. an exec source from config.toml.
         #[arg(long, default_value = "radio-browser")]
         source: String,
+    },
+    /// Show what the running ttnr plays (via its control socket).
+    Now {
+        /// Print the full status as JSON.
+        #[arg(long)]
+        json: bool,
+    },
+    /// Send a command to the running ttnr: toggle_pause, next, prev, mute,
+    /// quit, `volume <0-100>`, `play <station-id>`.
+    Ctl {
+        /// Command name.
+        command: String,
+        /// Volume or station id.
+        arg: Option<String>,
     },
     /// List the stations from stations.toml.
     Stations {
@@ -142,8 +157,47 @@ fn run_app(cli: Cli, media: Option<ttnr_platform::MediaLink>) -> Result<()> {
             limit,
             source,
         }) => runtime.block_on(play::search(&query, limit, &source)),
+        Some(Command::Now { json }) => runtime.block_on(now(json)),
+        Some(Command::Ctl { command, arg }) => runtime.block_on(ctl(&command, arg.as_deref())),
         Some(Command::Stations { search }) => stations::print(search),
     }
+}
+
+/// `ttnr now [--json]`.
+async fn now(json: bool) -> Result<()> {
+    let answer = control::request(r#"{"cmd":"status"}"#).await?;
+    if json {
+        println!("{answer}");
+    } else {
+        let status: control::StatusJson = serde_json::from_str(&answer)?;
+        println!("{}", status.line());
+    }
+    Ok(())
+}
+
+/// `ttnr ctl <command> [arg]`.
+async fn ctl(command: &str, arg: Option<&str>) -> Result<()> {
+    let request = match (command, arg) {
+        ("volume", Some(v)) => {
+            let v: i64 = v
+                .parse()
+                .map_err(|_| anyhow::anyhow!("volume must be 0-100"))?;
+            serde_json::json!({ "cmd": "volume", "value": v })
+        }
+        ("play", Some(id)) => serde_json::json!({ "cmd": "play", "station": id }),
+        (cmd, _) => serde_json::json!({ "cmd": cmd }),
+    };
+    let answer = control::request(&request.to_string()).await?;
+    let v: serde_json::Value = serde_json::from_str(&answer)?;
+    if v.get("ok").and_then(serde_json::Value::as_bool) == Some(false) {
+        anyhow::bail!(
+            "{}",
+            v.get("error")
+                .and_then(serde_json::Value::as_str)
+                .unwrap_or("refused")
+        );
+    }
+    Ok(())
 }
 
 #[cfg(test)]

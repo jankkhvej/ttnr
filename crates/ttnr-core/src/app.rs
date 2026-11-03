@@ -203,6 +203,8 @@ pub enum Command {
     VolumeDown,
     /// Mute/unmute.
     ToggleMute,
+    /// Set the volume (0–100, clamped); unmutes.
+    SetVolume(u8),
     /// Next station in the list.
     NextStation,
     /// Previous station in the list.
@@ -820,6 +822,11 @@ impl App {
             }
             Command::ToggleMute => {
                 self.state.muted = !self.state.muted;
+                vec![Effect::SetVolume(self.effective_volume())]
+            }
+            Command::SetVolume(v) => {
+                self.state.volume = v.min(100);
+                self.state.muted = false;
                 vec![Effect::SetVolume(self.effective_volume())]
             }
             Command::NextStation | Command::PrevStation => {

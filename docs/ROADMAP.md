@@ -58,7 +58,7 @@ Work top to bottom. Tick `[x]` when a task meets its acceptance criteria and
 ## M7 — Extensibility
 - [x] `radio-browser` source (search/browse the open directory).
 - [x] `exec` source: external command protocol (JSON over stdout) + one example script; documented in `docs/SOURCES.md`.
-- [ ] `ttnr now --json`; control socket (JSON lines) with status/commands.
+- [x] `ttnr now --json`; control socket (JSON lines) with status/commands.
 **Acceptance:** a new source added as a 30-line script, no recompilation.
 
 ## M8 — Polish & release

@@ -103,6 +103,23 @@ pub async fn run(
             }
         })
         .collect();
+    // Control socket for `ttnr now`, `ttnr ctl` and other tools; another
+    // running ttnr keeps its socket.
+    let socket = crate::control::socket_path();
+    match crate::control::bind(&socket).await {
+        Ok(Some(listener)) => {
+            tokio::spawn(crate::control::serve(
+                listener,
+                socket,
+                state_rx.clone(),
+                msg_tx.clone(),
+            ));
+        }
+        Ok(None) => {
+            tracing::warn!(path = %socket.display(), "another ttnr owns the control socket")
+        }
+        Err(e) => tracing::warn!(error = %e, "no control socket"),
+    }
     let ui_options = UiOptions {
         effects: config.effects_enabled(),
         depth,

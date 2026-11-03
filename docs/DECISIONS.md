@@ -243,3 +243,8 @@ Decision: `config.toml` `[sources.<id>] command = [...]` registers an `ExecSourc
 Rejected: a long-running daemon protocol (more state, harder to write in shell); spawning per station for metadata polling (the script owns its cadence via `now`).
 Consequences: a script killed with ttnr by SIGKILL exits on its next write (broken pipe) – documented. Source ids are leaked `&'static str` (few, process lifetime).
 
+## ADR-042 · 2026-11-03 · Control socket and `ttnr now` / `ttnr ctl`
+Context: M7 task 3 (SPEC F7) – `ttnr now --json` and a local control socket (JSON lines) for other tools.
+Decision: the TUI serves a Unix socket at `$TMPDIR/ttnr-$UID.sock` (uid = owner of `$HOME`, no `unsafe`; macOS `$TMPDIR` is per user). One instance owns it: if the socket answers, a second ttnr does not serve; a stale file is replaced; it is removed on quit. JSON lines: `status`, `subscribe` (status now and on every state change – for widgets), `toggle_pause`, `next`, `prev`, `mute`, `quit`, `volume` + `value` (new `Command::SetVolume`), `play` + `station` id; answers a status object (`station`, `status`, `message`, `now`, `format`, `volume`, `muted`, `device`), `{"ok":true}` or `{"ok":false,"error":…}`. The server reads the published `watch` state and sends `Msg`s like the UI does. CLI: `ttnr now` ("Artist – Title (Station)"), `ttnr now --json`, `ttnr ctl <command> [arg]`; a clear error when no ttnr runs.
+Consequences: `ttnr play` has no socket yet (its own loop; follow-up with moving it onto `App`, ADR-022). The socket trusts any process of the same user (same as the user's own terminal).
+

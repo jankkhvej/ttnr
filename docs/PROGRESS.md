@@ -2,6 +2,12 @@
 
 Newest entry on top. Each entry: date · milestone/task · what changed · how to try it · next step · open questions for the owner.
 
+## 2026-11-03 · M7 · Control socket – **M7 complete, waiting for owner review**
+- TUI serves `$TMPDIR/ttnr-$UID.sock` (JSON lines: status, subscribe, toggle_pause, next, prev, mute, volume, play, quit); `ttnr now [--json]`, `ttnr ctl` (ADR-042); `Command::SetVolume`.
+- Tests: status JSON + line, request parsing, a served socket (status, command, unknown station, subscribe updates, second instance backs off, socket removed); live pty round trip (now, ctl volume, now --json, bad command, ctl quit → TUI exits in 90 ms, socket gone, "not running").
+- M7 summary: radio-browser directory search (`/`, `ttnr search`), exec sources from scripts (`[sources.<id>]`, docs/SOURCES.md, 32-line SomaFM example), control socket + `ttnr now`/`ctl`.
+- Follow-up: move `ttnr play` onto `App` (gains reconnects, socket).
+
 ## 2026-11-03 · M7 · `exec` source
 - `ExecSource` (list/resolve/now over stdin/stdout JSON), `[sources.<id>]` in config.toml, TUI adds script stations to the list, `ttnr search --source`, docs/SOURCES.md, example `examples/sources/somafm.py` (32 lines) (ADR-041).
 - Tests: shell-script doubles (list/search, resolve with headers/ttl, unsupported → chain, errors with stderr, missing program, `now` lines + stop on receiver drop), config validation/path expansion, station de-duplication. Live: `ttnr search groove --source somafm`, `ttnr play groovesalad` (exec station) plays with titles from `now`.

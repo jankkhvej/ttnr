@@ -2575,6 +2575,7 @@ dependencies = [
  "futures",
  "ratatui",
  "serde",
+ "serde_json",
  "tempfile",
  "tokio",
  "toml",

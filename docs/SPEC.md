@@ -95,7 +95,8 @@ track and programme information — which the BBC streams themselves do not carr
 - `ttnr` (TUI), `ttnr play <url|station-id>`, `ttnr --theme <name>`,
   `ttnr stations`, `ttnr now --json` (current NowPlaying as JSON),
   and a local control socket so other tools (e.g. a menu-bar widget) can
-  read status and send commands.
+  read status and send commands (`ttnr ctl <command>`; protocol in
+  ADR-042).
 
 ### F8 Configuration
 - `~/.config/ttnr/config.toml` (respect `$XDG_CONFIG_HOME`),
