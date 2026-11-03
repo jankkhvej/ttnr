@@ -33,7 +33,8 @@ A theme is one TOML file; built-ins are embedded from
 `~/.config/ttnr/themes/*.toml` (a user theme with a built-in's `name`
 replaces it). Start from `crates/ttnr-themes/themes/plain.toml`.
 
-- `name`, optional `title` (frame banner, default `ttnr`), `uppercase`.
+- `name`, optional `title` (frame banner, default `ttnr`; empty = none),
+  `uppercase` (kept for compatibility; same as `[text] uppercase`).
 - `[palette]` roles `fg`, `bg`, `accent`, `dim`, `warn`, `error`: `"default"`,
   ANSI names (`black` … `bright_white`), `"#rrggbb"`, or `0`–`255`.
   Optional `[palette_256]` / `[palette_16]` override single roles at those
@@ -47,8 +48,23 @@ replaces it). Start from `crates/ttnr-themes/themes/plain.toml`.
 - Colour depth: config `color = "auto|truecolor|256|16|mono"`; auto uses
   `NO_COLOR`, `COLORTERM`, `TERM` (Terminal.app is treated as 256).
 
-The remaining controls listed above (logical width, prompt, cursor, number
-format, effects, banner) are added with the retro themes in M5.
+Added in M5 (all optional; `plain.toml` lists the defaults):
+
+- `[screen]` `width`/`height` (logical screen, centred, `0` = full terminal),
+  `border` (colour around it).
+- `[text]` `uppercase`, `ascii_only` (transliterate, else `?`), `map`
+  (per-character substitutions, applied last), `numbers` (`decimal`/`octal`
+  for volume, sync offset, percentages; the stream format line stays
+  decimal). The open-URL input is always shown verbatim.
+- `[chrome]` `banner` lines, `prompt`, `cursor` (`block`/`underline`),
+  `cursor_blink`, `title` (`plain`/`banner` = two-row bar emulating double
+  height; inverse video in mono), `rule` + `rule_fallback` (mosaic line;
+  config `mosaic = "auto|sextant|quadrant"` picks the fallback), `printout`
+  (append changes as lines like paper instead of redrawing).
+- `[status]` templates per state with `{glyph}`, `{message}`, `{percent}`.
+
+Real DECDHL double height is not used: ratatui cannot emit the line
+attribute escapes, so double height is emulated by two rows.
 
 ## Built-in themes
 

@@ -1,0 +1,51 @@
+# ttnr theme: bbc-mode7 – BBC Micro (Acorn) MODE 7 teletext.
+# Researched 2026-11-03: 40×25 SAA5050, 8 colours, double height, 2×3
+# mosaics, English teletext character set, "BBC Computer 32K" banner and ">"
+# prompt. Ideal 0/255 RGB values are a design choice.
+name  = "bbc-mode7"
+title = ""
+
+[palette]                       # teletext colours
+fg     = "#ffffff"
+bg     = "#000000"
+accent = "#ffff00"              # yellow title bar
+dim    = "#00ffff"              # cyan
+warn   = "#ff00ff"              # magenta
+error  = "#ff0000"
+
+[palette_16]
+fg     = "bright_white"
+accent = "bright_yellow"
+dim    = "bright_cyan"
+warn   = "bright_magenta"
+error  = "bright_red"
+
+[glyphs]                        # only glyphs the SAA5050 can show
+borders   = "none"
+ellipsis  = "..."
+dash      = " - "
+separator = "  "
+playing   = "→"
+paused    = "‖"
+busy      = "*"
+stopped   = "-"
+error     = "!"
+current   = "→"
+cursor    = ">"
+
+[screen]
+width  = 40
+height = 25
+border = "#000000"
+
+[text]                          # English teletext character set
+map = { "#" = "£", "_" = "#", "[" = "←", "]" = "→", "^" = "↑", "\\" = "½", "{" = "¼", "|" = "‖", "}" = "¾", "~" = "÷", "`" = "—" }
+
+[chrome]
+banner        = ["BBC Computer 32K", "", "BASIC", ""]
+prompt        = ">"
+cursor        = "underline"
+cursor_blink  = true
+title         = "banner"        # emulated double height
+rule          = "🬭"             # sextant: lower third (Unicode 13)
+rule_fallback = "▄"             # quadrant fallback for fonts without sextants

@@ -267,3 +267,11 @@ anything older than ~3 months before relying on it.
 | BBC Micro banner after hard reset `BBC Computer 32K`, `BASIC`, prompt `>` (`Acorn DFS` with discs); MODE 7 cursor end line 19 of a 20-line cell (bottom of the cell) | https://stardot.org.uk/forums/viewtopic.php?t=8884 · https://beebwiki.mdfs.net/CRTC | seen 2026-11-03; blank lines and cursor start line UNVERIFIED |
 | Sextants U+1FB00–U+1FB3B (Unicode 13.0); not encoded: empty, ▌, ▐, █; separated mosaics in U+1CC00 block (Unicode 16.0) | https://www.unicode.org/charts/PDF/U1FB00.pdf · https://www.unicode.org/charts/PDF/U1CC00.pdf | VERIFIED (charts) 2026-11-03 |
 | Menlo / SF Mono / Monaco lack sextants; kitty, Ghostty, WezTerm draw legacy-computing symbols themselves | https://github.com/circle-platforms/circle/issues/388 · https://arewelegacycomputingyet.com/ | seen 2026-11-03 (secondary) – needs a check in the owner's Terminal.app |
+
+### 2026-11-03 · Why the built-in themes look like this (M5)
+
+- `pdp11-vt100` (+`-amber`, `-green`): 80×24 logical screen, P4 white-on-black, one colour with bold for emphasis; borders and status glyphs (◆ ▒) from the DEC Special Graphics set; RSX-11M banner style `RSX-11M V4.6 BL56` and `MCR>` prompt; upper case and octal figures as DEC system output; errors `?TTNR-F-…` after the `?KMON-F-` / RSX message style. Amber/green = later DEC tubes (VT220), offered as variants. Sources: rows above (VT100 user guide, RT-11/RSX-11M manuals).
+- `pdp11-teletype`: 72 columns, upper case, ASCII only, no borders, printed lines appended (Model 33 ASR); `^`/`_` as ↑/← (1963 ASCII). Paper and ink colours: design choice, UNVERIFIED.
+- `zx80`: 32×24 black on white with a white border, upper case, no colour, inverse-video station bar, block glyphs █ ▌ ▒, status as `n/m` report codes (0 = OK, 2 = not found, 4 = no room → network, 9 = STOP → paused) per the ZX80 Operating Manual. Exact code choice for resolving/loading/buffering (`0/10` …) is a design choice.
+- `bbc-mode7`: 40×25 on black, teletext colours, yellow double-height bar for the station, `BBC Computer 32K` / `BASIC` banner, `>` prompt with a flashing underline cursor, English teletext character map (`#`→£ …), sextant rule with a quadrant fallback.
+

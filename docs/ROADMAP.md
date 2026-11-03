@@ -44,8 +44,8 @@ Work top to bottom. Tick `[x]` when a task meets its acceptance criteria and
 
 ## M5 — Retro themes
 - [x] Research each machine (THEMES.md checklist) and correct THEMES.md.
-- [ ] `pdp11-vt100`, `pdp11-teletype`, `zx80`, `bbc-mode7` themes + snapshots.
-- [ ] Octal numbers, double-height emulation, mosaic glyph fallback, uppercase mapping.
+- [x] `pdp11-vt100`, `pdp11-teletype`, `zx80`, `bbc-mode7` themes + snapshots.
+- [x] Octal numbers, double-height emulation, mosaic glyph fallback, uppercase mapping.
 **Acceptance:** owner judges each theme recognisable at a glance.
 
 ## M6 — macOS integration

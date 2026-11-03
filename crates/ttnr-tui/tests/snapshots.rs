@@ -166,3 +166,33 @@ fn all_views_all_sizes() {
         }
     }
 }
+
+/// Printout themes (Teletype) append lines instead of redrawing: feed a
+/// session idle → playing → reconnecting → error and snapshot the paper.
+#[test]
+fn printout_session() {
+    let themes = ThemeSet::builtin();
+    let keymap = Keymap::default();
+    for i in 0..themes.len() {
+        let theme = themes.get(i).for_depth(ColorDepth::Ansi256);
+        if !theme.chrome.printout {
+            continue;
+        }
+        let mut paper = ttnr_tui::Printout::new(&theme);
+        for state in [idle(), playing(), buffering(), error()] {
+            paper.observe(&state, &theme);
+        }
+        for (w, h) in SIZES {
+            let mut t = Terminal::new(TestBackend::new(w, h)).unwrap();
+            t.draw(|f| ttnr_tui::draw_with_printout(f, &error(), &theme, &keymap, paper.lines()))
+                .unwrap();
+            insta::with_settings!({
+                snapshot_suffix => format!("{}_printout_{w}x{h}", theme.name),
+                omit_expression => true,
+                prepend_module_to_snapshot => false,
+            }, {
+                insta::assert_snapshot!("view", t.backend());
+            });
+        }
+    }
+}

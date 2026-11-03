@@ -16,6 +16,11 @@
 # [sync_offset]
 # bbc = 0
 
+# Mosaic glyphs used by retro themes (bbc-mode7): "auto" (quadrant blocks
+# in Terminal.app, whose fonts lack Unicode sextants; sextants elsewhere),
+# "sextant", "quadrant".
+# mosaic = "auto"
+
 # Key bindings (SPEC F5.3 defaults shown). Giving an action replaces its
 # default keys; use a string or a list. Key names: a single character,
 # space, enter, tab, backspace, esc, up, down, left, right, home, end,

@@ -2,6 +2,13 @@
 
 Newest entry on top. Each entry: date · milestone/task · what changed · how to try it · next step · open questions for the owner.
 
+## 2026-11-03 · M5 · Retro themes implemented (milestone done, awaiting owner review)
+- Theme engine: optional `[screen]` (logical width/height, border colour), `[text]` (uppercase, ASCII-only transliteration, character map, octal), `[chrome]` (banner, prompt, cursor, double-height title bar, mosaic rule with quadrant fallback, printout mode), `[status]` templates (ADR-033). Border colour now follows colour-depth fallback; the title bar becomes inverse video in mono.
+- Built-ins: `pdp11-vt100` (+`-amber`, `-green`), `pdp11-teletype`, `zx80`, `bbc-mode7`; snapshots for every view × 3 sizes × theme, plus a Teletype printout session. `plain` unchanged.
+- Config: `mosaic = "auto|sextant|quadrant"`.
+- Next: owner review ("recognisable at a glance"), then M6.
+- Open questions: does Terminal.app with your font show the sextant rule in `bbc-mode7` (else set `mosaic = "quadrant"`)? Octal applies to volume/sync only – also wanted for bitrate/sample rate?
+
 ## 2026-11-03 · M5 · Retro machines researched
 - THEMES.md rewritten from sources (VT100 manual, RT-11/RSX-11 manuals, ASR-33, ZX80 manual, SAA5050/teletext, Unicode charts); UNVERIFIED items marked. Owner confirmed BBC track info now appears at the right time (M4 timing fix).
 - Next: M5 task 2 – theme engine extensions + the four themes.

@@ -1,0 +1,19 @@
+---
+source: crates/ttnr-tui/tests/snapshots.rs
+---
+"                                "
+"TTNR V0.1                       "
+"READY                           "
+"                                "
+"IDLE                            "
+"PLAY BBC RADIO 6 MUSIC          "
+"PLAYING                         "
+"FORMAT: HE-AAC . 48 KHZ . STE..."
+"ON AIR: LAUREN LAVERNE          "
+"NOW: THE STROKES - SOMEDAY      "
+"RECONNECTING: HTTP 404 NOT FO..."
+"MUTED                           "
+"PLAY FIP (RADIO FRANCE)         "
+"?ERROR: SERVER UNREACHABLE (T..."
+"VOL 100%                        "
+"SPC PLAY  ? HELP  Q QUIT        "

@@ -1,0 +1,60 @@
+# ttnr theme: zx80 – the Sinclair ZX80.
+# Researched 2026-11-03 (ZX80 Operating Manual): 32×24, black on white, no
+# colour, no lower case, inverse video for emphasis, 2×2 block graphics,
+# "n/m" report codes at the bottom. Pure black/white is a design choice.
+name  = "zx80"
+title = ""
+
+[palette]                       # black ink on a white TV picture
+fg     = "#000000"
+bg     = "#ffffff"
+accent = "#000000"              # station bar = inverse video
+dim    = "#000000"
+warn   = "#000000"
+error  = "#000000"
+
+[palette_16]
+fg     = "black"
+bg     = "bright_white"
+accent = "black"
+dim    = "black"
+warn   = "black"
+error  = "black"
+
+[glyphs]                        # ZX80 characters and block graphics
+borders   = "none"
+ellipsis  = "..."
+dash      = "-"
+separator = " "
+playing   = "█"
+paused    = "▌"
+busy      = "▒"                 # the 50 % grey character
+stopped   = " "
+error     = "▒"
+current   = "█"
+cursor    = ">"
+
+[screen]
+width  = 32
+height = 24
+border = "#ffffff"              # white border around the picture
+
+[text]
+uppercase  = true
+ascii_only = true
+
+[chrome]
+prompt = ""                     # the inverse cursor is the prompt
+cursor = "block"
+title  = "banner"               # station name in an inverse bar
+
+[status]                        # report codes "error/line" (manual App. I)
+idle         = "0/0"
+resolving    = "0/10"
+loading      = "0/20"
+buffering    = "0/30{percent}"
+playing      = "0/0"
+paused       = "9/0"            # 9 = STOP
+reconnecting = "4/0 {message}"  # 4 = no room (here: no stream)
+ended        = "0/-2"           # -2 = command completed
+error        = "2/0 {message}"  # 2 = not found

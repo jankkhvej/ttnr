@@ -1,0 +1,19 @@
+---
+source: crates/ttnr-tui/tests/snapshots.rs
+---
+"BBC Computer 32K                "
+"                                "
+"BASIC                           "
+"                                "
+" BBC Radio 6 Music              "
+">  system default               "
+"   MacBook Air Speakers         "
+" → MAJOR IV                     "
+"                                "
+"                                "
+"HE-AAC  48 kHz  stereo  96 kbps "
+"→ playing                       "
+"vol 80%  MAJOR IV               "
+"recent                          "
+"  Wet Leg - Chaise Longue       "
+"spc play  ? help  q quit        "

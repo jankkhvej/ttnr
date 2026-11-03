@@ -68,8 +68,16 @@ pub async fn run(cfg: &EngineConfig) -> Result<()> {
 
     let (msg_tx, mut msg_rx) = mpsc::unbounded_channel::<Msg>();
     let (state_tx, state_rx) = watch::channel(app.state.clone());
+    let quadrants = config.mosaic.use_quadrants();
     let resolved: Vec<ttnr_themes::Theme> = (0..themes.len())
-        .map(|i| themes.get(i).for_depth(depth))
+        .map(|i| {
+            let t = themes.get(i).for_depth(depth);
+            if quadrants {
+                t.with_mosaic_fallback()
+            } else {
+                t
+            }
+        })
         .collect();
     let ui = tokio::spawn(ui_loop(state_rx, msg_tx.clone(), keymap, resolved));
     let mut runtime = Runtime {
@@ -272,6 +280,7 @@ async fn ui_loop(
     let result = async {
         let mut events = EventStream::new();
         let mut dirty = true;
+        let mut printout = ttnr_tui::Printout::new(&themes[0]);
         loop {
             let state = state_rx.borrow_and_update().clone();
             if state.quit {
@@ -283,7 +292,12 @@ async fn ui_loop(
                 // frame only when complete – no blank flash from ratatui's
                 // clear-on-resize. Terminals without it ignore the sequence.
                 crossterm::execute!(std::io::stdout(), BeginSynchronizedUpdate)?;
-                terminal.draw(|frame| ttnr_tui::draw(frame, &state, theme, &keymap))?;
+                if theme.chrome.printout {
+                    printout.observe(&state, theme);
+                }
+                terminal.draw(|frame| {
+                    ttnr_tui::draw_with_printout(frame, &state, theme, &keymap, printout.lines());
+                })?;
                 // Park the (hidden) cursor top-left: some terminals
                 // (Terminal.app) scroll the screen to keep the cursor visible
                 // when the window shrinks, shifting the UI by a line.

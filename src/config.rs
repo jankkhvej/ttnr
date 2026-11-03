@@ -52,6 +52,30 @@ impl ColorSetting {
     }
 }
 
+/// Mosaic glyphs: sextants (2×3, Unicode 13) or quadrant blocks (2×2).
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum MosaicSetting {
+    /// Quadrants in Terminal.app (its fonts lack sextants), else sextants.
+    #[default]
+    Auto,
+    /// Always sextants.
+    Sextant,
+    /// Always quadrants.
+    Quadrant,
+}
+
+impl MosaicSetting {
+    /// Whether themes should use their quadrant fallback.
+    pub fn use_quadrants(self) -> bool {
+        match self {
+            Self::Auto => std::env::var("TERM_PROGRAM").as_deref() == Ok("Apple_Terminal"),
+            Self::Sextant => false,
+            Self::Quadrant => true,
+        }
+    }
+}
+
 /// The whole configuration (grows with later milestones).
 #[derive(Debug, Clone, Default, PartialEq, Eq, Deserialize)]
 #[serde(default, deny_unknown_fields)]
@@ -60,6 +84,8 @@ pub struct Config {
     pub theme: Option<String>,
     /// Colour depth: `auto` (default), `truecolor`, `256`, `16`, `mono`.
     pub color: ColorSetting,
+    /// Mosaic glyphs for retro themes: `auto` (default), `sextant`, `quadrant`.
+    pub mosaic: MosaicSetting,
     /// Key bindings: action → key(s); replaces that action's defaults.
     pub keys: BTreeMap<String, Keys>,
     /// Delay (seconds) for external now-playing per source, e.g. `bbc = 25`.

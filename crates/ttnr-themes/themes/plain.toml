@@ -31,3 +31,37 @@ stopped   = "■"
 error     = "✕"
 current   = "•"
 cursor    = "›"
+
+# Optional sections (used by the retro themes; defaults shown):
+#
+# [screen]                 # logical screen, centred; 0 = use the terminal
+# width  = 0
+# height = 0
+# border = "default"       # colour filled around the logical screen
+#
+# [text]                   # applied to all content text
+# uppercase  = false
+# ascii_only = false       # transliterate (Ż → Z), else "?"
+# map        = {}          # per-character substitutions, e.g. { "#" = "£" }
+# numbers    = "decimal"   # or "octal" (volume, sync offset, percentages)
+#
+# [chrome]
+# banner        = []       # lines shown at the top (and as printout start)
+# prompt        = "> "     # open-URL prompt
+# cursor        = "block"  # or "underline"
+# cursor_blink  = false
+# title         = "plain"  # or "banner": two-row bar (double height)
+# rule          = ""       # glyph repeated as a line under the title
+# rule_fallback = ""       # used instead when config mosaic = "quadrant"
+# printout      = false    # append lines like a teletype, don't redraw
+#
+# [status]                 # templates: {glyph}, {message}, {percent}
+# idle         = "{glyph} idle"
+# resolving    = "{glyph} resolving"
+# loading      = "{glyph} loading"
+# buffering    = "{glyph} buffering{percent}"
+# playing      = "{glyph} playing"
+# paused       = "{glyph} paused"
+# reconnecting = "{glyph} reconnecting: {message}"
+# ended        = "{glyph} stream ended"
+# error        = "{glyph} error: {message}"

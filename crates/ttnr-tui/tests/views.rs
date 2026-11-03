@@ -191,3 +191,28 @@ fn sync_offset_is_shown_when_set() {
     s.sync_offset = std::time::Duration::from_secs(25);
     assert!(render(&s, 60, 16).contains("vol 80% · system default · sync 25s"));
 }
+
+/// The ZX80/BBC title bar is coloured where colour exists and falls back to
+/// inverse video in mono, so it never disappears.
+#[test]
+fn title_bar_survives_mono() {
+    use ratatui::style::{Color, Modifier};
+    use ttnr_themes::{ColorDepth, ThemeSet};
+    let set = ThemeSet::builtin();
+    let zx80 = set.get(set.position("zx80").unwrap());
+    let bar_of = |depth| {
+        let theme = zx80.for_depth(depth);
+        let mut t = Terminal::new(TestBackend::new(40, 25)).unwrap();
+        t.draw(|f| ttnr_tui::draw(f, &state(), &theme, &Keymap::default()))
+            .unwrap();
+        let buf = t.backend().buffer();
+        let cell = (0..25)
+            .flat_map(|y| (0..40).map(move |x| (x, y)))
+            .map(|p| buf[p].clone())
+            .find(|c| c.symbol() == "S")
+            .unwrap();
+        (cell.bg, cell.modifier.contains(Modifier::REVERSED))
+    };
+    assert_eq!(bar_of(ColorDepth::Ansi16), (Color::Black, false));
+    assert_eq!(bar_of(ColorDepth::Mono), (Color::Reset, true));
+}

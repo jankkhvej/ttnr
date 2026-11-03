@@ -5,6 +5,7 @@
 //! Views never hard-code colours or glyphs: they ask the [`Theme`].
 
 mod color;
+mod text;
 
 use std::path::Path;
 
@@ -12,9 +13,18 @@ use serde::Deserialize;
 use unicode_width::{UnicodeWidthChar, UnicodeWidthStr};
 
 pub use color::{ColorDepth, ThemeColor};
+pub use text::{Numbers, TextRules, transliterate};
 
 /// Built-in theme sources, embedded at compile time.
-const BUILTIN: &[&str] = &[include_str!("../themes/plain.toml")];
+const BUILTIN: &[&str] = &[
+    include_str!("../themes/plain.toml"),
+    include_str!("../themes/pdp11-vt100.toml"),
+    include_str!("../themes/pdp11-vt100-amber.toml"),
+    include_str!("../themes/pdp11-vt100-green.toml"),
+    include_str!("../themes/pdp11-teletype.toml"),
+    include_str!("../themes/zx80.toml"),
+    include_str!("../themes/bbc-mode7.toml"),
+];
 
 /// Colour roles used by the views.
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
@@ -173,12 +183,117 @@ struct GlyphsFile {
     cursor: String,
 }
 
+/// The logical screen: a fixed-size area centred in the terminal, the rest
+/// filled with the border colour (ZX80: 32×24 on white).
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
+#[serde(default, deny_unknown_fields)]
+pub struct Screen {
+    /// Columns; 0 = the whole terminal width.
+    pub width: u16,
+    /// Rows; 0 = the whole terminal height.
+    pub height: u16,
+    /// Colour outside the logical screen.
+    pub border: ThemeColor,
+}
+
+impl Default for Screen {
+    fn default() -> Self {
+        Self {
+            width: 0,
+            height: 0,
+            border: ThemeColor::Reset,
+        }
+    }
+}
+
+/// Cursor shape in text prompts.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum CursorShape {
+    /// Reverse-video block.
+    #[default]
+    Block,
+    /// Underline.
+    Underline,
+}
+
+/// How the station name is shown.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum TitleStyle {
+    /// A bold line.
+    #[default]
+    Plain,
+    /// A two-row coloured bar: emulated double height (teletext).
+    Banner,
+}
+
+/// Machine "chrome": banner, prompt, cursor, title style, decoration,
+/// printout mode.
+#[derive(Debug, Clone, Default, PartialEq, Eq, Deserialize)]
+#[serde(default, deny_unknown_fields)]
+pub struct Chrome {
+    /// Lines shown at the top of the main view (boot banner).
+    pub banner: Vec<String>,
+    /// Prompt of the open-URL input.
+    pub prompt: Option<String>,
+    /// Cursor shape.
+    pub cursor: CursorShape,
+    /// Blink the cursor (terminal attribute; no timers).
+    pub cursor_blink: bool,
+    /// Station name style.
+    pub title: TitleStyle,
+    /// One repeating decoration unit for a rule under the title (e.g.
+    /// teletext sextants); none if unset.
+    pub rule: Option<String>,
+    /// The same rule for fonts without the rule's glyphs (e.g. quadrants).
+    pub rule_fallback: Option<String>,
+    /// Teletype mode: new information is printed (appended) rather than
+    /// redrawn in place.
+    pub printout: bool,
+}
+
+/// Status line templates; `{glyph}`, `{message}`, `{percent}` (" 40%" or
+/// "") are replaced.
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
+#[serde(default, deny_unknown_fields)]
+#[allow(missing_docs)]
+pub struct StatusTemplates {
+    pub idle: String,
+    pub resolving: String,
+    pub loading: String,
+    pub buffering: String,
+    pub playing: String,
+    pub paused: String,
+    pub reconnecting: String,
+    pub ended: String,
+    pub error: String,
+}
+
+impl Default for StatusTemplates {
+    fn default() -> Self {
+        let t = |s: &str| s.to_owned();
+        Self {
+            idle: t("{glyph} idle"),
+            resolving: t("{glyph} resolving"),
+            loading: t("{glyph} loading"),
+            buffering: t("{glyph} buffering{percent}"),
+            playing: t("{glyph} playing"),
+            paused: t("{glyph} paused"),
+            reconnecting: t("{glyph} reconnecting: {message}"),
+            ended: t("{glyph} stream ended"),
+            error: t("{glyph} error: {message}"),
+        }
+    }
+}
+
 #[derive(Debug, Deserialize)]
 #[serde(deny_unknown_fields)]
 struct ThemeFile {
     name: String,
     #[serde(default)]
     title: Option<String>,
+    /// Kept for compatibility; same as `[text] uppercase`.
     #[serde(default)]
     uppercase: bool,
     palette: Palette,
@@ -187,6 +302,14 @@ struct ThemeFile {
     #[serde(default)]
     palette_16: PaletteOverride,
     glyphs: GlyphsFile,
+    #[serde(default)]
+    screen: Screen,
+    #[serde(default)]
+    text: TextRules,
+    #[serde(default)]
+    chrome: Chrome,
+    #[serde(default)]
+    status: StatusTemplates,
 }
 
 /// A complete theme.
@@ -200,10 +323,31 @@ pub struct Theme {
     palette_16: PaletteOverride,
     /// Characters.
     pub glyphs: Glyphs,
-    /// Map all text to upper case (ZX80, Teletype).
-    pub uppercase: bool,
+    /// Text transformation rules.
+    pub text_rules: TextRules,
     /// Banner/title shown in the frame.
     pub title: String,
+    /// Logical screen.
+    pub screen: Screen,
+    /// Banner, prompt, cursor, title style, decoration, printout.
+    pub chrome: Chrome,
+    /// Status line templates.
+    pub status: StatusTemplates,
+}
+
+/// Status kinds for [`Theme::status_line`].
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[allow(missing_docs)]
+pub enum StatusKind {
+    Idle,
+    Resolving,
+    Loading,
+    Buffering,
+    Playing,
+    Paused,
+    Reconnecting,
+    Ended,
+    Error,
 }
 
 /// A theme file could not be used.
@@ -247,7 +391,13 @@ impl Theme {
                 current: g.current,
                 cursor: g.cursor,
             },
-            uppercase: f.uppercase,
+            text_rules: TextRules {
+                uppercase: f.uppercase || f.text.uppercase,
+                ..f.text
+            },
+            screen: f.screen,
+            chrome: f.chrome,
+            status: f.status,
         })
     }
 
@@ -269,17 +419,61 @@ impl Theme {
         }
         Self {
             palette: palette.downgrade(depth),
+            screen: Screen {
+                border: self.screen.border.downgrade(depth),
+                ..self.screen.clone()
+            },
             ..self.clone()
         }
     }
 
-    /// Apply the theme's case rule to `text`.
+    /// Apply the theme's text rules (case, ASCII-only, character map).
     pub fn text(&self, text: &str) -> String {
-        if self.uppercase {
-            text.to_uppercase()
-        } else {
-            text.to_owned()
+        self.text_rules.apply(text)
+    }
+
+    /// `n` in the theme's number base.
+    pub fn number(&self, n: u64) -> String {
+        self.text_rules.number(n)
+    }
+
+    /// The status line for `kind`, from the theme's template.
+    pub fn status_line(
+        &self,
+        kind: StatusKind,
+        glyph: &str,
+        message: &str,
+        percent: Option<u8>,
+    ) -> String {
+        let s = &self.status;
+        let template = match kind {
+            StatusKind::Idle => &s.idle,
+            StatusKind::Resolving => &s.resolving,
+            StatusKind::Loading => &s.loading,
+            StatusKind::Buffering => &s.buffering,
+            StatusKind::Playing => &s.playing,
+            StatusKind::Paused => &s.paused,
+            StatusKind::Reconnecting => &s.reconnecting,
+            StatusKind::Ended => &s.ended,
+            StatusKind::Error => &s.error,
+        };
+        let percent = percent
+            .map(|p| format!(" {}%", self.number(u64::from(p))))
+            .unwrap_or_default();
+        template
+            .replace("{glyph}", glyph)
+            .replace("{message}", message)
+            .replace("{percent}", &percent)
+    }
+
+    /// This theme for terminals whose font lacks the rule's glyphs:
+    /// `rule` becomes `rule_fallback` (e.g. sextants → quadrants).
+    pub fn with_mosaic_fallback(&self) -> Self {
+        let mut t = self.clone();
+        if t.chrome.rule_fallback.is_some() {
+            t.chrome.rule = t.chrome.rule_fallback.clone();
         }
+        t
     }
 
     /// `text` cut to `width` terminal columns (wide CJK characters count
@@ -395,6 +589,101 @@ mod tests {
     use super::*;
 
     #[test]
+    fn all_builtins_parse() {
+        for src in BUILTIN {
+            Theme::from_toml(src, "built-in").unwrap();
+        }
+        let set = ThemeSet::builtin();
+        assert_eq!(
+            set.names(),
+            [
+                "plain",
+                "pdp11-vt100",
+                "pdp11-vt100-amber",
+                "pdp11-vt100-green",
+                "pdp11-teletype",
+                "zx80",
+                "bbc-mode7"
+            ]
+        );
+    }
+
+    #[test]
+    fn builtins_fall_back_to_16_colours_and_mono() {
+        let set = ThemeSet::builtin();
+        for i in 0..set.len() {
+            let t16 = set.get(i).for_depth(ColorDepth::Ansi16);
+            let mono = set.get(i).for_depth(ColorDepth::Mono);
+            let p = &t16.palette;
+            for c in [
+                p.fg,
+                p.bg,
+                p.accent,
+                p.dim,
+                p.warn,
+                p.error,
+                t16.screen.border,
+            ] {
+                assert!(
+                    matches!(
+                        c,
+                        ThemeColor::Reset | ThemeColor::Ansi(_) | ThemeColor::Faint
+                    ),
+                    "{}: {c:?} at 16 colours",
+                    t16.name
+                );
+            }
+            let p = &mono.palette;
+            for c in [
+                p.fg,
+                p.bg,
+                p.accent,
+                p.dim,
+                p.warn,
+                p.error,
+                mono.screen.border,
+            ] {
+                assert!(
+                    matches!(c, ThemeColor::Reset | ThemeColor::Faint),
+                    "{}: {c:?} in mono",
+                    mono.name
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn retro_rules_status_and_mosaic_fallback() {
+        let set = ThemeSet::builtin();
+        let get = |n: &str| set.get(set.position(n).unwrap());
+        let vt = get("pdp11-vt100");
+        assert_eq!(vt.number(80), "120");
+        assert_eq!(vt.text("Lauren Laverne"), "LAUREN LAVERNE");
+        assert_eq!(
+            vt.status_line(StatusKind::Error, "?", "HTTP 404", None),
+            "?TTNR-F-HTTP 404"
+        );
+        assert_eq!(
+            vt.status_line(StatusKind::Buffering, "▒", "", Some(64)),
+            "▒ BUFFERING 100%",
+            "percent in octal"
+        );
+        let zx = get("zx80");
+        assert_eq!(zx.text("Björk"), "BJORK");
+        assert_eq!(zx.status_line(StatusKind::Paused, "", "", None), "9/0");
+        let bbc = get("bbc-mode7");
+        assert_eq!(bbc.text("#1 [new]"), "£1 ←new→");
+        assert_eq!(bbc.chrome.rule.as_deref(), Some("🬭"));
+        assert_eq!(bbc.with_mosaic_fallback().chrome.rule.as_deref(), Some("▄"));
+        let plain = get("plain");
+        assert_eq!(plain.with_mosaic_fallback(), plain.clone());
+        assert_eq!(
+            plain.status_line(StatusKind::Playing, "▶", "", None),
+            "▶ playing"
+        );
+    }
+
+    #[test]
     fn plain_is_embedded_and_valid() {
         let t = Theme::plain();
         assert_eq!(t.name, "plain");
@@ -415,10 +704,8 @@ mod tests {
 
     #[test]
     fn uppercase_rule() {
-        let t = Theme {
-            uppercase: true,
-            ..Theme::plain()
-        };
+        let mut t = Theme::plain();
+        t.text_rules.uppercase = true;
         assert_eq!(t.text("Żółw – song"), "ŻÓŁW – SONG");
         assert_eq!(t.fit("abcdef", 4), "ABC…");
     }
@@ -509,17 +796,20 @@ cursor = ">"
         std::fs::write(dir.join("broken.toml"), "name = 1").unwrap();
         std::fs::write(dir.join("notes.txt"), "ignored").unwrap();
         let (set, errors) = ThemeSet::load(&dir);
-        assert_eq!(set.names(), ["plain", "amber"]);
+        let names = set.names();
+        assert_eq!(names.first().copied(), Some("plain"));
+        assert_eq!(names.last().copied(), Some("amber"));
+        assert_eq!(names.len(), ThemeSet::builtin().len() + 1);
         assert_eq!(
             set.get(0).glyphs.ellipsis,
             "...",
             "user plain replaced the built-in"
         );
-        assert_eq!(set.get(3).name, "amber", "index wraps");
+        assert_eq!(set.get(names.len()).name, "plain", "index wraps");
         assert_eq!(errors.len(), 1);
         assert!(errors[0].origin.ends_with("broken.toml"));
         std::fs::remove_dir_all(&dir).unwrap();
         let (set, errors) = ThemeSet::load(Path::new("/nonexistent"));
-        assert_eq!((set.len(), errors.len()), (1, 0));
+        assert_eq!((set.len(), errors.len()), (ThemeSet::builtin().len(), 0));
     }
 }

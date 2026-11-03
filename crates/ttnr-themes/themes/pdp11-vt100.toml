@@ -1,0 +1,60 @@
+# ttnr theme: pdp11-vt100 – a DEC PDP-11 (RSX-11M) seen through a DEC VT100.
+# Researched 2026-11-03 (docs/THEMES.md, RESEARCH.md "Retro themes"):
+# VT100 80×24, P4 white phosphor, monochrome (emphasis by bold/reverse),
+# DEC Special Graphics line drawing, RSX-11M prompt MCR>, octal numbers.
+name      = "pdp11-vt100"
+title     = "TTNR"
+
+[palette]                       # P4 white phosphor on black; one colour
+fg     = "#e8eef8"
+bg     = "#000000"
+accent = "#ffffff"              # bold makes the difference, not hue
+dim    = "#8e949c"
+warn   = "#ffffff"
+error  = "#ffffff"
+
+[palette_16]
+fg     = "white"
+accent = "bright_white"
+dim    = "bright_black"
+warn   = "bright_white"
+error  = "bright_white"
+
+[glyphs]                        # only characters from the VT100 repertoire
+borders   = "box"               # DEC Special Graphics ┌┐└┘─│
+ellipsis  = "..."
+dash      = " - "
+separator = "  "
+playing   = "◆"                 # DEC Special Graphics diamond
+paused    = "·"
+busy      = "▒"                 # DEC Special Graphics checkerboard
+stopped   = "·"
+error     = "?"
+current   = "◆"
+cursor    = ">"
+
+[screen]
+width  = 80
+height = 24
+border = "#000000"
+
+[text]
+uppercase = true                # RSX-11M output style
+numbers   = "octal"             # DEC convention
+
+[chrome]
+banner       = ["RSX-11M V4.6 BL56   TTNR V0.1", ""]
+prompt       = "MCR>"
+cursor       = "block"
+cursor_blink = true
+
+[status]                        # RSX-style messages
+idle         = ">"
+resolving    = "{glyph} RESOLVING..."
+loading      = "{glyph} LOADING..."
+buffering    = "{glyph} BUFFERING{percent}"
+playing      = "{glyph} PLAYING"
+paused       = "{glyph} PAUSED"
+reconnecting = "?TTNR-W-{message}"
+ended        = "?TTNR-I-END OF STREAM"
+error        = "?TTNR-F-{message}"

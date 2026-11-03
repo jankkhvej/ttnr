@@ -1,0 +1,62 @@
+# ttnr theme: pdp11-teletype – a Teletype Model 33 ASR printout.
+# Researched 2026-11-03: upper case only, 72 characters per line, printing
+# (not redrawing), 1963-ASCII arrows. Paper/ink colours are a design choice
+# (UNVERIFIED).
+name  = "pdp11-teletype"
+title = "TTNR"
+
+[palette]                       # dark ink on paper
+fg     = "#222222"
+bg     = "#f3eedf"
+accent = "#000000"
+dim    = "#6b665c"
+warn   = "#222222"
+error  = "#000000"
+
+[palette_16]
+fg     = "black"
+bg     = "bright_white"
+accent = "black"
+dim    = "bright_black"
+warn   = "black"
+error  = "black"
+
+[glyphs]                        # ASCII only
+borders   = "none"
+ellipsis  = "..."
+dash      = " - "
+separator = "  "
+playing   = ">"
+paused    = "="
+busy      = "*"
+stopped   = "."
+error     = "?"
+current   = "*"
+cursor    = ">"
+
+[screen]
+width  = 72                     # 72 characters per line
+height = 0
+border = "#d9d3c3"              # the desk around the paper
+
+[text]
+uppercase  = true
+ascii_only = true
+map        = { "^" = "↑", "_" = "←" }   # 1963 ASCII arrows (design choice)
+
+[chrome]
+banner   = ["TTNR V0.1", "READY", ""]
+prompt   = "."
+cursor   = "block"
+printout = true                 # print new lines instead of redrawing
+
+[status]
+idle         = "IDLE"
+resolving    = "RESOLVING"
+loading      = "LOADING"
+buffering    = "BUFFERING{percent}"
+playing      = "PLAYING"
+paused       = "PAUSED"
+reconnecting = "RECONNECTING: {message}"
+ended        = "END OF STREAM"
+error        = "?ERROR: {message}"

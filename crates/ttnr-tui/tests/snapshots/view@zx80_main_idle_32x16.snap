@@ -1,0 +1,19 @@
+---
+source: crates/ttnr-tui/tests/snapshots.rs
+---
+" NO STATION - PRESS S OR O      "
+"                                "
+"                                "
+"0/0                             "
+"VOL 100% SYSTEM DEFAULT         "
+"                                "
+"                                "
+"                                "
+"                                "
+"                                "
+"                                "
+"                                "
+"                                "
+"                                "
+"                                "
+"SPC PLAY +/- VOL ? HELP Q QUIT  "

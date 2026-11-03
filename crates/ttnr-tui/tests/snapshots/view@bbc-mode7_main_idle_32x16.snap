@@ -1,0 +1,19 @@
+---
+source: crates/ttnr-tui/tests/snapshots.rs
+---
+"BBC Computer 32K                "
+"                                "
+"BASIC                           "
+"                                "
+" no station – press s or o      "
+"                                "
+"🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭"
+"                                "
+"- idle                          "
+"vol 100%  system default        "
+"                                "
+"                                "
+"                                "
+"                                "
+"                                "
+"spc play  ? help  q quit        "
