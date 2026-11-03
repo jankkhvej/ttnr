@@ -145,3 +145,8 @@ Decision:
 - Main view lines carry priorities; when the height is short the least important go first (blank lines → older history → "recent" → album → programme → format); station, track and status always stay. One column margin from 40 columns. The key-help line shows as many default bindings as fit, always ending with `? help · q quit`.
 - Overlays are centred, cleared, framed popups; lists scroll to keep the highlight visible, mark the current item, highlight with reverse video.
 Consequences: snapshot tests (task 5) will freeze the layouts per theme and size; the help table comes from the keymap once it is remappable (task 3).
+
+## ADR-024 · 2026-11-03 · Remappable keymap in `config.toml`
+Context: M3 task 3 – keymap (SPEC F5.3), remappable in config (SPEC F8).
+Decision: `~/.config/ttnr/config.toml` (`$XDG_CONFIG_HOME` respected; missing = defaults; unknown fields rejected) gets `[keys]`: `action = "key"` or a list; giving an action replaces its defaults. Actions: toggle_pause, volume_up, volume_down, mute, next_station, prev_station, stations, open_url, devices, cycle_theme, help, quit. Key names: one character, space/enter/tab/backspace/esc/arrows/home/end/pageup/pagedown/f1–f24, `ctrl-`/`alt-` prefixes (letters normalised to lower case, as terminals report them). Validation: unknown action, unparsable key, a key bound to two actions, or remapping a reserved key (arrows/enter/esc, ctrl-c) is an error reported before the TUI takes the terminal. Fixed: navigation keys, j/k in lists, ctrl-c quits. Help overlay and footer are generated from the active keymap. `examples/config.toml` documents it (tested for validity).
+Consequences: further settings (theme, colour depth, volume, history length, sync offset) join `Config` as their tasks land.

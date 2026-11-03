@@ -9,6 +9,7 @@ publish = false
 
 [dependencies]
 ratatui.workspace = true
+thiserror.workspace = true
 ttnr-core.workspace = true
 ttnr-themes.workspace = true
 

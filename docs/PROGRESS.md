@@ -2,6 +2,12 @@
 
 Newest entry on top. Each entry: date · milestone/task · what changed · how to try it · next step · open questions for the owner.
 
+## 2026-11-03 · M3 · Remappable keymap
+- `ttnr-tui::Keymap` (defaults per SPEC F5.3, overrides, validation, help/footer from bindings), `src/config.rs` + `examples/config.toml` (ADR-024).
+- Tests: keymap defaults/overrides/errors/labels, config parsing and example validity, CLI: bad `[keys]` reported before the TUI starts.
+- Try it: copy `examples/config.toml` to `~/.config/ttnr/`, uncomment e.g. `quit = "x"`, run `cargo run -q`, press `?`.
+- Next: M3 task 4 – theme model + TOML loader + `plain` theme; colour-depth fallback.
+
 ## 2026-11-03 · M3 · Views
 - `ttnr-tui::view`: main view per SPEC F5.1 (station, programme, artist – title, album, format, status, volume + output device, recent tracks, key help), overlays for stations, open URL, help, devices; priority-based layout down to 32×16 (ADR-023). Minimal `ttnr-themes::Theme` + `plain`, width-aware truncation.
 - Tests: rendering at sizes 1×1…120×40 for every view (no panic), essentials at 32×16, footer growth, low-height priorities, error/empty states; pty run through the overlays.

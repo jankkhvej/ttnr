@@ -13,10 +13,14 @@ use ttnr_core::app::{App, AppState, Command, DEFAULT_HISTORY, Device, Effect, Ms
 use ttnr_core::{ResolveCtx, SourceRegistry, StreamDescriptor};
 use ttnr_engine::{EngineConfig, EngineEvent, MpvPlayer, Player};
 
-use crate::{play, stations};
+use crate::{config, play, stations};
 
 /// Run the TUI until the user quits.
 pub async fn run(cfg: &EngineConfig) -> Result<()> {
+    // Config problems are reported before the terminal is taken over.
+    let config = config::load()?;
+    let keymap = ttnr_tui::Keymap::with_overrides(&config.key_overrides())
+        .context("invalid [keys] in config.toml")?;
     let (stations, load_error) = match stations::load() {
         Ok(list) => (list.stations().to_vec(), None),
         Err(e) => (Vec::new(), Some(format!("{e:#}"))),
@@ -38,7 +42,7 @@ pub async fn run(cfg: &EngineConfig) -> Result<()> {
 
     let (msg_tx, mut msg_rx) = mpsc::unbounded_channel::<Msg>();
     let (state_tx, state_rx) = watch::channel(app.state.clone());
-    let ui = tokio::spawn(ui_loop(state_rx, msg_tx.clone()));
+    let ui = tokio::spawn(ui_loop(state_rx, msg_tx.clone(), keymap));
     let mut runtime = Runtime {
         registry,
         ctx,
@@ -224,6 +228,7 @@ fn engine_msg(ev: EngineEvent) -> Option<Msg> {
 async fn ui_loop(
     mut state_rx: watch::Receiver<AppState>,
     msg_tx: mpsc::UnboundedSender<Msg>,
+    keymap: ttnr_tui::Keymap,
 ) -> Result<()> {
     let mut terminal = ratatui::try_init().context("cannot initialise the terminal")?;
     let result = async {
@@ -236,7 +241,7 @@ async fn ui_loop(
                 return Ok(());
             }
             if dirty {
-                terminal.draw(|frame| ttnr_tui::draw(frame, &state, &theme))?;
+                terminal.draw(|frame| ttnr_tui::draw(frame, &state, &theme, &keymap))?;
                 dirty = false;
             }
             tokio::select! {
@@ -248,7 +253,7 @@ async fn ui_loop(
                 }
                 event = events.next() => match event {
                     Some(Ok(Event::Key(key))) => {
-                        if let Some(cmd) = ttnr_tui::command_for(key, &state.view) {
+                        if let Some(cmd) = keymap.command_for(key, &state.view) {
                             let _ = msg_tx.send(Msg::Command(cmd));
                         }
                     }

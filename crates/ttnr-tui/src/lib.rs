@@ -5,5 +5,5 @@
 pub mod keys;
 pub mod view;
 
-pub use keys::command_for;
+pub use keys::{Keymap, KeymapError};
 pub use view::draw;

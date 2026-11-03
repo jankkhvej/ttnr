@@ -12,6 +12,7 @@ use ratatui::backend::TestBackend;
 use ttnr_core::app::{AppState, Device, Status, View};
 use ttnr_core::{InfoSource, NowPlaying, Station, StreamInfo};
 use ttnr_themes::Theme;
+use ttnr_tui::Keymap;
 
 fn np(a: &str, t: &str) -> NowPlaying {
     NowPlaying {
@@ -74,7 +75,8 @@ fn views() -> Vec<View> {
 
 fn render(s: &AppState, w: u16, h: u16) -> String {
     let mut t = Terminal::new(TestBackend::new(w, h)).unwrap();
-    t.draw(|f| ttnr_tui::draw(f, s, &Theme::plain())).unwrap();
+    t.draw(|f| ttnr_tui::draw(f, s, &Theme::plain(), &Keymap::default()))
+        .unwrap();
     t.backend().to_string()
 }
 
@@ -111,8 +113,8 @@ fn footer_grows_with_width() {
     let narrow = render(&state(), 32, 16);
     let wide = render(&state(), 120, 30);
     assert!(narrow.contains("spc play · ? help · q quit"), "{narrow}");
-    assert!(!narrow.contains("+- vol"));
-    assert!(wide.contains("spc play · +- vol · m mute"), "{wide}");
+    assert!(!narrow.contains("+/- vol"));
+    assert!(wide.contains("spc play · +/- vol · m mute"), "{wide}");
     assert!(wide.contains("? help · q quit"));
 }
 

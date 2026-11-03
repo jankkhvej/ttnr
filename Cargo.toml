@@ -17,7 +17,9 @@ clap.workspace = true
 crossterm.workspace = true
 futures.workspace = true
 ratatui.workspace = true
+serde.workspace = true
 tokio = { workspace = true, features = ["rt", "macros", "signal", "sync"] }
+toml.workspace = true
 tracing.workspace = true
 tracing-appender.workspace = true
 tracing-subscriber.workspace = true

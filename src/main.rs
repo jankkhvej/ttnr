@@ -1,5 +1,6 @@
 //! `ttnr` – minimal, themeable terminal player for network music streams.
 
+mod config;
 mod logging;
 mod paths;
 mod play;

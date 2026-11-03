@@ -13,10 +13,10 @@ use ttnr_core::NowPlaying;
 use ttnr_core::app::{AppState, Status, View};
 use ttnr_themes::{Theme, ThemeColor};
 
-use crate::keys::{FOOTER, FOOTER_TAIL, HELP};
+use crate::keys::Keymap;
 
-/// Draw the whole UI for `state` with `theme`.
-pub fn draw(frame: &mut Frame, state: &AppState, theme: &Theme) {
+/// Draw the whole UI for `state` with `theme`; help texts follow `keymap`.
+pub fn draw(frame: &mut Frame, state: &AppState, theme: &Theme, keymap: &Keymap) {
     let area = frame.area();
     let base = Style::default()
         .fg(color(theme.palette.fg))
@@ -37,36 +37,35 @@ pub fn draw(frame: &mut Frame, state: &AppState, theme: &Theme) {
         Layout::vertical([Constraint::Min(0), Constraint::Length(1)]).areas(padded);
     main_view(frame, body, state, theme);
     frame.render_widget(
-        Paragraph::new(footer_text(theme, usize::from(footer.width))).style(dim(theme)),
+        Paragraph::new(footer_text(theme, keymap, usize::from(footer.width))).style(dim(theme)),
         footer,
     );
     match &state.view {
         View::Main => {}
         View::Stations { selected } => stations(frame, inner, state, *selected, theme),
         View::OpenUrl { input } => open_url(frame, inner, input, theme),
-        View::Help => help_overlay(frame, inner, theme),
+        View::Help => help_overlay(frame, inner, theme, keymap),
         View::Devices { selected } => devices(frame, inner, state, *selected, theme),
     }
 }
 
-/// The key help line for `width`: leading entries that fit, then the tail.
-fn footer_text(theme: &Theme, width: usize) -> String {
+/// The key help line for `width`: leading bindings that fit, then always
+/// help and quit.
+fn footer_text(theme: &Theme, keymap: &Keymap, width: usize) -> String {
     let sep = &theme.glyphs.separator;
-    let tail = FOOTER_TAIL.replace(" · ", sep);
-    let mut parts: Vec<&str> = Vec::new();
-    for entry in FOOTER {
-        let candidate = parts
-            .iter()
-            .chain(std::iter::once(entry))
-            .copied()
-            .collect::<Vec<_>>()
-            .join(sep);
-        if candidate.chars().count() + sep.chars().count() + tail.chars().count() > width {
+    let (entries, tail) = keymap.footer();
+    let tail = tail.join(sep);
+    let mut parts: Vec<String> = Vec::new();
+    for entry in entries {
+        let mut candidate = parts.clone();
+        candidate.push(entry.clone());
+        let len = candidate.join(sep).chars().count() + sep.chars().count() + tail.chars().count();
+        if len > width {
             break;
         }
-        parts.push(entry);
+        parts = candidate;
     }
-    parts.push(&tail);
+    parts.push(tail);
     theme.fit(&parts.join(sep), width)
 }
 
@@ -356,14 +355,19 @@ fn open_url(frame: &mut Frame, area: Rect, input: &str, theme: &Theme) {
     frame.render_widget(Paragraph::new(line), inner);
 }
 
-fn help_overlay(frame: &mut Frame, area: Rect, theme: &Theme) {
-    let h = u16::try_from(HELP.len())
+fn help_overlay(frame: &mut Frame, area: Rect, theme: &Theme, keymap: &Keymap) {
+    let rows = keymap.help();
+    let h = u16::try_from(rows.len())
         .unwrap_or(u16::MAX)
         .saturating_add(2);
     let inner = popup(frame, area, 40, h, "keys", theme);
     let w = usize::from(inner.width);
-    let key_w = HELP.iter().map(|(k, _)| k.len()).max().unwrap_or(0);
-    let lines: Vec<Line> = HELP
+    let key_w = rows
+        .iter()
+        .map(|(k, _)| k.chars().count())
+        .max()
+        .unwrap_or(0);
+    let lines: Vec<Line> = rows
         .iter()
         .map(|(k, d)| {
             Line::from(vec![

@@ -2468,8 +2468,10 @@ dependencies = [
  "crossterm",
  "futures",
  "ratatui",
+ "serde",
  "tempfile",
  "tokio",
+ "toml",
  "tracing",
  "tracing-appender",
  "tracing-subscriber",
@@ -2541,6 +2543,7 @@ version = "0.1.0"
 dependencies = [
  "insta",
  "ratatui",
+ "thiserror 2.0.21",
  "ttnr-core",
  "ttnr-themes",
 ]

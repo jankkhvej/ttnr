@@ -463,3 +463,29 @@ fn pls_with_icy_titles() {
     assert!(out.status.success(), "{stdout}{}", text(&out.stderr));
     assert!(stdout.contains("now: Artist One – Song A"), "{stdout}");
 }
+
+/// A bad `[keys]` entry stops the TUI with a clear message before the
+/// terminal is taken over.
+#[test]
+fn bad_keymap_is_reported() {
+    let dir = tempfile::tempdir().unwrap();
+    std::fs::create_dir_all(dir.path().join("ttnr")).unwrap();
+    std::fs::write(
+        dir.path().join("ttnr/config.toml"),
+        "[keys]\nquit = \"m\"\n",
+    )
+    .unwrap();
+    let out = ttnr(dir.path(), &[]);
+    assert!(!out.status.success());
+    let stderr = text(&out.stderr);
+    assert!(
+        stderr.contains("bound to both `mute` and `quit`"),
+        "{stderr}"
+    );
+    std::fs::write(dir.path().join("ttnr/config.toml"), "colour = 1\n").unwrap();
+    let stderr = text(&ttnr(dir.path(), &[]).stderr);
+    assert!(
+        stderr.contains("config.toml") && stderr.contains("unknown field"),
+        "{stderr}"
+    );
+}

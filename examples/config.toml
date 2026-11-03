@@ -1,0 +1,22 @@
+# Sample configuration. Copy to ~/.config/ttnr/config.toml
+# (or $XDG_CONFIG_HOME/ttnr/config.toml); every setting is optional.
+
+# Key bindings (SPEC F5.3 defaults shown). Giving an action replaces its
+# default keys; use a string or a list. Key names: a single character,
+# space, enter, tab, backspace, esc, up, down, left, right, home, end,
+# pageup, pagedown, f1–f24, with optional ctrl- / alt- prefixes.
+# Fixed and not remappable: arrows/enter/esc (navigation), j/k in lists,
+# ctrl-c (always quits).
+[keys]
+# toggle_pause = "space"
+# volume_up    = ["+", "="]
+# volume_down  = "-"
+# mute         = "m"
+# next_station = "n"
+# prev_station = "p"
+# stations     = "s"
+# open_url     = "o"
+# devices      = "d"
+# cycle_theme  = "t"
+# help         = "?"
+# quit         = "q"
