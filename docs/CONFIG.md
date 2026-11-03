@@ -49,6 +49,26 @@ with `]` / `[`, then note the value here.
 bbc = 0
 ```
 
+### `[diagnostics]`
+
+Optional indicators on one extra line, shown and hidden with `i`
+(`diagnostics` key action). All off by default; if none is selected, `i`
+shows all of them. Hidden, they cost nothing (no extra redraws); shown,
+the line refreshes at most once a second.
+
+| Indicator | Shows |
+|---|---|
+| `network` | `net active` / `net idle` (data arriving) |
+| `download` | read rate (kB/s) and seconds buffered |
+| `metadata` | the last HTTP request (metadata polls, resolution): host, age, `ok` / `HTTP n` / `error` |
+| `sync_note` | `titles from <source> may lag` when track info comes from an external listing |
+
+```toml
+[diagnostics]
+download = true
+metadata = true
+```
+
 ### `[keys]`
 
 `action = "key"` or a list of keys. Giving an action replaces its default
@@ -64,6 +84,7 @@ keys.
 | `prev_station` | `p` | `sync_later` | `]` |
 | `stations` | `s` | `sync_earlier` | `[` |
 | `open_url` | `o` | `cycle_baud` | `b` |
+| `diagnostics` | `i` | | |
 
 Key names: one character, `space`, `enter`, `tab`, `backspace`, `esc`,
 `up`, `down`, `left`, `right`, `home`, `end`, `pageup`, `pagedown`,

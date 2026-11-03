@@ -73,7 +73,12 @@ fn local_file_loading_playing_eof() {
     let seen = collect_until(&mut rx, |e| *e == EngineEvent::Eof);
     let lifecycle: Vec<_> = seen
         .iter()
-        .filter(|e| !matches!(e, EngineEvent::StreamInfo(_) | EngineEvent::Devices(_)))
+        .filter(|e| {
+            !matches!(
+                e,
+                EngineEvent::StreamInfo(_) | EngineEvent::Devices(_) | EngineEvent::Transfer { .. }
+            )
+        })
         .collect();
     assert_eq!(
         lifecycle,

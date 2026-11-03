@@ -51,7 +51,7 @@ ttnr --theme bbc-mode7
 | `n` / `p` | next / previous station | `d` | output device |
 | `t` | next theme | `b` | line speed (terminal themes) |
 | `]` / `[` | track info later / earlier | `?` | help |
-| `q` | quit | | |
+| `q` | quit | `i` | diagnostics line (optional) |
 
 Keys are remappable (`[keys]` in `config.toml`). The view shows the station,
 programme, artist – title, the stream format, status, volume, output device

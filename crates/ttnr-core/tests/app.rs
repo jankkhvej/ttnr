@@ -656,3 +656,47 @@ fn an_http_file_of_known_size_ends() {
     assert_eq!(a.update(Msg::Player(PlayerEvent::Ended)), []);
     assert_eq!(a.state.status, Status::Ended);
 }
+
+#[test]
+fn diagnostics_are_ignored_while_hidden_and_toggle_with_i() {
+    use ttnr_core::app::{DiagSelection, HttpActivity};
+    let transfer = Msg::Transfer {
+        bytes_per_sec: Some(16_000),
+        buffered_secs: Some(12),
+    };
+    let http = Msg::HttpActivity(Some(HttpActivity {
+        host: "rms.api.bbc.co.uk".into(),
+        ago_secs: 3,
+        outcome: "ok".into(),
+    }));
+    let mut a = app();
+    let before = a.state.clone();
+    a.update(transfer.clone());
+    a.update(http.clone());
+    assert_eq!(a.state, before, "hidden: no state change, no redraw");
+
+    a.update(Msg::Command(Command::ToggleDiagnostics));
+    assert_eq!(
+        a.state.diag.shown,
+        DiagSelection::ALL,
+        "nothing configured: all"
+    );
+    a.update(transfer.clone());
+    a.update(http.clone());
+    assert_eq!(a.state.diag.bytes_per_sec, Some(16_000));
+    assert_eq!(a.state.diag.http.as_ref().unwrap().ago_secs, 3);
+    a.update(Msg::Command(Command::ToggleDiagnostics));
+    assert_eq!(a.state, before, "hidden again: back to the plain state");
+
+    // Only the configured indicator, and only its data.
+    let mut b = app().with_diagnostics(DiagSelection {
+        download: true,
+        ..DiagSelection::default()
+    });
+    b.update(Msg::Command(Command::ToggleDiagnostics));
+    b.update(transfer);
+    b.update(http);
+    assert!(b.state.diag.shown.download && !b.state.diag.shown.metadata);
+    assert_eq!(b.state.diag.buffered_secs, Some(12));
+    assert_eq!(b.state.diag.http, None);
+}

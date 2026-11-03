@@ -3,7 +3,6 @@ source: crates/ttnr-tui/tests/snapshots.rs
 ---
 "     BBC RADIO 6 MUSIC                  "
 "                                        "
-"    LAUREN LAVERNE                      "
 "    spc  PLAY / PAUSE                   "
 "    + =  VOLUME UP                      "
 "    -    VOLUME DOWN                    "
@@ -19,6 +18,7 @@ source: crates/ttnr-tui/tests/snapshots.rs
 "    q    QUIT                           "
 "    ]    TRACK INFO LATER (+1 S)        "
 "    [    TRACK INFO EARLIER (-1 S)      "
+"    i    DIAGNOSTICS LINE               "
 "    b    LINE SPEED (TERMINAL THE...    "
 "                                        "
 "                                        "

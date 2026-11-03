@@ -65,8 +65,9 @@ Work top to bottom. Tick `[x]` when a task meets its acceptance criteria and
 - [x] README, man page, config reference, theme authoring guide.
 - [x] Release profile, `cargo install --path .` instructions, local Homebrew formula draft.
 - [x] Final licence audit (`cargo deny`), third-party notices file.
+**Acceptance:** (none stated) – accepted by the owner 2026-11-04.
 
 ## M9 — Optional diagnostics indicators (owner request 2026-11-03; after M8)
-- [ ] Optional, individually toggled indicators (all off by default, config + key): network activity, stream download rate (mpv cache/demuxer stats), metadata API requests (last poll, errors/backoff), a note when now-playing may be out of sync (e.g. BBC listing lag).
-- [ ] No extra redraws when disabled; when enabled, refresh at most ~1 Hz and only on change.
+- [x] Optional, individually toggled indicators (all off by default, config + key): network activity, stream download rate (mpv cache/demuxer stats), metadata API requests (last poll, errors/backoff), a note when now-playing may be out of sync (e.g. BBC listing lag).
+- [x] No extra redraws when disabled; when enabled, refresh at most ~1 Hz and only on change.
 **Acceptance:** with indicators off the UI is unchanged (snapshots identical); each indicator can be enabled alone.

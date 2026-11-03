@@ -1,0 +1,19 @@
+---
+source: crates/ttnr-tui/tests/snapshots.rs
+---
+"BBC Computer 32K                "
+"                                "
+"BASIC                           "
+"                                "
+" BBC Radio 6 Music              "
+"                                "
+"🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭"
+"Lauren Laverne                  "
+"The Strokes - Someday           "
+"Is This It (20th Anniversary ..."
+"HE-AAC  48 kHz  stereo  96 kbps "
+"→ playing                       "
+"vol 80%  MAJOR IV               "
+"diag: net active  16 kB/s buf..."
+"recent                          "
+"spc play  ? help  q quit        "

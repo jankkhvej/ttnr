@@ -59,8 +59,9 @@ pub async fn run(
         Err(e) => (Vec::new(), Some(format!("{e:#}"))),
     };
     let volume = cfg.volume.clamp(0.0, 100.0).round() as u8;
-    let mut app =
-        App::new(stations, volume, DEFAULT_HISTORY).with_sync_offsets(config.sync_offsets());
+    let mut app = App::new(stations, volume, DEFAULT_HISTORY)
+        .with_sync_offsets(config.sync_offsets())
+        .with_diagnostics(config.diagnostics.selection());
     app.state.theme_index = theme_index;
     app.state.baud = config.baud.unwrap_or(0);
     app.state.device.clone_from(&config.output_device);
@@ -77,7 +78,7 @@ pub async fn run(
         app.update(Msg::Command(Command::OpenStations));
     }
 
-    let (registry, ctx) = play::setup()?;
+    let (registry, ctx, http_log) = play::setup_observed()?;
     let registry = Arc::new(registry);
     let exec_ids: Vec<&'static str> = config
         .sources
@@ -121,6 +122,28 @@ pub async fn run(
         }
         Err(e) => tracing::warn!(error = %e, "no control socket"),
     }
+    // Diagnostics: the last HTTP request, refreshed once a second while
+    // that indicator is shown; otherwise the task waits for a state change.
+    let (mut diag_rx, diag_tx) = (state_rx.clone(), msg_tx.clone());
+    tokio::spawn(async move {
+        loop {
+            if !diag_rx.borrow_and_update().diag.shown.metadata {
+                if diag_rx.changed().await.is_err() {
+                    return;
+                }
+                continue;
+            }
+            let activity = http_log.last().map(|r| ttnr_core::app::HttpActivity {
+                host: r.host,
+                ago_secs: r.at.elapsed().as_secs(),
+                outcome: r.outcome,
+            });
+            if diag_tx.send(Msg::HttpActivity(activity)).is_err() {
+                return;
+            }
+            tokio::time::sleep(std::time::Duration::from_secs(1)).await;
+        }
+    });
     let ui_options = UiOptions {
         effects: config.effects_enabled(),
         depth,

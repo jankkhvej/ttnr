@@ -194,6 +194,13 @@ pub fn engine_msg(ev: EngineEvent) -> Option<Msg> {
             stale_hint: false,
             message: "audio engine shut down".into(),
         }),
+        EngineEvent::Transfer {
+            bytes_per_sec,
+            buffered_secs,
+        } => Some(Msg::Transfer {
+            bytes_per_sec,
+            buffered_secs,
+        }),
         EngineEvent::Stopped => None,
     }
 }

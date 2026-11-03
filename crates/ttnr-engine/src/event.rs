@@ -38,6 +38,15 @@ pub enum EngineEvent {
         /// The most relevant mpv/FFmpeg log line, for display and logs.
         detail: Option<String>,
     },
+    /// Network transfer changed (diagnostics): read rate from the network
+    /// and seconds buffered, rounded (kB/s, whole seconds) so events come
+    /// only on visible changes.
+    Transfer {
+        /// Bytes per second read from the network (`cache-speed`), if known.
+        bytes_per_sec: Option<u64>,
+        /// Seconds buffered ahead (`demuxer-cache-duration`), if known.
+        buffered_secs: Option<u32>,
+    },
     /// The mpv core shut down; no further events follow.
     Shutdown,
 }
@@ -164,6 +173,8 @@ pub(crate) enum RawEvent {
     Pause(bool),
     PausedForCache(bool),
     CacheBufferingState(i64),
+    CacheSpeed(Option<i64>),
+    CacheDuration(Option<f64>),
     /// mpv reconfigured the audio output (no engine event of its own).
     AudioReconfig,
     /// mpv's `metadata` changed; the tag keys must be re-read (mpv does not
@@ -211,9 +222,24 @@ pub(crate) struct Translator {
     demux_bitrate: Option<u32>,
     hls_bitrate: Option<u32>,
     measured_bitrate: Option<u32>,
+    /// Network rate (rounded bytes/s) and buffered seconds, and what was
+    /// last sent.
+    transfer: (Option<u64>, Option<u32>),
+    sent_transfer: (Option<u64>, Option<u32>),
 }
 
 impl Translator {
+    fn emit_transfer(&mut self) -> Vec<EngineEvent> {
+        if self.transfer == self.sent_transfer {
+            return vec![];
+        }
+        self.sent_transfer = self.transfer;
+        vec![EngineEvent::Transfer {
+            bytes_per_sec: self.transfer.0,
+            buffered_secs: self.transfer.1,
+        }]
+    }
+
     /// Translate one raw event; may yield zero or more engine events.
     pub(crate) fn translate(&mut self, raw: RawEvent) -> Vec<EngineEvent> {
         match raw {
@@ -258,6 +284,19 @@ impl Translator {
                 } else {
                     vec![]
                 }
+            }
+            RawEvent::CacheSpeed(b) => {
+                // Rounded to whole kB/s: no event for jitter below that.
+                self.transfer.0 = b
+                    .and_then(|b| u64::try_from(b).ok())
+                    .map(|b| (b + 500) / 1000 * 1000);
+                self.emit_transfer()
+            }
+            RawEvent::CacheDuration(d) => {
+                self.transfer.1 = d
+                    .filter(|d| d.is_finite() && *d >= 0.0)
+                    .map(|d| d.round() as u32);
+                self.emit_transfer()
             }
             RawEvent::CacheBufferingState(p) => {
                 let p = u8::try_from(p.clamp(0, 100)).unwrap_or(0);
@@ -702,6 +741,38 @@ mod tests {
         assert_eq!(t.info.bitrate, Some(320_000));
         t.translate(prop("current-tracks/audio/demux-bitrate", PropValue::None));
         assert_eq!(t.info.bitrate, Some(96_000), "mirror follows mpv");
+    }
+
+    #[test]
+    fn transfer_events_only_on_rounded_changes() {
+        let mut t = Translator::default();
+        assert_eq!(
+            t.translate(RawEvent::CacheSpeed(Some(16_100))),
+            [EngineEvent::Transfer {
+                bytes_per_sec: Some(16_000),
+                buffered_secs: None
+            }]
+        );
+        assert_eq!(
+            t.translate(RawEvent::CacheSpeed(Some(16_300))),
+            [],
+            "same kB/s"
+        );
+        assert_eq!(
+            t.translate(RawEvent::CacheDuration(Some(11.6))),
+            [EngineEvent::Transfer {
+                bytes_per_sec: Some(16_000),
+                buffered_secs: Some(12)
+            }]
+        );
+        assert_eq!(t.translate(RawEvent::CacheDuration(Some(12.2))), []);
+        assert_eq!(
+            t.translate(RawEvent::CacheSpeed(None)),
+            [EngineEvent::Transfer {
+                bytes_per_sec: None,
+                buffered_secs: Some(12)
+            }]
+        );
     }
 
     #[test]

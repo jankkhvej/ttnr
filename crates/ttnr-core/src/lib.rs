@@ -17,7 +17,7 @@ pub mod stream;
 
 pub use cache::ResolveCache;
 pub use failover::{Action, Failover};
-pub use http::{Http, HttpError, HttpResponse};
+pub use http::{Http, HttpError, HttpLog, HttpRecord, HttpResponse, ObservedHttp};
 pub use merge::Merger;
 pub use nowplaying::{InfoSource, NowPlaying, StreamTags, split_icy_title};
 pub use registry::SourceRegistry;

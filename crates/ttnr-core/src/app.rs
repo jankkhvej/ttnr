@@ -87,6 +87,59 @@ pub enum View {
     },
 }
 
+/// Which diagnostics indicators to show (M9; all off by default).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub struct DiagSelection {
+    /// Network activity (data arriving or not).
+    pub network: bool,
+    /// Download rate and seconds buffered.
+    pub download: bool,
+    /// Last HTTP request (metadata polls, resolution): host, age, outcome.
+    pub metadata: bool,
+    /// A note when track info comes from an external listing that may lag.
+    pub sync_note: bool,
+}
+
+impl DiagSelection {
+    /// All indicators.
+    pub const ALL: Self = Self {
+        network: true,
+        download: true,
+        metadata: true,
+        sync_note: true,
+    };
+
+    /// Any indicator selected.
+    pub fn any(self) -> bool {
+        self.network || self.download || self.metadata || self.sync_note
+    }
+}
+
+/// The last HTTP request, for the diagnostics line.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct HttpActivity {
+    /// Host.
+    pub host: String,
+    /// Seconds since it finished.
+    pub ago_secs: u64,
+    /// `ok`, `HTTP <status>`, `error`.
+    pub outcome: String,
+}
+
+/// Diagnostics shown on request (`i`); empty when hidden, so a hidden line
+/// never changes the state (no redraws).
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
+pub struct Diagnostics {
+    /// Indicators currently shown (none = hidden).
+    pub shown: DiagSelection,
+    /// Network read rate, bytes per second.
+    pub bytes_per_sec: Option<u64>,
+    /// Seconds buffered ahead.
+    pub buffered_secs: Option<u32>,
+    /// Last HTTP request.
+    pub http: Option<HttpActivity>,
+}
+
 /// The last directory search (radio-browser).
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub struct SearchState {
@@ -130,6 +183,8 @@ pub struct AppState {
     /// Last directory search: query, results, and a note while searching
     /// or when nothing / an error came back.
     pub search: SearchState,
+    /// Optional diagnostics indicators (M9).
+    pub diag: Diagnostics,
     /// Current screen.
     pub view: View,
     /// Theme selection, an index into the UI's theme list (wraps around).
@@ -223,6 +278,8 @@ pub enum Command {
     CycleTheme,
     /// Next simulated line speed (terminal-like themes).
     CycleBaud,
+    /// Show / hide the diagnostics line.
+    ToggleDiagnostics,
     /// Show external now-playing later (+1 s).
     SyncLater,
     /// Show external now-playing earlier (−1 s, not below 0).
@@ -287,6 +344,15 @@ pub enum Msg {
     },
     /// The computer woke from sleep: reconnect a live stream at once.
     Woke,
+    /// Network transfer from the player (ignored unless shown).
+    Transfer {
+        /// Bytes per second.
+        bytes_per_sec: Option<u64>,
+        /// Seconds buffered.
+        buffered_secs: Option<u32>,
+    },
+    /// The last HTTP request (ignored unless shown).
+    HttpActivity(Option<HttpActivity>),
     /// More stations for the list (e.g. from external-command sources);
     /// stations already listed are kept once.
     AddStations(Vec<Station>),
@@ -359,6 +425,8 @@ pub struct App {
     retry_gen: u64,
     /// The playback failure that led to a refresh (for its error message).
     last_failure: Option<String>,
+    /// Indicators the config selects for `i` (none = all).
+    diag_config: DiagSelection,
 }
 
 /// Waits between reconnection attempts; the last repeats forever.
@@ -383,12 +451,19 @@ impl App {
             retry_attempt: 0,
             retry_gen: 0,
             last_failure: None,
+            diag_config: DiagSelection::default(),
         }
     }
 
     /// Per-source sync offsets (source id → delay), e.g. from config.
     pub fn with_sync_offsets(mut self, offsets: BTreeMap<String, Duration>) -> Self {
         self.sync_offsets = offsets;
+        self
+    }
+
+    /// Diagnostics indicators `i` shows (none selected = all of them).
+    pub fn with_diagnostics(mut self, selection: DiagSelection) -> Self {
+        self.diag_config = selection;
         self
     }
 
@@ -438,6 +513,23 @@ impl App {
                     return vec![];
                 }
                 self.reconnect_now("reconnecting")
+            }
+            Msg::Transfer {
+                bytes_per_sec,
+                buffered_secs,
+            } => {
+                let shown = self.state.diag.shown;
+                if shown.network || shown.download {
+                    self.state.diag.bytes_per_sec = bytes_per_sec;
+                    self.state.diag.buffered_secs = buffered_secs;
+                }
+                vec![]
+            }
+            Msg::HttpActivity(activity) => {
+                if self.state.diag.shown.metadata {
+                    self.state.diag.http = activity;
+                }
+                vec![]
             }
             Msg::AddStations(list) => {
                 for st in list {
@@ -914,6 +1006,21 @@ impl App {
             }
             Command::CycleTheme => {
                 self.state.theme_index = self.state.theme_index.wrapping_add(1);
+                vec![]
+            }
+            Command::ToggleDiagnostics => {
+                self.state.diag = if self.state.diag.shown.any() {
+                    Diagnostics::default()
+                } else {
+                    Diagnostics {
+                        shown: if self.diag_config.any() {
+                            self.diag_config
+                        } else {
+                            DiagSelection::ALL
+                        },
+                        ..Diagnostics::default()
+                    }
+                };
                 vec![]
             }
             Command::CycleBaud => {

@@ -173,6 +173,23 @@ fn cases() -> Vec<(&'static str, AppState)> {
             };
             s
         }),
+        ("main_diagnostics", {
+            let mut s = playing();
+            s.diag = ttnr_core::app::Diagnostics {
+                shown: ttnr_core::app::DiagSelection::ALL,
+                bytes_per_sec: Some(16_000),
+                buffered_secs: Some(12),
+                http: Some(ttnr_core::app::HttpActivity {
+                    host: "rms.api.bbc.co.uk".into(),
+                    ago_secs: 3,
+                    outcome: "ok".into(),
+                }),
+            };
+            if let Some(now) = s.now.as_mut() {
+                now.source = ttnr_core::InfoSource::External;
+            }
+            s
+        }),
         ("help", with(playing(), View::Help)),
         ("devices", with(playing(), View::Devices { selected: 0 })),
     ]

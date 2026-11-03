@@ -55,6 +55,10 @@ const OBSERVED: &[(&str, Format, u64)] = &[
     ("metadata", Format::String, 4),
     // A node too; as a string mpv gives JSON. Notified on hotplug.
     ("audio-device-list", Format::String, 5),
+    // Diagnostics (M9): network read rate (bytes/s over 1 s) and the
+    // demuxer's buffered seconds (often unavailable).
+    ("cache-speed", Format::Int64, 6),
+    ("demuxer-cache-duration", Format::Double, 7),
 ];
 
 /// Tag keys read on every `metadata` change and at file load.
@@ -440,6 +444,10 @@ fn to_raw(event: Event<'_>) -> Option<RawEvent> {
             ("metadata", _) => RawEvent::MetadataChanged,
             ("audio-device-list", PropertyData::Str(json)) => RawEvent::DeviceList(json.to_owned()),
             ("cache-buffering-state", PropertyData::Int64(p)) => RawEvent::CacheBufferingState(p),
+            ("cache-speed", PropertyData::Int64(b)) => RawEvent::CacheSpeed(Some(b)),
+            ("cache-speed", _) => RawEvent::CacheSpeed(None),
+            ("demuxer-cache-duration", PropertyData::Double(d)) => RawEvent::CacheDuration(Some(d)),
+            ("demuxer-cache-duration", _) => RawEvent::CacheDuration(None),
             _ => return None,
         },
         _ => return None,

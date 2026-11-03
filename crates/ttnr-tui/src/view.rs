@@ -296,6 +296,45 @@ fn device_label(state: &AppState) -> String {
     }
 }
 
+/// The optional diagnostics line (M9), `None` when hidden.
+fn diagnostics_line(state: &AppState, theme: &Theme) -> Option<String> {
+    let d = &state.diag;
+    if !d.shown.any() {
+        return None;
+    }
+    let mut parts = Vec::new();
+    if d.shown.network {
+        let active = d.bytes_per_sec.is_some_and(|b| b > 0);
+        parts.push(if active { "net active" } else { "net idle" }.to_owned());
+    }
+    if d.shown.download {
+        let rate = d
+            .bytes_per_sec
+            .map_or_else(|| "– kB/s".to_owned(), |b| format!("{} kB/s", b / 1000));
+        let buffered = d
+            .buffered_secs
+            .map_or_else(String::new, |s| format!(" buf {s} s"));
+        parts.push(format!("{rate}{buffered}"));
+    }
+    if d.shown.metadata {
+        parts.push(match &d.http {
+            Some(h) => format!("{} {} s ago {}", h.host, h.ago_secs, h.outcome),
+            None => "no requests".to_owned(),
+        });
+    }
+    if d.shown.sync_note
+        && let Some(now) = &state.now
+        && now.source == ttnr_core::InfoSource::External
+    {
+        let source = state
+            .station
+            .as_ref()
+            .map_or("listing", |s| s.source.as_str());
+        parts.push(format!("titles from {source} may lag"));
+    }
+    Some(theme.text(&format!("diag: {}", parts.join(&theme.glyphs.separator))))
+}
+
 fn main_view(frame: &mut Frame, area: Rect, state: &AppState, theme: &Theme) {
     let w = usize::from(area.width);
     let h = usize::from(area.height);
@@ -385,6 +424,9 @@ fn main_view(frame: &mut Frame, area: Rect, state: &AppState, theme: &Theme) {
         device_label(state)
     );
     lines.push((3, Line::styled(theme.fit(&vol, w), Style::default())));
+    if let Some(diag) = diagnostics_line(state, theme) {
+        lines.push((6, Line::styled(theme.fit(&diag, w), dim(theme))));
+    }
     if !state.history.is_empty() {
         lines.push((9, Line::raw("")));
         lines.push((7, Line::styled(theme.fit("recent", w), dim(theme))));

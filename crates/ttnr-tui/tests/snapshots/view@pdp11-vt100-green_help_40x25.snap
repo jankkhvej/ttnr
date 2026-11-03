@@ -3,7 +3,6 @@ source: crates/ttnr-tui/tests/snapshots.rs
 ---
 "┌ TTNR ────────────────────────────────┐"
 "│RSX-11M V4.6 BL56   TTNR V0.1         │"
-"│                                      │"
 "│┌ KEYS ──────────────────────────────┐│"
 "││spc  PLAY / PAUSE                   ││"
 "││+ =  VOLUME UP                      ││"
@@ -20,6 +19,7 @@ source: crates/ttnr-tui/tests/snapshots.rs
 "││q    QUIT                           ││"
 "││]    TRACK INFO LATER (+1 S)        ││"
 "││[    TRACK INFO EARLIER (-1 S)      ││"
+"││i    DIAGNOSTICS LINE               ││"
 "││b    LINE SPEED (TERMINAL THEMES)   ││"
 "│└────────────────────────────────────┘│"
 "│                                      │"

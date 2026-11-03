@@ -313,11 +313,17 @@ pub async fn refresh(target: Option<&str>) -> Result<()> {
 
 /// The source registry and the resolve context (HTTP client, URL cache).
 pub fn setup() -> Result<(SourceRegistry, ResolveCtx)> {
+    setup_observed().map(|(registry, ctx, _)| (registry, ctx))
+}
+
+/// [`setup`] plus the log of the last HTTP request (diagnostics).
+pub fn setup_observed() -> Result<(SourceRegistry, ResolveCtx, ttnr_core::HttpLog)> {
     let cache = match paths::cache_dir() {
         Some(dir) => ResolveCache::load(dir.join("resolve.json")),
         None => ResolveCache::in_memory(),
     };
     let http = ReqwestHttp::new().context("cannot create the HTTP client")?;
+    let (http, log) = ttnr_core::ObservedHttp::new(Arc::new(http));
     let ctx = ResolveCtx::new(Arc::new(http), Arc::new(cache));
     let mut registry = SourceRegistry::new();
     registry.register(Arc::new(UrlSource));
@@ -331,7 +337,7 @@ pub fn setup() -> Result<(SourceRegistry, ResolveCtx)> {
             registry.register(Arc::new(source));
         }
     }
-    Ok((registry, ctx))
+    Ok((registry, ctx, log))
 }
 
 /// `now: Artist – Title` (or just the title).

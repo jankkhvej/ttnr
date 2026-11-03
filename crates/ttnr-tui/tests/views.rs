@@ -282,3 +282,63 @@ fn line_speed_is_shown_on_serial_themes_only() {
     assert!(shown("pdp11-vt100").contains("9600 BAUD"));
     assert!(!shown("plain").contains("baud"));
 }
+
+/// Each diagnostics indicator can be shown alone (M9 acceptance).
+#[test]
+fn each_diagnostics_indicator_alone() {
+    use ttnr_core::app::{DiagSelection, Diagnostics, HttpActivity};
+    let base = DiagSelection::default();
+    let cases = [
+        (
+            DiagSelection {
+                network: true,
+                ..base
+            },
+            "net active",
+        ),
+        (
+            DiagSelection {
+                download: true,
+                ..base
+            },
+            "16 kB/s buf 12 s",
+        ),
+        (
+            DiagSelection {
+                metadata: true,
+                ..base
+            },
+            "rms.api.bbc.co.uk 3 s ago ok",
+        ),
+        (
+            DiagSelection {
+                sync_note: true,
+                ..base
+            },
+            "may lag",
+        ),
+    ];
+    for (shown, expected) in cases {
+        let mut s = state();
+        s.now.as_mut().unwrap().source = ttnr_core::InfoSource::External;
+        s.diag = Diagnostics {
+            shown,
+            bytes_per_sec: Some(16_000),
+            buffered_secs: Some(12),
+            http: Some(HttpActivity {
+                host: "rms.api.bbc.co.uk".into(),
+                ago_secs: 3,
+                outcome: "ok".into(),
+            }),
+        };
+        let text = render(&s, 100, 30);
+        assert!(text.contains(expected), "{shown:?}: {text}");
+        let others = ["net ", "kB/s", "ago", "may lag"]
+            .iter()
+            .filter(|o| text.contains(**o))
+            .count();
+        assert_eq!(others, 1, "only one indicator for {shown:?}");
+    }
+    // Hidden: no diagnostics line at all.
+    assert!(!render(&state(), 100, 30).contains("diag:"));
+}

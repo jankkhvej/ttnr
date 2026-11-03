@@ -52,6 +52,13 @@
 # [sync_offset]
 # bbc = 0
 
+# Diagnostics line, shown/hidden with `i`: pick indicators (none = all).
+# [diagnostics]
+# network = true      # data arriving or not
+# download = true     # kB/s and seconds buffered
+# metadata = true     # last HTTP request: host, age, outcome
+# sync_note = true    # "titles from bbc may lag"
+
 # External-command sources (docs/SOURCES.md): the table name becomes the
 # source id. Tables must come after the plain settings above.
 # [sources.somafm]

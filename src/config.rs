@@ -76,6 +76,32 @@ impl MosaicSetting {
     }
 }
 
+/// `[diagnostics]`: which indicators `i` shows (M9).
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Deserialize)]
+#[serde(default, deny_unknown_fields)]
+pub struct DiagnosticsConfig {
+    /// Network activity.
+    pub network: bool,
+    /// Download rate and seconds buffered.
+    pub download: bool,
+    /// Last metadata / HTTP request.
+    pub metadata: bool,
+    /// Note when track info may lag the audio.
+    pub sync_note: bool,
+}
+
+impl DiagnosticsConfig {
+    /// As the app's selection.
+    pub fn selection(self) -> ttnr_core::app::DiagSelection {
+        ttnr_core::app::DiagSelection {
+            network: self.network,
+            download: self.download,
+            metadata: self.metadata,
+            sync_note: self.sync_note,
+        }
+    }
+}
+
 /// One external-command source.
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -114,6 +140,8 @@ pub struct Config {
     /// External-command sources (`[sources.<id>] command = [...]`, the
     /// `exec` protocol in docs/SOURCES.md).
     pub sources: BTreeMap<String, ExecConfig>,
+    /// Optional diagnostics indicators shown with `i` (none = all).
+    pub diagnostics: DiagnosticsConfig,
     /// macOS Now Playing / Control Center and media keys; default on.
     pub media_controls: Option<bool>,
     /// Key bindings: action → key(s); replaces that action's defaults.

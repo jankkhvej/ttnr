@@ -113,6 +113,12 @@ const ACTIONS: &[Action] = &[
         defaults: &["["],
     },
     Action {
+        name: "diagnostics",
+        command: Command::ToggleDiagnostics,
+        help: "diagnostics line",
+        defaults: &["i"],
+    },
+    Action {
         name: "cycle_baud",
         command: Command::CycleBaud,
         help: "line speed (terminal themes)",

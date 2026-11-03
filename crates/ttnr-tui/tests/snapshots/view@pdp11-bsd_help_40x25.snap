@@ -3,7 +3,6 @@ source: crates/ttnr-tui/tests/snapshots.rs
 ---
 "+ ttnr --------------------------------+"
 "|2.11 BSD UNIX (ttnr) (console)        |"
-"|                                      |"
 "|+ keys ------------------------------+|"
 "||spc  play / pause                   ||"
 "||+ =  volume up                      ||"
@@ -20,6 +19,7 @@ source: crates/ttnr-tui/tests/snapshots.rs
 "||q    quit                           ||"
 "||]    track info later (+1 s)        ||"
 "||[    track info earlier (-1 s)      ||"
+"||i    diagnostics line               ||"
 "||b    line speed (terminal themes)   ||"
 "|+------------------------------------+|"
 "|                                      |"

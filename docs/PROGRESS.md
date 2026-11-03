@@ -2,6 +2,13 @@
 
 Newest entry on top. Each entry: date · milestone/task · what changed · how to try it · next step · open questions for the owner.
 
+## 2026-11-04 · M9 · Diagnostics indicators – **M9 complete, waiting for owner review**
+- `[diagnostics]` network / download / metadata / sync_note, `i` toggles (none configured = all); engine `Transfer` from `cache-speed` / `demuxer-cache-duration`; `ObservedHttp` records the last request; hidden = no state change (ADR-046).
+- Tests: translator rounding, ObservedHttp, core (hidden ignores data, toggle, config subset), each indicator alone, snapshots (only help changed with diagnostics off; new `main_diagnostics` case). Live (muted, local paced stream): `diag: … 16 kB/s buf 4 s · 127.0.0.1:18768 3 s ago ok`.
+
+## 2026-11-04 · M8 complete – accepted by the owner
+- Owner checked docs, man page, release build and notices. Next: M9 – optional diagnostics indicators.
+
 ## 2026-11-03 · M8 · Licence audit and notices – **M8 complete, waiting for owner review**
 - `cargo deny` clean; licence set recorded; `scripts/notices.py` → `THIRD_PARTY_NOTICES.md` (191 crates with texts, objc2 family listed with repositories, 29 Homebrew native libraries with licences); gate checks it is current (ADR-045).
 - M8 summary: `ttnr play` on the shared state machine (reconnects, socket, Now Playing; ADR-043); README, CONFIG.md, THEME-GUIDE.md, ttnr.1 with a drift test; release profile (4.2 MB) and Homebrew formula draft (ADR-044); licence audit and notices.
