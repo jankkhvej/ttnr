@@ -195,6 +195,11 @@ pub struct Screen {
     pub height: u16,
     /// Colour outside the logical screen.
     pub border: ThemeColor,
+    /// Paper-coloured columns on each side of the content (keeps border
+    /// effects away from the text); dropped first when space is short.
+    pub margin_x: u16,
+    /// Paper-coloured rows above and below the content.
+    pub margin_y: u16,
 }
 
 impl Default for Screen {
@@ -203,6 +208,8 @@ impl Default for Screen {
             width: 0,
             height: 0,
             border: ThemeColor::Reset,
+            margin_x: 0,
+            margin_y: 0,
         }
     }
 }

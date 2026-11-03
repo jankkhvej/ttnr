@@ -51,7 +51,8 @@ replaces it). Start from `crates/ttnr-themes/themes/plain.toml`.
 Added in M5 (all optional; `plain.toml` lists the defaults):
 
 - `[screen]` `width`/`height` (logical screen, centred, `0` = full terminal),
-  `border` (colour around it).
+  `border` (colour around it), `margin_x`/`margin_y` (paper around the
+  content, dropped first on small terminals).
 - `[text]` `uppercase`, `ascii_only` (transliterate, else `?`), `map`
   (per-character substitutions, applied last), `numbers` (`decimal`/`octal`
   for volume, sync offset, percentages; the stream format line stays
@@ -140,8 +141,10 @@ Design: 32-column screen on a white border, blue double-height station bar,
 status as reports (`LOAD ""` while loading, `0 OK, 0:1` playing, `D BREAK -
 CONT repeats, 0:1` paused, `8 End of file` ended); tape stripes in the
 border while a station loads and ~2 s after the audio starts (half-block
-`▀` = two stripes per row); boot: garbage, red RAM-test lines (one thin
-line per cell, red on black – inferred from the bytes the ROM writes),
+`▀` = two stripes per row), kept 2 columns / 1 row away from the text by a
+paper margin (owner, design choice); boot (~1.4 s): static garbage, black
+screen with thin red lines `¦` (RAM test – red on black inferred from the
+bytes the ROM writes; owner remembers them as lines/exclamation marks),
 then the copyright line.
 UNVERIFIED: the `, line:statement` suffix wording; exact RGB (0xD7 level
 used); the garbage/red-line look (forum accounts, consistent with the ROM).

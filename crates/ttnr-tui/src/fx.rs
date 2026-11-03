@@ -276,8 +276,9 @@ impl Fx {
                 // Screen bytes of 2 = one thin line per cell, attributes of
                 // 2 = red ink on black (inferred from the ROM, RESEARCH.md).
                 fill(buf, full, " ", Style::default().bg(self.rgb(zx::WHITE)));
-                if ms < 300 {
-                    let mut rng = Rng(seed | 1);
+                if ms < 250 {
+                    // Static: power-on RAM content does not move.
+                    let mut rng = Rng(0x5eed_2b1d);
                     const GARBAGE: [&str; 12] =
                         ["▘", "▝", "▖", "▗", "▚", "▞", "▀", "▄", "▌", "▐", "█", " "];
                     for y in screen.top()..screen.bottom() {
@@ -294,8 +295,10 @@ impl Fx {
                             );
                         }
                     }
-                } else if ms < 1100 {
-                    let glyph = if ms < 900 { "▕" } else { " " };
+                } else if ms < 1000 {
+                    // Broken bar: the thin per-cell lines, as remembered
+                    // ("lines / exclamation marks").
+                    let glyph = "¦";
                     let style = Style::default()
                         .fg(self.rgb(zx::RED))
                         .bg(self.rgb(zx::BLACK));
@@ -305,12 +308,13 @@ impl Fx {
                         .fg(self.rgb(zx::BLACK))
                         .bg(self.rgb(zx::WHITE));
                     fill(buf, screen, " ", paper);
-                    let y = screen.bottom().saturating_sub(1);
+                    let content = crate::view::content_area(screen, theme);
+                    let y = content.bottom().saturating_sub(1);
                     text(
                         buf,
-                        screen.left(),
+                        content.left(),
                         y,
-                        screen.width,
+                        content.width,
                         "© 1982 Sinclair Research Ltd",
                         paper,
                     );
@@ -400,7 +404,7 @@ impl Fx {
 pub fn boot_length(effect: BootEffect) -> Duration {
     Duration::from_millis(match effect {
         BootEffect::None => 0,
-        BootEffect::ZxSpectrum => 2600,
+        BootEffect::ZxSpectrum => 1400,
         BootEffect::Zx80 => 1200,
         BootEffect::BbcMicro => 1900,
         BootEffect::Vt100 => 800 + 350 * RSX_BOOT.len() as u64 + 600,

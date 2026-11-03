@@ -64,7 +64,7 @@ pub fn draw_with(
         .fg(color(theme.palette.fg))
         .bg(color(theme.palette.bg));
     frame.render_widget(Block::default().style(base), area);
-    let inner = framed(frame, area, theme, &theme.title);
+    let inner = framed(frame, content_area(area, theme), theme, &theme.title);
     // One column of margin when there is room for it.
     let padded = if inner.width >= 40 {
         Rect {
@@ -101,19 +101,38 @@ pub fn draw_with(
 /// The theme's logical screen (e.g. 32×24) centred in `full`; the whole
 /// area when the theme has no fixed size or the terminal is smaller.
 pub fn logical_screen(full: Rect, theme: &Theme) -> Rect {
-    let w = match theme.screen.width {
+    let sc = &theme.screen;
+    let w = match sc.width {
         0 => full.width,
-        w => w.min(full.width),
+        w => w.saturating_add(2 * sc.margin_x).min(full.width),
     };
-    let h = match theme.screen.height {
+    let h = match sc.height {
         0 => full.height,
-        h => h.min(full.height),
+        h => h.saturating_add(2 * sc.margin_y).min(full.height),
     };
     Rect {
         x: full.x + (full.width - w) / 2,
         y: full.y + (full.height - h) / 2,
         width: w,
         height: h,
+    }
+}
+
+/// The content area inside the logical screen's paper margins (margins
+/// shrink first when the terminal is smaller than screen + margins).
+pub fn content_area(paper: Rect, theme: &Theme) -> Rect {
+    let sc = &theme.screen;
+    let inset = |len: u16, want: u16, margin: u16| match want {
+        0 => 0,
+        want => margin.min(len.saturating_sub(want) / 2),
+    };
+    let dx = inset(paper.width, sc.width, sc.margin_x);
+    let dy = inset(paper.height, sc.height, sc.margin_y);
+    Rect {
+        x: paper.x + dx,
+        y: paper.y + dy,
+        width: paper.width - 2 * dx,
+        height: paper.height - 2 * dy,
     }
 }
 

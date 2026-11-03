@@ -41,6 +41,8 @@ cursor    = ">"
 width  = 32
 height = 24
 border = "#d7d7d7"              # BORDER 7
+margin_x = 2                    # paper around the text, so the tape
+margin_y = 1                    # stripes never touch it (design choice)
 
 [text]
 ascii_only = true

@@ -38,6 +38,8 @@ cursor    = "›"
 # width  = 0
 # height = 0
 # border = "default"       # colour filled around the logical screen
+# margin_x = 0             # paper columns each side of the content
+# margin_y = 0             # paper rows above and below
 #
 # [text]                   # applied to all content text
 # uppercase  = false

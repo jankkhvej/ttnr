@@ -213,7 +213,7 @@ fn animation_frames() {
         let boot = theme.effects.boot;
         if boot != BootEffect::None {
             let moments: &[u64] = match boot {
-                BootEffect::ZxSpectrum => &[100, 600, 2000],
+                BootEffect::ZxSpectrum => &[100, 600, 1200],
                 BootEffect::Vt100 => &[100, 600, 1500, 3000],
                 _ => &[100, 1000],
             };

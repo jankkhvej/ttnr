@@ -2,6 +2,10 @@
 
 Newest entry on top. Each entry: date · milestone/task · what changed · how to try it · next step · open questions for the owner.
 
+## 2026-11-03 · M5 · Spectrum tweaks (owner)
+- Boot: static garbage → black with red `¦` lines → copyright, 1.4 s (was 2.6 s with moving garbage).
+- `[screen] margin_x`/`margin_y`: `zx-spectrum` has 2 columns / 1 row of paper around the text, so the tape stripes keep their distance (margins drop first below 36×26).
+
 ## 2026-11-03 · M5 · Owner feedback: Spectrum, animations, baud
 - Owner: new `zx-spectrum` theme (tape-loading border stripes), boot animations on theme switch, optional Teletype line speed; "everything on paper" kept as a proposal (THEMES.md).
 - Done: `VOL 144` without `%` in octal themes (`percent_sign`); `baud = 110|300|9600` for printout themes; `[effects]` with boot sequences (Spectrum RAM test → copyright, ZX80 K cursor, BBC banner, VT100 self-test → RSX-11M boot lines) and loading effects (Spectrum tape stripes, ZX80 blank); config `effects = false` disables all (ADR-034). Research via subagent logged in RESEARCH.md.
