@@ -67,7 +67,9 @@ track and programme information — which the BBC streams themselves do not carr
 - F5.1 Shows only: station, programme, artist — title, stream format line,
   status (playing/buffering/reconnecting/error), volume, output device,
   recent tracks, one-line key help.
-- F5.2 **No FFT, no spectrum, no visualisers.**
+- F5.2 **No FFT, no spectrum, no visualisers.** Optional diagnostics indicators
+  (network activity, download rate, metadata polling, sync note) are allowed
+  only as opt-in extras, off by default (owner, 2026-11-03; ROADMAP M9).
 - F5.3 Keys (defaults, remappable): `space` play/pause, `+`/`-` volume,
   `m` mute, `n`/`p` next/prev station, `s` station list, `o` open URL,
   `d` output device, `t` cycle theme, `?` help, `q` quit.

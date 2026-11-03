@@ -2,6 +2,11 @@
 
 Newest entry on top. Each entry: date · milestone/task · what changed · how to try it · next step · open questions for the owner.
 
+## 2026-11-03 · M4 complete; M9 added
+- M4 accepted by the owner: BBC source (web-player flow, refusals final), now-playing with on-air timing (default offset 0), resolver/failover shared with other sources.
+- Owner request: optional diagnostics indicators → new ROADMAP M9 (after M8), SPEC F5.2 note.
+- Next: M5 – retro themes (owner most interested).
+
 ## 2026-11-03 · M4 · Now-playing timing fix
 - Owner test: offset keys seemed to do nothing; titles late. Fixed: BBC polling 10 s, updates stamped with on-air time (broadcast start + segment offset), shown at `at + offset` with one re-timable pending update; `ttnr play` uses the same rule (ADR-032). Default offset 0 (owner's preference).
 - Tests: timed display, re-timing on `]`/`[`, stale timers ignored, RFC 3339 parser, provider timestamps from recorded fixtures.
