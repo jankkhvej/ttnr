@@ -238,7 +238,6 @@ fn boot_frames_hide_the_ui_below() {
         let f = FxFrame::Boot {
             effect,
             t: Duration::from_millis(600),
-            seed: 1,
         };
         let mut t = Terminal::new(TestBackend::new(100, 30)).unwrap();
         t.draw(|frame| {

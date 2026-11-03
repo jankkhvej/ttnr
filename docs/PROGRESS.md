@@ -2,6 +2,9 @@
 
 Newest entry on top. Each entry: date · milestone/task · what changed · how to try it · next step · open questions for the owner.
 
+## 2026-11-03 · M5 · VT100 boot noise static (owner)
+- The VT100 power-on noise no longer changes per frame. Research: DEC documents ~1 s reset, self-test, keyboard LEDs + bell, cursor at line 1 column 1; random characters only on fatal errors; per-character attributes need the AVO → static garbage without attributes kept as a short design choice (RESEARCH.md).
+
 ## 2026-11-03 · M5 · Slow line: no retyping on resize (owner)
 - With a line speed set, resizing the window (and the first frame) no longer retypes the whole screen; the new layout appears at once and only later UI changes arrive slowly. Test `resize_redraws_at_once`.
 

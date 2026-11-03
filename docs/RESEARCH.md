@@ -306,3 +306,13 @@ anything older than ~3 months before relying on it.
 | Boot transcript: `70Boot from xp(0,1,0) at 0176700`, `Press <CR> to boot, or any other key to abort: 0`, `: xp(0,1,0)unix`, `Boot: bootdev=05010 bootcsr=0176700`, `2.11 BSD UNIX #115: Sat Apr 22 19:07:25 PDT 2000` / `sms1@curly.2bsd.com:/usr/src/sys/GENERIC`, `phys mem  = 3915776`, `avail mem = 3684480`, `user mem  = 307200`, probe lines `rl 0 csr 174400 vector 160 attached` … | https://github.com/JamesHagerman/nankervis-pdp11-js/blob/master/ExampleBoots.md · https://sergev.org/pdp11/211bsd | seen 2026-11-03 (emulator logs) |
 | `fsck -p` prints nothing on a clean disk (two identical dates around it in the log); preen line format UNVERIFIED | same logs | seen 2026-11-03 |
 
+### 2026-11-03 · VT100 power-on screen (owner question; research subagent)
+
+| Fact | Source | Status |
+|---|---|---|
+| Power-up: 8224 reset releases ~1 s after power-on; self-test: ROM checksums (failing ROM on keyboard LEDs), RAM test, NVR checksum (bell several times on failure), keyboard scan (LEDs ~0.5 s + one bell); then "the cursor appears at column 1, line 1" | https://vt100.net/docs/vt100-tm/chapter4.html §4.2.8 | VERIFIED 2026-11-03 |
+| Fatal self-test error: no intelligible information, "most likely … a random pattern of characters"; non-fatal errors as a single character on screen | https://vt100.net/docs/vt100-ug/chapter1.html | seen 2026-11-03 (search summary) |
+| A normal power-on showing garbage is not documented; firmware fills character memory with blanks at power-on (VT101 forum answer) | https://forum.vcfed.org/index.php?threads/vt101-powers-on-but-displays-gibberish.48618/ | seen 2026-11-03 (secondary) – the static garbage in `vt100` boot is a design choice |
+| Per-character attributes (reverse, blink, bold, underline) need the Advanced Video Option; the base VT100 has none | https://vt100.net/docs/vt100-ug/chapter1.html | seen 2026-11-03 |
+| Earlier "test data, then erase" wording (VT102 guide summary) not confirmed for the VT100 | https://vt100.net/docs/vt102-ug/chapter9.html | UNVERIFIED |
+

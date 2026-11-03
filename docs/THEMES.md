@@ -195,7 +195,9 @@ start line of the cursor (underline assumed).
 - `zx80`: blank picture, inverse `K` cursor bottom left (Operating Manual);
   while a station loads the picture blanks, as the ZX80 did while busy.
 - `bbc-mode7`: `BBC Computer 32K`, `BASIC`, `>` with a flashing cursor.
-- `pdp11-vt100*`: VT100 self-test (test data, erase, cursor top left), then
+- `pdp11-vt100*`, `pdp11-bsd`: a moment of static uncleared screen RAM (design
+  choice; DEC documents random characters only for fatal self-test errors),
+  blank, cursor top left (Technical Manual 4.2.8), then
   RSX-11M console lines `RSX-11M V4.6 BL56 128.K MAPPED`, `>RED DU:=SY:`,
   `>RED DU:=LB:`, `>MOU DU:RSXM56`, `>@DU:[1,2]STARTUP` (SIMH logs).
 - `pdp11-teletype`: none (the banner is printed, at `baud` speed if set).

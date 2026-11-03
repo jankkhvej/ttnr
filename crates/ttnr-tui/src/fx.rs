@@ -82,8 +82,6 @@ pub enum FxFrame {
         effect: BootEffect,
         /// Time since the start.
         t: Duration,
-        /// Seed for random content (garbage, test data).
-        seed: u64,
     },
 }
 
@@ -179,7 +177,6 @@ impl Fx {
             return Some(FxFrame::Boot {
                 effect,
                 t: now.saturating_duration_since(start),
-                seed,
             });
         }
         let load = self.load?;
@@ -238,9 +235,7 @@ impl Fx {
                 }
             }
             FxFrame::Blank => fill(buf, full, " ", Style::default().bg(color(theme.palette.bg))),
-            FxFrame::Boot { effect, t, seed } => {
-                self.paint_boot(effect, t, seed, buf, full, screen, theme)
-            }
+            FxFrame::Boot { effect, t } => self.paint_boot(effect, t, buf, full, screen, theme),
         }
     }
 
@@ -253,7 +248,6 @@ impl Fx {
         &self,
         effect: BootEffect,
         t: Duration,
-        seed: u64,
         buf: &mut Buffer,
         full: Rect,
         screen: Rect,
@@ -353,8 +347,12 @@ impl Fx {
                 }
             }
             BootEffect::Vt100 => {
-                // Self-test: test data, erase, bell + cursor top left
-                // (VT100/VT102 user guides); then the RSX-11M console boot.
+                // Power-on: briefly the uncleared screen RAM (static; a
+                // design choice – DEC documents only the self-test and a
+                // random pattern on *fatal* errors), then blank, cursor at
+                // line 1 column 1 (Technical Manual 4.2.8); then the
+                // theme's operating-system boot lines. No per-character
+                // attributes: the base VT100 has none without the AVO.
                 fill(
                     buf,
                     full,
@@ -363,7 +361,7 @@ impl Fx {
                 );
                 fill(buf, screen, " ", base);
                 if ms < 500 {
-                    let mut rng = Rng(seed | 1);
+                    let mut rng = Rng(0x7e57_da7a);
                     for y in screen.top()..screen.bottom() {
                         for x in screen.left()..screen.right() {
                             let c = char::from(b'!' + u8::try_from(rng.below(94)).unwrap_or(0));

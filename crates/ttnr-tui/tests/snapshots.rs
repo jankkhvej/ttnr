@@ -223,7 +223,6 @@ fn animation_frames() {
                     FxFrame::Boot {
                         effect: boot,
                         t: Duration::from_millis(*ms),
-                        seed: 1,
                     },
                 ));
             }
