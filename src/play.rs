@@ -108,11 +108,11 @@ pub async fn run(
 
     let mut latest: Option<NowPlaying> = None;
     let mut paused = false;
-    let (remote_tx, mut remote_rx) = mpsc::unbounded_channel::<ttnr_platform::RemoteCommand>();
+    let (remote_tx, mut remote_rx) = mpsc::unbounded_channel::<ttnr_platform::SystemEvent>();
     let updater = media.map(|link| {
         let updater = link.updater();
         std::thread::spawn(move || {
-            while let Ok(cmd) = link.commands.recv() {
+            while let Ok(cmd) = link.events.recv() {
                 if remote_tx.send(cmd).is_err() {
                     break;
                 }
@@ -135,13 +135,14 @@ pub async fn run(
             }
         }
         tokio::select! {
-            Some(remote) = remote_rx.recv() => {
-                tracing::info!(?remote, "media key");
+            Some(event) = remote_rx.recv() => {
+                tracing::info!(?event, "system event");
                 use ttnr_platform::RemoteCommand::{Pause, Play, TogglePause};
-                let want = match remote {
-                    TogglePause => !paused,
-                    Play => false,
-                    Pause => true,
+                use ttnr_platform::SystemEvent::Remote;
+                let want = match event {
+                    Remote(TogglePause) => !paused,
+                    Remote(Play) => false,
+                    Remote(Pause) => true,
                     _ => continue,
                 };
                 if want != paused {

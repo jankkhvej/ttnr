@@ -83,6 +83,8 @@ const STREAM_INFO_PROPS: &[(&str, Format)] = &[
     ("audio-out-params/samplerate", Format::Int64),
     ("audio-out-params/hr-channels", Format::String),
     ("audio-bitrate", Format::Double),
+    // Live streams are not seekable (ICY and live HLS); files are.
+    ("seekable", Format::Flag),
 ];
 
 /// Reply id for all [`STREAM_INFO_PROPS`] (events carry the name).
@@ -384,6 +386,9 @@ fn read_prop(mpv: &Mpv, name: &str, format: Format) -> PropValue {
         Format::String => mpv.get_property::<String>(name).map(PropValue::Str),
         Format::Int64 => mpv.get_property::<i64>(name).map(PropValue::Int),
         Format::Double => mpv.get_property::<f64>(name).map(PropValue::Double),
+        Format::Flag => mpv
+            .get_property::<bool>(name)
+            .map(|b| PropValue::Int(i64::from(b))),
         _ => return PropValue::None,
     }
     .unwrap_or(PropValue::None)
@@ -417,7 +422,8 @@ fn to_raw(event: Event<'_>) -> Option<RawEvent> {
                 PropertyData::Str(s) | PropertyData::OsdStr(s) => PropValue::Str(s.to_owned()),
                 PropertyData::Int64(i) => PropValue::Int(i),
                 PropertyData::Double(d) => PropValue::Double(d),
-                PropertyData::Flag(_) | PropertyData::None => PropValue::None,
+                PropertyData::Flag(b) => PropValue::Int(i64::from(b)),
+                PropertyData::None => PropValue::None,
             },
         },
         Event::PropertyChange { name, change, .. } => match (name, change) {

@@ -65,25 +65,34 @@ pub enum RemoteCommand {
     Previous,
 }
 
+/// Something the system tells the application.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum SystemEvent {
+    /// A media key / Control Center / headphone command.
+    Remote(RemoteCommand),
+    /// The computer woke from sleep.
+    Woke,
+}
+
 /// The application's side of the system integration.
 #[derive(Debug)]
 pub struct MediaLink {
     updates: mpsc::Sender<Option<NowPlayingInfo>>,
-    /// Commands from the system; blocking `recv` ends when the host stops.
-    pub commands: mpsc::Receiver<RemoteCommand>,
+    /// Events from the system; blocking `recv` ends when the host stops.
+    pub events: mpsc::Receiver<SystemEvent>,
 }
 
 impl MediaLink {
     /// A link not connected to any system (tests): returns the link, the
-    /// receiver of its updates and the sender of commands.
+    /// receiver of its updates and the sender of system events.
     pub fn detached() -> (
         Self,
         mpsc::Receiver<Option<NowPlayingInfo>>,
-        mpsc::Sender<RemoteCommand>,
+        mpsc::Sender<SystemEvent>,
     ) {
         let (updates, updates_rx) = mpsc::channel();
-        let (commands_tx, commands) = mpsc::channel();
-        (Self { updates, commands }, updates_rx, commands_tx)
+        let (events_tx, events) = mpsc::channel();
+        (Self { updates, events }, updates_rx, events_tx)
     }
 
     /// A sender for Now Playing updates (`None` = nothing playing).
@@ -138,8 +147,13 @@ mod tests {
         };
         link.updater().update(Some(info.clone()));
         assert_eq!(updates.recv().unwrap(), Some(info));
-        commands.send(RemoteCommand::Next).unwrap();
-        assert_eq!(link.commands.recv().unwrap(), RemoteCommand::Next);
+        commands
+            .send(SystemEvent::Remote(RemoteCommand::Next))
+            .unwrap();
+        assert_eq!(
+            link.events.recv().unwrap(),
+            SystemEvent::Remote(RemoteCommand::Next)
+        );
     }
 
     #[test]

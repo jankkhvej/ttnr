@@ -250,6 +250,15 @@ pub enum Msg {
     Devices(Vec<Device>),
     /// The system default output device changed (its name).
     DefaultDevice(Option<String>),
+    /// Time for a scheduled reconnection attempt (stale ones are ignored).
+    Retry {
+        /// [`Station::key`] it belongs to.
+        key: String,
+        /// Reconnection generation it was scheduled for.
+        generation: u64,
+    },
+    /// The computer woke from sleep: reconnect a live stream at once.
+    Woke,
     /// A user command.
     Command(Command),
 }
@@ -301,7 +310,17 @@ pub struct App {
     /// Latest provider update not shown yet, and its generation.
     pending: Option<NowPlaying>,
     generation: u64,
+    /// The current station has played since it was chosen (only then do
+    /// failures reconnect instead of ending in an error).
+    played: bool,
+    /// Reconnection attempts since the last successful start.
+    retry_attempt: u32,
+    /// Reconnection generation (stale `Msg::Retry` are ignored).
+    retry_gen: u64,
 }
+
+/// Waits between reconnection attempts; the last repeats forever.
+const BACKOFF_SECS: [u64; 7] = [1, 2, 4, 8, 16, 30, 60];
 
 impl App {
     /// A new app with `stations`, initial `volume` and history length.
@@ -318,6 +337,9 @@ impl App {
             sync_offsets: BTreeMap::new(),
             pending: None,
             generation: 0,
+            played: false,
+            retry_attempt: 0,
+            retry_gen: 0,
         }
     }
 
@@ -364,6 +386,29 @@ impl App {
             Msg::DefaultDevice(name) => {
                 self.state.default_device = name;
                 vec![]
+            }
+            Msg::Retry { key, generation } => {
+                if generation != self.retry_gen
+                    || self.current_key().as_deref() != Some(key.as_str())
+                    || !matches!(self.state.status, Status::Reconnecting(_))
+                {
+                    return vec![];
+                }
+                self.reconnect_now("reconnecting")
+            }
+            Msg::Woke => {
+                let live = matches!(
+                    self.state.status,
+                    Status::Playing
+                        | Status::Buffering(_)
+                        | Status::Loading
+                        | Status::Reconnecting(_)
+                );
+                if !(self.played && live) {
+                    return vec![];
+                }
+                self.retry_attempt = 0;
+                self.reconnect_now("woke up; reconnecting")
             }
             Msg::Command(cmd) => self.on_command(cmd),
         }
@@ -418,6 +463,45 @@ impl App {
         self.state.view = View::Main;
         self.failover = None;
         self.merger.clear();
+        self.played = false;
+        self.retry_attempt = 0;
+        self.retry_gen += 1;
+        vec![Effect::Stop, Effect::Resolve(st)]
+    }
+
+    /// Schedule the next reconnection attempt with backoff.
+    fn schedule_retry(&mut self, why: &str) -> Vec<Effect> {
+        let Some(key) = self.current_key() else {
+            self.state.status = Status::Error(why.to_owned());
+            return vec![];
+        };
+        let i = usize::try_from(self.retry_attempt)
+            .unwrap_or(usize::MAX)
+            .min(BACKOFF_SECS.len() - 1);
+        let secs = BACKOFF_SECS[i];
+        self.retry_attempt = self.retry_attempt.saturating_add(1);
+        self.retry_gen += 1;
+        self.state.status = Status::Reconnecting(format!("{why}; retry in {secs} s"));
+        vec![
+            Effect::Stop,
+            Effect::Delay {
+                after: Duration::from_secs(secs),
+                msg: Box::new(Msg::Retry {
+                    key,
+                    generation: self.retry_gen,
+                }),
+            },
+        ]
+    }
+
+    /// Resolve the current station again and play it (fresh failover).
+    fn reconnect_now(&mut self, why: &str) -> Vec<Effect> {
+        let Some(st) = self.state.station.clone() else {
+            return vec![];
+        };
+        self.retry_gen += 1;
+        self.failover = None;
+        self.state.status = Status::Reconnecting(why.to_owned());
         vec![Effect::Stop, Effect::Resolve(st)]
     }
 
@@ -444,6 +528,7 @@ impl App {
         }
         let d = match result {
             Ok(d) => d,
+            Err(e) if self.played && !refresh => return self.schedule_retry(&e),
             Err(e) => {
                 self.state.status = Status::Error(e);
                 return vec![];
@@ -472,7 +557,11 @@ impl App {
     fn on_player(&mut self, ev: PlayerEvent) -> Vec<Effect> {
         match ev {
             PlayerEvent::Loading => self.state.status = Status::Loading,
-            PlayerEvent::Playing => self.state.status = Status::Playing,
+            PlayerEvent::Playing => {
+                self.state.status = Status::Playing;
+                self.played = true;
+                self.retry_attempt = 0;
+            }
             PlayerEvent::Buffering(p) => self.state.status = Status::Buffering(p),
             PlayerEvent::Paused(true) => self.state.status = Status::Paused,
             PlayerEvent::Paused(false) => {
@@ -486,7 +575,15 @@ impl App {
                     self.show_now(np);
                 }
             }
-            PlayerEvent::Ended => self.state.status = Status::Ended,
+            PlayerEvent::Ended => {
+                // A file ends; a live stream (not seekable) that "ends" lost
+                // its connection.
+                let file = self.state.stream.as_ref().and_then(|i| i.seekable) == Some(true);
+                if self.played && !file {
+                    return self.schedule_retry("stream ended");
+                }
+                self.state.status = Status::Ended;
+            }
             PlayerEvent::Failed {
                 retryable,
                 stale_hint,
@@ -511,6 +608,7 @@ impl App {
                             .into_iter()
                             .collect()
                     }
+                    Action::GiveUp if retryable && self.played => self.schedule_retry(&message),
                     Action::GiveUp => {
                         self.state.status = Status::Error(message);
                         vec![]

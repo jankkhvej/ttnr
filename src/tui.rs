@@ -125,11 +125,11 @@ pub async fn run(
     let mut sigterm = tokio::signal::unix::signal(tokio::signal::unix::SignalKind::terminate())
         .context("cannot listen for SIGTERM")?;
     // Media keys arrive on a blocking channel; forward them into the loop.
-    let (remote_tx, mut remote_rx) = mpsc::unbounded_channel::<ttnr_platform::RemoteCommand>();
+    let (remote_tx, mut remote_rx) = mpsc::unbounded_channel::<ttnr_platform::SystemEvent>();
     let updater = media.map(|link| {
         let updater = link.updater();
         std::thread::spawn(move || {
-            while let Ok(cmd) = link.commands.recv() {
+            while let Ok(cmd) = link.events.recv() {
                 if remote_tx.send(cmd).is_err() {
                     break;
                 }
@@ -146,11 +146,16 @@ pub async fn run(
                 None => continue,
             },
             Some(msg) = msg_rx.recv() => msg,
-            Some(remote) = remote_rx.recv() => {
-                tracing::info!(?remote, "media key");
-                match crate::media::command_for(remote, &app.state) {
-                    Some(cmd) => Msg::Command(cmd),
-                    None => continue,
+            Some(event) = remote_rx.recv() => {
+                tracing::info!(?event, "system event");
+                match event {
+                    ttnr_platform::SystemEvent::Woke => Msg::Woke,
+                    ttnr_platform::SystemEvent::Remote(remote) => {
+                        match crate::media::command_for(remote, &app.state) {
+                            Some(cmd) => Msg::Command(cmd),
+                            None => continue,
+                        }
+                    }
                 }
             }
             _ = sigterm.recv() => Msg::Command(Command::Quit),

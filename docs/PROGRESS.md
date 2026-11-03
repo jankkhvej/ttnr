@@ -2,6 +2,10 @@
 
 Newest entry on top. Each entry: date · milestone/task · what changed · how to try it · next step · open questions for the owner.
 
+## 2026-11-03 · M6 · Reconnect with backoff, wake from sleep
+- Core reconnects a station that has played when it fails retryably or ends while not seekable (live): 1/2/4/8/16/30/60 s, reset on playing; stale retries ignored; never-played stations fail as before. Engine: `seekable` in `StreamInfo`. macOS: wake notification → immediate reconnect (ADR-038).
+- Tests: 6 core scenarios (backoff sequence + reset, never played, live end vs file end, stale/superseded retries, wake, resolve error while reconnecting), translator `seekable`; end to end with a local server dropping a real-time stream (3 connections, 1 s retries). Waiting for the owner's sleep / Wi-Fi test.
+
 ## 2026-11-03 · M6 · Task 2 done – owner confirmed
 - Default-device following, pinned fallback/return and the device label work (owner: "everything is nice"). Next: M6 task 3 – sleep/wake and network changes: reconnect with backoff.
 

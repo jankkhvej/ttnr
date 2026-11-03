@@ -10,9 +10,11 @@ use std::time::{Duration, Instant};
 use block2::RcBlock;
 use objc2::MainThreadMarker;
 use objc2::rc::{Retained, autoreleasepool};
-use objc2::runtime::AnyObject;
-use objc2_app_kit::{NSApplication, NSApplicationActivationPolicy};
-use objc2_foundation::{NSDate, NSDictionary, NSNumber, NSRunLoop, NSString};
+use objc2::runtime::{AnyObject, NSObjectProtocol, ProtocolObject};
+use objc2_app_kit::{
+    NSApplication, NSApplicationActivationPolicy, NSWorkspace, NSWorkspaceDidWakeNotification,
+};
+use objc2_foundation::{NSDate, NSDictionary, NSNotification, NSNumber, NSRunLoop, NSString};
 use objc2_media_player::{
     MPMediaItemPropertyAlbumTitle, MPMediaItemPropertyArtist, MPMediaItemPropertyTitle,
     MPNowPlayingInfoCenter, MPNowPlayingInfoPropertyIsLiveStream,
@@ -20,7 +22,7 @@ use objc2_media_player::{
     MPRemoteCommandCenter, MPRemoteCommandEvent, MPRemoteCommandHandlerStatus,
 };
 
-use crate::{MediaLink, NowPlayingInfo, RemoteCommand};
+use crate::{MediaLink, NowPlayingInfo, RemoteCommand, SystemEvent};
 
 /// How long the run loop waits per turn (also the exit latency).
 const TURN: f64 = 0.1;
@@ -38,10 +40,10 @@ where
         return app(None);
     };
     let (updates_tx, updates) = mpsc::channel();
-    let (commands_tx, commands) = mpsc::channel();
+    let (events_tx, events) = mpsc::channel();
     let link = MediaLink {
         updates: updates_tx,
-        commands,
+        events,
     };
     let worker = match std::thread::Builder::new()
         .name("ttnr-app".into())
@@ -60,7 +62,8 @@ where
     app_kit.setActivationPolicy(NSApplicationActivationPolicy::Accessory);
     app_kit.finishLaunching();
     // SAFETY: MediaPlayer is used on the main thread only (`mtm`).
-    let _targets = unsafe { register_commands(&commands_tx) };
+    let _targets = unsafe { register_commands(&events_tx) };
+    let _wake = observe_wake(events_tx.clone());
     let mut can_skip = None;
 
     let run_loop = NSRunLoop::mainRunLoop();
@@ -96,7 +99,7 @@ where
 
 /// # Safety
 /// Main thread only.
-unsafe fn register_commands(tx: &mpsc::Sender<RemoteCommand>) -> Vec<Retained<AnyObject>> {
+unsafe fn register_commands(tx: &mpsc::Sender<SystemEvent>) -> Vec<Retained<AnyObject>> {
     // SAFETY: main thread (caller).
     unsafe {
         let center = MPRemoteCommandCenter::sharedCommandCenter();
@@ -110,6 +113,26 @@ unsafe fn register_commands(tx: &mpsc::Sender<RemoteCommand>) -> Vec<Retained<An
         .into_iter()
         .map(|(cmd, remote)| register(&cmd, remote, tx.clone()))
         .collect()
+    }
+}
+
+/// Report system wake-ups (NSWorkspace notification on the main thread).
+fn observe_wake(tx: mpsc::Sender<SystemEvent>) -> Retained<ProtocolObject<dyn NSObjectProtocol>> {
+    let block = RcBlock::new(move |_note: NonNull<NSNotification>| {
+        tracing::info!("system woke");
+        let _ = tx.send(SystemEvent::Woke);
+    });
+    let center = NSWorkspace::sharedWorkspace().notificationCenter();
+    // SAFETY: the name is AppKit's constant; no object filter; `None`
+    // queue = delivered on the posting (main) thread; the observer token is
+    // kept alive by the caller for the whole run.
+    unsafe {
+        center.addObserverForName_object_queue_usingBlock(
+            Some(NSWorkspaceDidWakeNotification),
+            None,
+            None,
+            &block,
+        )
     }
 }
 
@@ -131,10 +154,10 @@ unsafe fn set_skip_enabled(on: bool) {
 unsafe fn register(
     cmd: &MPRemoteCommand,
     remote: RemoteCommand,
-    tx: mpsc::Sender<RemoteCommand>,
+    tx: mpsc::Sender<SystemEvent>,
 ) -> Retained<AnyObject> {
     let handler = RcBlock::new(move |_event: NonNull<MPRemoteCommandEvent>| {
-        let _ = tx.send(remote);
+        let _ = tx.send(SystemEvent::Remote(remote));
         MPRemoteCommandHandlerStatus::Success
     });
     // SAFETY: main thread (caller); the handler is retained by MediaPlayer.

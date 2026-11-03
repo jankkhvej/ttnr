@@ -110,6 +110,8 @@ pub struct StreamInfo {
     pub output_sample_rate: Option<u32>,
     /// Channel layout sent to the audio device (differs if downmixed).
     pub output_channels: Option<String>,
+    /// Seekable (a file); live streams (ICY, live HLS) are not.
+    pub seekable: Option<bool>,
 }
 
 impl StreamInfo {

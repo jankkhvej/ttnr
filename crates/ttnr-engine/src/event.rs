@@ -363,6 +363,11 @@ impl Translator {
             "current-tracks/audio/demux-bitrate" => self.demux_bitrate = value.uint(),
             "current-tracks/audio/hls-bitrate" => self.hls_bitrate = value.uint(),
             "audio-bitrate" => self.measured_bitrate = smooth(self.measured_bitrate, value.uint()),
+            "seekable" => {
+                if let PropValue::Int(i) = value {
+                    info.seekable = Some(i != 0);
+                }
+            }
             _ => {}
         }
         // The measured (packet-level) rate of a lossless stream says
@@ -438,6 +443,7 @@ fn sticky(current: &StreamInfo, sent: &StreamInfo) -> StreamInfo {
         bitrate: or(&current.bitrate, &sent.bitrate),
         output_sample_rate: or(&current.output_sample_rate, &sent.output_sample_rate),
         output_channels: or(&current.output_channels, &sent.output_channels),
+        seekable: or(&current.seekable, &sent.seekable),
     }
 }
 
@@ -684,6 +690,16 @@ mod tests {
         assert_eq!(t.info.bitrate, Some(320_000));
         t.translate(prop("current-tracks/audio/demux-bitrate", PropValue::None));
         assert_eq!(t.info.bitrate, Some(96_000), "mirror follows mpv");
+    }
+
+    #[test]
+    fn seekable_flag_marks_files_vs_live() {
+        let mut t = Translator::default();
+        assert_eq!(t.info.seekable, None);
+        t.translate(prop("seekable", PropValue::Int(0)));
+        assert_eq!(t.info.seekable, Some(false));
+        t.translate(prop("seekable", PropValue::Int(1)));
+        assert_eq!(t.info.seekable, Some(true));
     }
 
     #[test]

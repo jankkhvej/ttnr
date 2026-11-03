@@ -407,3 +407,121 @@ fn pinned_device_falls_back_to_default_and_returns() {
     a.update(Msg::DefaultDevice(Some("Speakers".into())));
     assert_eq!(a.state.default_device.as_deref(), Some("Speakers"));
 }
+
+/// Starts station 0 on one URL and reports it playing.
+fn playing_app() -> App {
+    let mut a = app();
+    let st = a.state.stations[0].clone();
+    a.update(Msg::Play(st));
+    a.update(resolved(&a, &["http://m1"]));
+    a.update(Msg::Player(PlayerEvent::Playing));
+    a
+}
+
+/// The delay and the scheduled message of a reconnection.
+fn retry_of(fx: &[Effect]) -> (u64, Msg) {
+    assert_eq!(fx[0], Effect::Stop, "{fx:?}");
+    match &fx[1] {
+        Effect::Delay { after, msg } => (after.as_secs(), (**msg).clone()),
+        other => panic!("expected a delay, got {other:?}"),
+    }
+}
+
+fn unreachable() -> Msg {
+    Msg::Player(PlayerEvent::Failed {
+        retryable: true,
+        stale_hint: false,
+        message: "server unreachable".into(),
+    })
+}
+
+#[test]
+fn lost_connection_reconnects_with_backoff() {
+    let mut a = playing_app();
+    let st = a.state.stations[0].clone();
+    let mut delays = Vec::new();
+    for _ in 0..8 {
+        let (secs, retry) = retry_of(&a.update(unreachable()));
+        delays.push(secs);
+        assert!(matches!(&a.state.status, Status::Reconnecting(m) if m.contains("retry in")));
+        assert_eq!(a.update(retry), [Effect::Stop, Effect::Resolve(st.clone())]);
+        a.update(resolved(&a, &["http://m1"]));
+    }
+    assert_eq!(delays, [1, 2, 4, 8, 16, 30, 60, 60]);
+    // Playing again resets the backoff.
+    a.update(Msg::Player(PlayerEvent::Playing));
+    assert_eq!(retry_of(&a.update(unreachable())).0, 1);
+}
+
+#[test]
+fn a_station_that_never_played_fails_as_before() {
+    let mut a = app();
+    let st = a.state.stations[0].clone();
+    a.update(Msg::Play(st));
+    a.update(resolved(&a, &["http://m1"]));
+    assert_eq!(a.update(unreachable()), []);
+    assert!(matches!(a.state.status, Status::Error(_)));
+}
+
+#[test]
+fn live_stream_end_reconnects_but_a_file_ends() {
+    let mut a = playing_app();
+    a.update(Msg::Player(PlayerEvent::StreamInfo(
+        ttnr_core::StreamInfo {
+            seekable: Some(false),
+            ..ttnr_core::StreamInfo::default()
+        },
+    )));
+    assert_eq!(retry_of(&a.update(Msg::Player(PlayerEvent::Ended))).0, 1);
+
+    let mut f = playing_app();
+    f.update(Msg::Player(PlayerEvent::StreamInfo(
+        ttnr_core::StreamInfo {
+            seekable: Some(true),
+            ..ttnr_core::StreamInfo::default()
+        },
+    )));
+    assert_eq!(f.update(Msg::Player(PlayerEvent::Ended)), []);
+    assert_eq!(f.state.status, Status::Ended);
+}
+
+#[test]
+fn stale_or_foreign_retries_are_ignored() {
+    let mut a = playing_app();
+    let (_, retry) = retry_of(&a.update(unreachable()));
+    // The user picks another station meanwhile.
+    let other = a.state.stations[1].clone();
+    a.update(Msg::Play(other));
+    assert_eq!(a.update(retry), [], "station changed");
+
+    let mut b = playing_app();
+    let (_, first) = retry_of(&b.update(unreachable()));
+    b.update(Msg::Woke); // reconnects now, supersedes the scheduled one
+    assert_eq!(b.update(first), [], "superseded");
+}
+
+#[test]
+fn wake_reconnects_only_a_live_session() {
+    let mut a = playing_app();
+    let st = a.state.stations[0].clone();
+    assert_eq!(a.update(Msg::Woke), [Effect::Stop, Effect::Resolve(st)]);
+    assert!(matches!(&a.state.status, Status::Reconnecting(m) if m.contains("woke")));
+    let mut idle = app();
+    assert_eq!(idle.update(Msg::Woke), []);
+    let mut paused = playing_app();
+    paused.update(Msg::Player(PlayerEvent::Paused(true)));
+    assert_eq!(paused.update(Msg::Woke), [], "a paused stream stays paused");
+}
+
+#[test]
+fn resolution_failure_while_reconnecting_retries() {
+    let mut a = playing_app();
+    let (_, retry) = retry_of(&a.update(unreachable()));
+    a.update(retry);
+    let key = a.state.station.as_ref().unwrap().key();
+    let fx = a.update(Msg::Resolved {
+        key,
+        result: Err("dns: no network".into()),
+    });
+    assert_eq!(retry_of(&fx).0, 2);
+}
