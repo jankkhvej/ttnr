@@ -2,6 +2,11 @@
 
 Newest entry on top. Each entry: date · milestone/task · what changed · how to try it · next step · open questions for the owner.
 
+## 2026-11-03 · M7 · `exec` source
+- `ExecSource` (list/resolve/now over stdin/stdout JSON), `[sources.<id>]` in config.toml, TUI adds script stations to the list, `ttnr search --source`, docs/SOURCES.md, example `examples/sources/somafm.py` (32 lines) (ADR-041).
+- Tests: shell-script doubles (list/search, resolve with headers/ttl, unsupported → chain, errors with stderr, missing program, `now` lines + stop on receiver drop), config validation/path expansion, station de-duplication. Live: `ttnr search groove --source somafm`, `ttnr play groovesalad` (exec station) plays with titles from `now`.
+- Next: M7 task 3 – `ttnr now --json` and the control socket.
+
 ## 2026-11-03 · M7 · `radio-browser` source
 - Owner's config restored (test lines removed). `RadioBrowserSource` (search, click counting, resolved URL via `UrlSource`), TUI `/` search → results list, `ttnr search`, `ttnr play radio-browser:<uuid>`, `stations.toml` entries (ADR-040).
 - Tests: recorded fixtures (search, empty, click; failed click still plays; uuid-only station), detail/bitrate normalisation, URL encoding; core search flow (prefill, stale answers, clamp, play, empty/error); snapshots for search prompt + results. Live: `ttnr search "groove salad"`, `ttnr play radio-browser:960cf833-…` plays with ICY titles.

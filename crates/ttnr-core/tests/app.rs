@@ -599,3 +599,20 @@ fn directory_search_errors_and_empty_results() {
     });
     assert_eq!(a.state.search.note.as_deref(), Some("http: timeout"));
 }
+
+#[test]
+fn added_stations_join_the_list_once() {
+    let mut a = app();
+    let extra = Station {
+        name: "Script FM".into(),
+        ..Station::from_url("http://script/fm")
+    };
+    a.update(Msg::AddStations(vec![extra.clone(), stations()[0].clone()]));
+    assert_eq!(
+        a.state.stations.len(),
+        4,
+        "duplicate of a listed station skipped"
+    );
+    a.update(Msg::AddStations(vec![extra]));
+    assert_eq!(a.state.stations.len(), 4);
+}

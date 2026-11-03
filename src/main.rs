@@ -36,13 +36,16 @@ enum Command {
         /// Station id or URL; all stations if omitted.
         target: Option<String>,
     },
-    /// Search the radio-browser.info directory.
+    /// Search the radio-browser.info directory (or another source).
     Search {
         /// Text to look for in station names.
         query: String,
         /// Maximum number of results.
         #[arg(long, default_value_t = 20)]
         limit: usize,
+        /// Source to search, e.g. an exec source from config.toml.
+        #[arg(long, default_value = "radio-browser")]
+        source: String,
     },
     /// List the stations from stations.toml.
     Stations {
@@ -134,7 +137,11 @@ fn run_app(cli: Cli, media: Option<ttnr_platform::MediaLink>) -> Result<()> {
             runtime.block_on(play::run(&args.target, &cfg, media))
         }
         Some(Command::Refresh { target }) => runtime.block_on(play::refresh(target.as_deref())),
-        Some(Command::Search { query, limit }) => runtime.block_on(play::search(&query, limit)),
+        Some(Command::Search {
+            query,
+            limit,
+            source,
+        }) => runtime.block_on(play::search(&query, limit, &source)),
         Some(Command::Stations { search }) => stations::print(search),
     }
 }

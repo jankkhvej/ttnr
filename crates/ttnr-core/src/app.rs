@@ -285,6 +285,9 @@ pub enum Msg {
     },
     /// The computer woke from sleep: reconnect a live stream at once.
     Woke,
+    /// More stations for the list (e.g. from external-command sources);
+    /// stations already listed are kept once.
+    AddStations(Vec<Station>),
     /// A directory search finished.
     SearchResults {
         /// The query it answers.
@@ -430,6 +433,14 @@ impl App {
                     return vec![];
                 }
                 self.reconnect_now("reconnecting")
+            }
+            Msg::AddStations(list) => {
+                for st in list {
+                    if !self.state.stations.iter().any(|s| s.key() == st.key()) {
+                        self.state.stations.push(st);
+                    }
+                }
+                vec![]
             }
             Msg::SearchResults { query, result } => {
                 if query != self.state.search.query {

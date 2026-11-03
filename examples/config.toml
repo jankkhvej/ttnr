@@ -49,6 +49,11 @@
 # exclusive = false
 # match_sample_rate = false
 
+# External-command sources (docs/SOURCES.md): the table name becomes the
+# source id. Tables must come after the plain settings above.
+# [sources.somafm]
+# command = ["~/workspace/tuner/examples/sources/somafm.py"]
+
 # Key bindings (SPEC F5.3 defaults shown). Giving an action replaces its
 # default keys; use a string or a list. Key names: a single character,
 # space, enter, tab, backspace, esc, up, down, left, right, home, end,

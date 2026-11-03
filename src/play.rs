@@ -290,6 +290,13 @@ pub fn setup() -> Result<(SourceRegistry, ResolveCtx)> {
     registry.register(Arc::new(StationsSource::default()));
     registry.register(Arc::new(BbcSource));
     registry.register(Arc::new(RadioBrowserSource));
+    // External-command sources from config.toml (a broken config is
+    // reported by whoever loads it for other settings).
+    if let Ok(config) = config::load() {
+        for source in config.exec_sources(paths::config_dir().as_deref())? {
+            registry.register(Arc::new(source));
+        }
+    }
     Ok((registry, ctx))
 }
 
@@ -348,11 +355,15 @@ fn describe(event: &EngineEvent) -> Option<String> {
 
 /// `ttnr search <query>`: search radio-browser.info and print the stations
 /// with a ready-to-paste `stations.toml` entry for each.
-pub async fn search(query: &str, limit: usize) -> Result<()> {
+pub async fn search(query: &str, limit: usize, source_id: &str) -> Result<()> {
     let (registry, ctx) = setup()?;
-    let source = registry
-        .get(ttnr_sources::radio_browser::ID)
-        .context("radio-browser source missing")?;
+    let ids: Vec<_> = registry.ids().collect();
+    let source = registry.get(source_id).with_context(|| {
+        format!(
+            "unknown source `{source_id}` (available: {})",
+            ids.join(", ")
+        )
+    })?;
     let q = ttnr_core::ListQuery {
         search: Some(query.to_owned()),
         limit: Some(limit),
@@ -360,23 +371,33 @@ pub async fn search(query: &str, limit: usize) -> Result<()> {
     let list = source
         .list(&q, &ctx)
         .await
-        .context("radio-browser search failed")?;
+        .with_context(|| format!("{source_id} search failed"))?;
     if list.is_empty() {
         println!("no stations found for {query:?}");
         return Ok(());
     }
     for st in &list {
-        let detail = st.params.get("detail").map(String::as_str).unwrap_or("");
-        println!("{}  {}  [{detail}]", st.id, st.name);
+        match st.params.get("detail") {
+            Some(detail) => println!("{}  {}  [{detail}]", st.id, st.name),
+            None => println!("{}  {}", st.id, st.name),
+        }
     }
     println!();
-    println!("play: ttnr play radio-browser:<uuid>   ·   or add to stations.toml:");
-    if let Some(st) = list.first() {
+    if source_id == ttnr_sources::radio_browser::ID {
+        println!("play: ttnr play radio-browser:<uuid>   ·   or add to stations.toml:");
+        if let Some(st) = list.first() {
+            println!(
+                "[[station]]\nid     = \"{}\"\nname   = {:?}\nsource = \"radio-browser\"\nparams = {{ uuid = \"{}\" }}",
+                slug(&st.name),
+                st.name,
+                st.id
+            );
+        }
+    } else if let Some(st) = list.first() {
+        println!("add to stations.toml:");
         println!(
-            "[[station]]\nid     = \"{}\"\nname   = {:?}\nsource = \"radio-browser\"\nparams = {{ uuid = \"{}\" }}",
-            slug(&st.name),
-            st.name,
-            st.id
+            "[[station]]\nid     = {:?}\nname   = {:?}\nsource = {source_id:?}",
+            st.id, st.name
         );
     }
     Ok(())

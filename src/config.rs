@@ -76,6 +76,18 @@ impl MosaicSetting {
     }
 }
 
+/// One external-command source.
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct ExecConfig {
+    /// Program and arguments; `~/` and paths relative to the config
+    /// directory are expanded for the program.
+    pub command: Vec<String>,
+}
+
+/// Source ids built into ttnr (an exec source may not reuse them).
+pub const BUILTIN_SOURCES: &[&str] = &["url", "stations", "bbc", "radio-browser"];
+
 /// The whole configuration (grows with later milestones).
 #[derive(Debug, Clone, Default, PartialEq, Eq, Deserialize)]
 #[serde(default, deny_unknown_fields)]
@@ -99,12 +111,33 @@ pub struct Config {
     pub exclusive: Option<bool>,
     /// Switch the device's sample rate to the stream's (default off).
     pub match_sample_rate: Option<bool>,
+    /// External-command sources (`[sources.<id>] command = [...]`, the
+    /// `exec` protocol in docs/SOURCES.md).
+    pub sources: BTreeMap<String, ExecConfig>,
     /// macOS Now Playing / Control Center and media keys; default on.
     pub media_controls: Option<bool>,
     /// Key bindings: action → key(s); replaces that action's defaults.
     pub keys: BTreeMap<String, Keys>,
     /// Delay (seconds) for external now-playing per source, e.g. `bbc = 25`.
     pub sync_offset: BTreeMap<String, u32>,
+}
+
+/// `~/x` → `$HOME/x`; `./x` or `x/y` → relative to the config directory;
+/// a bare name (`python3`) is left for `PATH`.
+fn expand_program(program: &str, config_dir: Option<&std::path::Path>) -> String {
+    if let Some(rest) = program.strip_prefix("~/")
+        && let Some(home) = std::env::var_os("HOME")
+    {
+        return std::path::Path::new(&home)
+            .join(rest)
+            .to_string_lossy()
+            .into_owned();
+    }
+    let relative = !program.starts_with('/') && program.contains('/');
+    match (relative, config_dir) {
+        (true, Some(dir)) => dir.join(program).to_string_lossy().into_owned(),
+        _ => program.to_owned(),
+    }
 }
 
 /// Built-in sync offsets (seconds) per source, overridable in config.
@@ -117,6 +150,29 @@ impl Config {
     pub fn apply_audio(&self, cfg: &mut ttnr_engine::EngineConfig) {
         cfg.exclusive = self.exclusive.unwrap_or(false);
         cfg.match_sample_rate = self.match_sample_rate.unwrap_or(false);
+    }
+
+    /// The configured external-command sources, validated, with the
+    /// program path expanded (`~/…`, relative to `config_dir`).
+    pub fn exec_sources(
+        &self,
+        config_dir: Option<&std::path::Path>,
+    ) -> anyhow::Result<Vec<ttnr_sources::ExecSource>> {
+        let mut out = Vec::new();
+        for (id, c) in &self.sources {
+            if BUILTIN_SOURCES.contains(&id.as_str()) {
+                anyhow::bail!("[sources.{id}]: `{id}` is a built-in source id");
+            }
+            let mut command = c.command.clone();
+            if let Some(program) = command.first_mut() {
+                *program = expand_program(program, config_dir);
+            }
+            out.push(
+                ttnr_sources::ExecSource::new(id, command)
+                    .map_err(|e| anyhow::anyhow!("[sources.{id}]: {e}"))?,
+            );
+        }
+        Ok(out)
     }
 
     /// Whether to integrate with Now Playing and media keys (default true).
@@ -178,6 +234,41 @@ pub fn load_from(path: &Path) -> Result<Config> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn exec_sources_are_validated_and_paths_expanded() {
+        let c: Config = toml::from_str(
+            "[sources.mine]\ncommand = [\"scripts/mine.py\", \"--fast\"]\n[sources.sys]\ncommand = [\"python3\", \"x.py\"]\n",
+        )
+        .unwrap();
+        let dir = std::path::Path::new("/cfg/ttnr");
+        let list = c.exec_sources(Some(dir)).unwrap();
+        let ids: Vec<_> = list.iter().map(|s| ttnr_core::Source::id(s)).collect();
+        assert_eq!(ids, ["mine", "sys"]);
+        assert_eq!(
+            expand_program("scripts/mine.py", Some(dir)),
+            "/cfg/ttnr/scripts/mine.py"
+        );
+        assert_eq!(
+            expand_program("python3", Some(dir)),
+            "python3",
+            "PATH lookup"
+        );
+        assert_eq!(expand_program("/abs/x", Some(dir)), "/abs/x");
+        let bad: Config = toml::from_str("[sources.bbc]\ncommand = [\"x\"]\n").unwrap();
+        assert!(
+            bad.exec_sources(None)
+                .unwrap_err()
+                .to_string()
+                .contains("built-in")
+        );
+        let empty: Config = toml::from_str("[sources.e]\ncommand = []\n").unwrap();
+        assert!(empty.exec_sources(None).is_err());
+        assert!(
+            toml::from_str::<Config>("[sources.x]\ncmd = [\"a\"]\n").is_err(),
+            "unknown key"
+        );
+    }
 
     #[test]
     fn keys_one_or_many() {

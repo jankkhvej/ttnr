@@ -80,6 +80,11 @@ pub async fn run(
 
     let (registry, ctx) = play::setup()?;
     let registry = Arc::new(registry);
+    let exec_ids: Vec<&'static str> = config
+        .sources
+        .keys()
+        .filter_map(|id| registry.ids().find(|r| r == id))
+        .collect();
     let mut player = MpvPlayer::new(cfg).context("cannot start the audio engine")?;
     let mut engine = player
         .take_events()
@@ -116,6 +121,21 @@ pub async fn run(
     let _device_watch = ttnr_platform::watch_output_devices(move || {
         let _ = device_tx.send(Msg::DefaultDevice(ttnr_platform::default_output_device()));
     });
+    // Stations of external-command sources join the list when they answer.
+    for id in exec_ids {
+        let (registry, ctx, tx) = (registry.clone(), ctx.clone(), msg_tx.clone());
+        tokio::spawn(async move {
+            let Some(source) = registry.get(id) else {
+                return;
+            };
+            match source.list(&ttnr_core::ListQuery::default(), &ctx).await {
+                Ok(list) => {
+                    let _ = tx.send(Msg::AddStations(list));
+                }
+                Err(e) => tracing::warn!(source = id, error = %e, "cannot list stations"),
+            }
+        });
+    }
     let mut runtime = Runtime {
         registry,
         ctx,
