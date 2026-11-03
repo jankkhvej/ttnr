@@ -61,6 +61,7 @@ where
     app_kit.finishLaunching();
     // SAFETY: MediaPlayer is used on the main thread only (`mtm`).
     let _targets = unsafe { register_commands(&commands_tx) };
+    let mut can_skip = None;
 
     let run_loop = NSRunLoop::mainRunLoop();
     let mut current: Option<NowPlayingInfo> = None;
@@ -75,6 +76,12 @@ where
             }
             let due = last_publish.is_none_or(|t| t.elapsed() >= HEARTBEAT);
             if changed || (due && current.is_some()) {
+                let skip = current.as_ref().is_some_and(|i| i.can_skip);
+                if can_skip != Some(skip) {
+                    // SAFETY: main thread (`host`).
+                    unsafe { set_skip_enabled(skip) };
+                    can_skip = Some(skip);
+                }
                 publish(current.as_ref());
                 last_publish = Some(Instant::now());
             }
@@ -103,6 +110,19 @@ unsafe fn register_commands(tx: &mpsc::Sender<RemoteCommand>) -> Vec<Retained<An
         .into_iter()
         .map(|(cmd, remote)| register(&cmd, remote, tx.clone()))
         .collect()
+    }
+}
+
+/// Enable or grey out next/previous (Control Center, media keys).
+///
+/// # Safety
+/// Main thread only.
+unsafe fn set_skip_enabled(on: bool) {
+    // SAFETY: main thread (caller).
+    unsafe {
+        let center = MPRemoteCommandCenter::sharedCommandCenter();
+        center.nextTrackCommand().setEnabled(on);
+        center.previousTrackCommand().setEnabled(on);
     }
 }
 

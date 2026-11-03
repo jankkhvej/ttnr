@@ -23,6 +23,8 @@ pub struct NowPlayingInfo {
     pub album: Option<String>,
     /// Playing (true) or paused.
     pub playing: bool,
+    /// Next/previous are available (greyed out in Control Center if not).
+    pub can_skip: bool,
 }
 
 /// A command from media keys, headphones or Control Center.
@@ -109,6 +111,7 @@ mod tests {
             artist: Some("The Strokes".into()),
             album: Some("BBC Radio 6 Music".into()),
             playing: true,
+            can_skip: true,
         };
         link.updater().update(Some(info.clone()));
         assert_eq!(updates.recv().unwrap(), Some(info));

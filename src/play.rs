@@ -123,7 +123,12 @@ pub async fn run(
     let mut published = None;
     loop {
         if let Some(updater) = &updater {
-            let info = Some(crate::media::info(&station.name, latest.as_ref(), !paused));
+            let info = Some(crate::media::info(
+                &station.name,
+                latest.as_ref(),
+                !paused,
+                false,
+            ));
             if info != published {
                 updater.update(info.clone());
                 published = info;

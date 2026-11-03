@@ -2,6 +2,9 @@
 
 Newest entry on top. Each entry: date · milestone/task · what changed · how to try it · next step · open questions for the owner.
 
+## 2026-11-03 · M6 · Next/previous greyed out where they do nothing
+- Owner: next/previous "did not work in Terminal.app" (keys, Control Center, headphones). Log: those sessions were `ttnr play`, which receives every command but ignores next/previous by design (one target); the TUI switches stations. Fix: `NowPlayingInfo::can_skip` – Control Center/media next/previous are disabled in `ttnr play` and in the TUI without a station list. TUI logs the terminal program at start.
+
 ## 2026-11-03 · M6 · Now Playing + media keys in the app
 - Owner's spike test: all four checks passed (Control Center entry, F8, F7/F9, Control Center buttons) with `.accessory` + embedded Info.plist. Owner approved the design (ADR-036).
 - `ttnr-platform`: `run_app`, `MediaLink`, `NowPlayingInfo`, `RemoteCommand`; macOS host (NSApplication accessory, remote command targets, Now Playing with heartbeat). Binary: `src/media.rs` mapping, TUI and `ttnr play` integration, config `media_controls`, Info.plist in `ttnr`.

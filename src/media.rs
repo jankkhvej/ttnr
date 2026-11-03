@@ -7,7 +7,13 @@ use ttnr_platform::{NowPlayingInfo, RemoteCommand};
 
 /// Now Playing for a station: the track if known (title, artist, station as
 /// album), else the station with its programme.
-pub fn info(station: &str, now: Option<&NowPlaying>, playing: bool) -> NowPlayingInfo {
+/// `can_skip`: next/previous station are available.
+pub fn info(
+    station: &str,
+    now: Option<&NowPlaying>,
+    playing: bool,
+    can_skip: bool,
+) -> NowPlayingInfo {
     let programme = now.and_then(|n| n.programme.clone());
     match now.and_then(|n| n.title.clone()) {
         Some(title) => NowPlayingInfo {
@@ -15,12 +21,14 @@ pub fn info(station: &str, now: Option<&NowPlaying>, playing: bool) -> NowPlayin
             artist: now.and_then(|n| n.artist.clone()).or(programme),
             album: Some(station.to_owned()),
             playing,
+            can_skip,
         },
         None => NowPlayingInfo {
             title: station.to_owned(),
             artist: programme,
             album: None,
             playing,
+            can_skip,
         },
     }
 }
@@ -38,7 +46,12 @@ pub fn from_state(s: &AppState) -> Option<NowPlayingInfo> {
         | Status::Playing
         | Status::Reconnecting(_) => true,
     };
-    Some(info(&station.name, s.now.as_ref(), playing))
+    Some(info(
+        &station.name,
+        s.now.as_ref(),
+        playing,
+        !s.stations.is_empty(),
+    ))
 }
 
 /// The app command for a media key in state `s` (play/pause only when they
@@ -87,27 +100,31 @@ mod tests {
     fn track_station_and_programme_lines() {
         let full = np(Some("The Strokes"), Some("Someday"), Some("Lauren Laverne"));
         assert_eq!(
-            info("6 Music", Some(&full), true),
+            info("6 Music", Some(&full), true, true),
             NowPlayingInfo {
                 title: "Someday".into(),
                 artist: Some("The Strokes".into()),
                 album: Some("6 Music".into()),
                 playing: true,
+                can_skip: true,
             }
         );
         let title_only = np(None, Some("Someday"), Some("Lauren Laverne"));
         assert_eq!(
-            info("6 Music", Some(&title_only), true).artist.as_deref(),
+            info("6 Music", Some(&title_only), true, true)
+                .artist
+                .as_deref(),
             Some("Lauren Laverne")
         );
         let speech = np(None, None, Some("Today"));
         assert_eq!(
-            info("Radio 4", Some(&speech), false),
+            info("Radio 4", Some(&speech), false, false),
             NowPlayingInfo {
                 title: "Radio 4".into(),
                 artist: Some("Today".into()),
                 album: None,
                 playing: false,
+                can_skip: false,
             }
         );
     }
@@ -118,6 +135,11 @@ mod tests {
         assert_eq!(from_state(&state(Status::Error("x".into()), None)), None);
         assert!(from_state(&state(Status::Loading, None)).unwrap().playing);
         assert!(!from_state(&state(Status::Paused, None)).unwrap().playing);
+        // Next/previous only with a station list.
+        let mut s = state(Status::Playing, None);
+        assert!(!from_state(&s).unwrap().can_skip);
+        s.stations = vec![ttnr_core::Station::from_url("http://y")];
+        assert!(from_state(&s).unwrap().can_skip);
     }
 
     #[test]
