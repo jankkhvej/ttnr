@@ -43,7 +43,7 @@ Work top to bottom. Tick `[x]` when a task meets its acceptance criteria and
 **Acceptance:** BBC Radio 6 Music plays from Kraków and shows show + artist/title; simulated URL change (stale cache) self-heals.
 
 ## M5 — Retro themes
-- [ ] Research each machine (THEMES.md checklist) and correct THEMES.md.
+- [x] Research each machine (THEMES.md checklist) and correct THEMES.md.
 - [ ] `pdp11-vt100`, `pdp11-teletype`, `zx80`, `bbc-mode7` themes + snapshots.
 - [ ] Octal numbers, double-height emulation, mosaic glyph fallback, uppercase mapping.
 **Acceptance:** owner judges each theme recognisable at a glance.

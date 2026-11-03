@@ -2,6 +2,10 @@
 
 Newest entry on top. Each entry: date · milestone/task · what changed · how to try it · next step · open questions for the owner.
 
+## 2026-11-03 · M5 · Retro machines researched
+- THEMES.md rewritten from sources (VT100 manual, RT-11/RSX-11 manuals, ASR-33, ZX80 manual, SAA5050/teletext, Unicode charts); UNVERIFIED items marked. Owner confirmed BBC track info now appears at the right time (M4 timing fix).
+- Next: M5 task 2 – theme engine extensions + the four themes.
+
 ## 2026-11-03 · M4 complete; M9 added
 - M4 accepted by the owner: BBC source (web-player flow, refusals final), now-playing with on-air timing (default offset 0), resolver/failover shared with other sources.
 - Owner request: optional diagnostics indicators → new ROADMAP M9 (after M8), SPEC F5.2 note.
