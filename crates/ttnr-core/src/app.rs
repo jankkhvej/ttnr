@@ -94,8 +94,14 @@ pub struct AppState {
     pub volume: u8,
     /// Muted (volume kept for unmute).
     pub muted: bool,
-    /// Pinned output device name; `None` = follow the system default.
+    /// Pinned output device (mpv name, or a description from config);
+    /// `None` = follow the system default. Used while it is in `devices`,
+    /// otherwise the system default plays until it returns.
     pub device: Option<String>,
+    /// The device actually requested from the player (`None` = default).
+    pub output: Option<String>,
+    /// The system default output device's name, if known.
+    pub default_device: Option<String>,
     /// Known output devices.
     pub devices: Vec<Device>,
     /// Stations for the list and next/previous.
@@ -117,6 +123,22 @@ pub struct AppState {
 /// Line speeds the speed key cycles through: instant, then common serial
 /// rates from fast to slow (110 = Teletype Model 33).
 pub const BAUD_STEPS: [u32; 5] = [0, 9600, 1200, 300, 110];
+
+impl AppState {
+    /// Index in `devices` of the pinned device (by mpv name or description).
+    pub fn pinned_index(&self) -> Option<usize> {
+        let pin = self.device.as_ref()?;
+        self.devices
+            .iter()
+            .position(|d| &d.name == pin || &d.description == pin)
+    }
+
+    /// The device to request from the player: the pinned one while it is
+    /// present, else `None` (system default).
+    pub fn pinned_output(&self) -> Option<String> {
+        self.pinned_index().map(|i| self.devices[i].name.clone())
+    }
+}
 
 /// What the player reported (the engine's events, mapped by the runtime).
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -226,6 +248,8 @@ pub enum Msg {
     },
     /// The output device list changed.
     Devices(Vec<Device>),
+    /// The system default output device changed (its name).
+    DefaultDevice(Option<String>),
     /// A user command.
     Command(Command),
 }
@@ -329,6 +353,16 @@ impl App {
             }
             Msg::Devices(devices) => {
                 self.state.devices = devices;
+                // A pinned device that appeared or vanished changes output.
+                let output = self.state.pinned_output();
+                if output == self.state.output {
+                    return vec![];
+                }
+                self.state.output.clone_from(&output);
+                vec![Effect::SetDevice(output)]
+            }
+            Msg::DefaultDevice(name) => {
+                self.state.default_device = name;
                 vec![]
             }
             Msg::Command(cmd) => self.on_command(cmd),
@@ -554,9 +588,11 @@ impl App {
                     .checked_sub(1)
                     .and_then(|i| self.state.devices.get(i))
                     .map(|d| d.name.clone());
-                self.state.device.clone_from(&device);
+                self.state.device = device;
                 self.state.view = View::Main;
-                return vec![Effect::SetDevice(device)];
+                let output = self.state.pinned_output();
+                self.state.output.clone_from(&output);
+                return vec![Effect::SetDevice(output)];
             }
             (View::Main, Command::Back) => return vec![],
             (_, Command::Back) => {
@@ -622,12 +658,7 @@ impl App {
                 vec![]
             }
             Command::OpenDevices => {
-                let selected = self
-                    .state
-                    .device
-                    .as_ref()
-                    .and_then(|d| self.state.devices.iter().position(|x| &x.name == d))
-                    .map_or(0, |i| i + 1);
+                let selected = self.state.pinned_index().map_or(0, |i| i + 1);
                 self.state.view = View::Devices { selected };
                 vec![]
             }

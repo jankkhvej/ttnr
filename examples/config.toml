@@ -35,6 +35,11 @@
 # react to media keys (play/pause, next/previous station).
 # media_controls = true
 
+# Output device to use while it is connected (as shown by `d`, e.g.
+# "AirPods Pro"); otherwise the system default plays. Unset = always follow
+# the system default output.
+# output_device = "AirPods Pro"
+
 # Key bindings (SPEC F5.3 defaults shown). Giving an action replaces its
 # default keys; use a string or a list. Key names: a single character,
 # space, enter, tab, backspace, esc, up, down, left, right, home, end,

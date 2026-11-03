@@ -1,5 +1,6 @@
 //! OS integration for ttnr: Now Playing / Control Center and media keys
-//! (ADR-036); output devices and sleep/wake follow in later M6 tasks.
+//! (ADR-036), the default output device and its changes (ADR-037);
+//! sleep/wake follows in a later M6 task.
 //!
 //! [`run_app`] runs the application. On macOS with media controls enabled,
 //! the main thread hosts the AppKit run loop (MediaPlayer delivers remote
@@ -10,7 +11,29 @@
 use std::sync::mpsc;
 
 #[cfg(target_os = "macos")]
+mod devices_macos;
+#[cfg(target_os = "macos")]
 mod macos;
+
+#[cfg(target_os = "macos")]
+pub use devices_macos::{DeviceWatch, default_output_device, watch as watch_output_devices};
+
+/// No device watching on this OS.
+#[cfg(not(target_os = "macos"))]
+#[derive(Debug)]
+pub struct DeviceWatch;
+
+/// The system default output device's name (not available on this OS).
+#[cfg(not(target_os = "macos"))]
+pub fn default_output_device() -> Option<String> {
+    None
+}
+
+/// Device change notifications (not available on this OS).
+#[cfg(not(target_os = "macos"))]
+pub fn watch_output_devices(_on_change: impl Fn() + Send + Sync + 'static) -> Option<DeviceWatch> {
+    None
+}
 
 /// What the system's Now Playing shows.
 #[derive(Debug, Clone, PartialEq, Eq)]

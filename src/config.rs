@@ -91,6 +91,9 @@ pub struct Config {
     /// Simulated line speed for printout themes (bits/s, e.g. 110, 300,
     /// 9600); 0 or unset = print instantly.
     pub baud: Option<u32>,
+    /// Pinned output device at start (its name in the device picker, or
+    /// mpv's device name); unset = follow the system default.
+    pub output_device: Option<String>,
     /// macOS Now Playing / Control Center and media keys; default on.
     pub media_controls: Option<bool>,
     /// Key bindings: action → key(s); replaces that action's defaults.

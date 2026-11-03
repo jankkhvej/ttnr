@@ -373,3 +373,37 @@ fn cycle_baud_steps_and_wraps() {
     a.update(Msg::Command(Command::CycleBaud));
     assert_eq!(a.state.baud, 9600);
 }
+
+#[test]
+fn pinned_device_falls_back_to_default_and_returns() {
+    let speakers = Device {
+        name: "coreaudio/A".into(),
+        description: "Speakers".into(),
+    };
+    let airpods = Device {
+        name: "coreaudio/B".into(),
+        description: "AirPods".into(),
+    };
+    let mut a = app();
+    // Pinned from config by description, before the list is known.
+    a.state.device = Some("AirPods".into());
+    assert_eq!(
+        a.update(Msg::Devices(vec![speakers.clone()])),
+        [],
+        "absent: default stays"
+    );
+    assert_eq!(
+        a.update(Msg::Devices(vec![speakers.clone(), airpods.clone()])),
+        [Effect::SetDevice(Some("coreaudio/B".into()))],
+        "appeared: switch to it"
+    );
+    assert_eq!(a.update(Msg::Devices(vec![speakers.clone(), airpods])), []);
+    assert_eq!(
+        a.update(Msg::Devices(vec![speakers])),
+        [Effect::SetDevice(None)],
+        "vanished: back to the system default"
+    );
+    assert_eq!(a.state.device.as_deref(), Some("AirPods"), "pin kept");
+    a.update(Msg::DefaultDevice(Some("Speakers".into())));
+    assert_eq!(a.state.default_device.as_deref(), Some("Speakers"));
+}

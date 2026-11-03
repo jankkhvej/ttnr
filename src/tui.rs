@@ -64,6 +64,8 @@ pub async fn run(
         App::new(stations, volume, DEFAULT_HISTORY).with_sync_offsets(config.sync_offsets());
     app.state.theme_index = theme_index;
     app.state.baud = config.baud.unwrap_or(0);
+    app.state.device.clone_from(&config.output_device);
+    app.state.default_device = ttnr_platform::default_output_device();
     for e in &theme_errors {
         tracing::warn!(error = %e, "skipping theme");
     }
@@ -108,6 +110,12 @@ pub async fn run(
         resolved,
         ui_options,
     ));
+    // The UI shows which device "system default" is; CoreAudio tells us
+    // when it changes (mpv itself follows it).
+    let device_tx = msg_tx.clone();
+    let _device_watch = ttnr_platform::watch_output_devices(move || {
+        let _ = device_tx.send(Msg::DefaultDevice(ttnr_platform::default_output_device()));
+    });
     let mut runtime = Runtime {
         registry,
         ctx,

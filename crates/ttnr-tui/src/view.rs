@@ -283,13 +283,14 @@ pub fn status_parts(status: &Status, theme: &Theme) -> (String, Style) {
 
 /// The output device label: pinned device's description or "system default".
 fn device_label(state: &AppState) -> String {
-    match &state.device {
+    let default = match &state.default_device {
+        Some(name) => format!("system default ({name})"),
         None => "system default".into(),
-        Some(name) => state
-            .devices
-            .iter()
-            .find(|d| &d.name == name)
-            .map_or_else(|| name.clone(), |d| d.description.clone()),
+    };
+    match (&state.device, state.pinned_index()) {
+        (None, _) => default,
+        (Some(_), Some(i)) => state.devices[i].description.clone(),
+        (Some(pin), None) => format!("{pin} absent, {default}"),
     }
 }
 
