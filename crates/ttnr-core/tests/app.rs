@@ -32,6 +32,14 @@ fn resolved(app: &App, urls: &[&str]) -> Msg {
     }
 }
 
+/// A provider update for the current station of `app`.
+fn np_msg(app: &App, np: NowPlaying) -> Msg {
+    Msg::NowPlaying {
+        key: app.state.station.as_ref().unwrap().key(),
+        np,
+    }
+}
+
 fn play(url: &str) -> Effect {
     Effect::Play {
         url: url.into(),
@@ -53,7 +61,11 @@ fn play_resolve_and_start() {
     let st = a.state.stations[1].clone();
     assert_eq!(
         a.update(Msg::Play(st.clone())),
-        [Effect::Stop, Effect::Resolve(st.clone())]
+        [
+            Effect::Stop,
+            Effect::StopMetadata,
+            Effect::Resolve(st.clone())
+        ]
     );
     assert_eq!(a.state.status, Status::Resolving);
     let fx = a.update(resolved(&a, &["http://m1", "http://m2"]));
@@ -130,7 +142,7 @@ fn now_playing_history_and_priority() {
         title: Some("External".into()),
         ..NowPlaying::empty(InfoSource::External, SystemTime::now())
     };
-    a.update(Msg::NowPlaying(ext));
+    a.update(np_msg(&a, ext));
     assert_eq!(a.state.now.as_ref().unwrap().source, InfoSource::External);
     assert_eq!(a.state.history[0].title.as_deref(), Some("4"));
 }
@@ -195,7 +207,7 @@ fn station_list_navigation() {
     assert_eq!(a.state.view, View::Stations { selected: 2 }, "clamped");
     a.update(Msg::Command(Command::Up));
     let fx = a.update(Msg::Command(Command::Select));
-    assert_eq!(fx[1], Effect::Resolve(a.state.stations[1].clone()));
+    assert_eq!(fx[2], Effect::Resolve(a.state.stations[1].clone()));
     assert_eq!(a.state.view, View::Main);
 }
 
@@ -211,7 +223,7 @@ fn open_url_prompt_takes_text() {
     a.update(Msg::Command(Command::Quit));
     assert!(!a.state.quit);
     let fx = a.update(Msg::Command(Command::Select));
-    assert_eq!(fx[1], Effect::Resolve(Station::from_url("http://x/s.pls")));
+    assert_eq!(fx[2], Effect::Resolve(Station::from_url("http://x/s.pls")));
 }
 
 #[test]
@@ -296,7 +308,7 @@ fn provider_update_is_shown_at_its_time_plus_offset() {
 
     // Track started 5 s ago: due in ~15 s.
     let started = SystemTime::now() - Duration::from_secs(5);
-    let (after, due) = delay_of(&a.update(Msg::NowPlaying(external("Song", started))));
+    let (after, due) = delay_of(&a.update(np_msg(&a, external("Song", started))));
     assert!(
         (Duration::from_secs(14)..=Duration::from_secs(15)).contains(&after),
         "{after:?}"
@@ -316,7 +328,7 @@ fn provider_update_is_shown_at_its_time_plus_offset() {
         .with_sync_offsets(BTreeMap::from([("url".into(), Duration::from_secs(20))]));
     b.update(Msg::Play(b.state.stations[0].clone()));
     let long_ago = SystemTime::now() - Duration::from_secs(60);
-    assert_eq!(b.update(Msg::NowPlaying(external("Old", long_ago))), []);
+    assert_eq!(b.update(np_msg(&b, external("Old", long_ago))), []);
     assert_eq!(b.state.now.as_ref().unwrap().title.as_deref(), Some("Old"));
 }
 
@@ -326,7 +338,7 @@ fn raising_the_offset_postpones_and_station_change_cancels() {
     let mut a = app();
     a.update(Msg::Play(a.state.stations[0].clone()));
     a.update(Msg::Command(Command::SyncLater)); // 1 s
-    let (_, first) = delay_of(&a.update(Msg::NowPlaying(external("Song", SystemTime::now()))));
+    let (_, first) = delay_of(&a.update(np_msg(&a, external("Song", SystemTime::now()))));
     let (after, _) = delay_of(&a.update(Msg::Command(Command::SyncLater))); // 2 s
     assert!(after > Duration::from_millis(1500), "{after:?}");
     assert_eq!(a.update(first), [], "superseded timer");
@@ -355,7 +367,7 @@ fn sync_offset_keys_adjust_per_source() {
         title: Some("Now".into()),
         ..NowPlaying::empty(InfoSource::External, SystemTime::now())
     };
-    assert_eq!(a.update(Msg::NowPlaying(np)), []);
+    assert_eq!(a.update(np_msg(&a, np)), []);
     assert_eq!(a.state.now.as_ref().unwrap().title.as_deref(), Some("Now"));
 }
 
@@ -565,7 +577,11 @@ fn directory_search_flow() {
     assert_eq!(a.state.view, View::Results { selected: 1 }, "clamped");
     assert_eq!(
         a.update(Msg::Command(Command::Select)),
-        [Effect::Stop, Effect::Resolve(found[1].clone())]
+        [
+            Effect::Stop,
+            Effect::StopMetadata,
+            Effect::Resolve(found[1].clone())
+        ]
     );
     // Reopening the prompt offers the last query.
     a.update(Msg::Command(Command::OpenSearch));
@@ -699,4 +715,49 @@ fn diagnostics_are_ignored_while_hidden_and_toggle_with_i() {
     assert!(b.state.diag.shown.download && !b.state.diag.shown.metadata);
     assert_eq!(b.state.diag.buffered_secs, Some(12));
     assert_eq!(b.state.diag.http, None);
+}
+
+#[test]
+fn a_previous_stations_provider_cannot_update_the_new_station() {
+    let mut a = playing_app();
+    let old_key = a.state.station.as_ref().unwrap().key();
+    let next = a.state.stations[1].clone();
+    let fx = a.update(Msg::Play(next));
+    assert!(
+        fx.contains(&Effect::StopMetadata),
+        "old provider stopped at once"
+    );
+    // A late update from the old station's provider is dropped.
+    let late = NowPlaying {
+        title: Some("Old station song".into()),
+        ..NowPlaying::empty(InfoSource::External, SystemTime::now())
+    };
+    assert_eq!(
+        a.update(Msg::NowPlaying {
+            key: old_key,
+            np: late
+        }),
+        []
+    );
+    assert_eq!(a.state.now, None);
+}
+
+#[test]
+fn an_empty_icy_title_clears_the_shown_track() {
+    let mut a = playing_app();
+    let tags = |title: Option<&str>| {
+        Msg::Player(PlayerEvent::Tags(StreamTags {
+            icy_title: title.map(Into::into),
+            ..StreamTags::default()
+        }))
+    };
+    a.update(tags(Some("Artist - Song")));
+    assert_eq!(a.state.now.as_ref().unwrap().title.as_deref(), Some("Song"));
+    a.update(tags(None)); // StreamTitle=''
+    assert_eq!(a.state.now, None, "old title cleared");
+    assert_eq!(
+        a.state.history[0].title.as_deref(),
+        Some("Song"),
+        "kept in history"
+    );
 }

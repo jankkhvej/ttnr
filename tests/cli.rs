@@ -323,7 +323,7 @@ fn stale_cache_self_heals() {
     std::fs::write(
         dir.path().join("ttnr/resolve.json"),
         format!(
-            r#"{{"url:loop": {{"urls": ["http://{addr}/moved-away"], "resolved_at": {now}, "ttl_secs": 3600, "strategy": "discovery"}}}}"#
+            r#"{{"url:loop http://{addr}/list.pls": {{"urls": ["http://{addr}/moved-away"], "resolved_at": {now}, "ttl_secs": 3600, "strategy": "discovery"}}}}"#
         ),
     )
     .unwrap();

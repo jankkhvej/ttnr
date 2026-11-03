@@ -272,3 +272,29 @@ fn registry_lists_ids() {
     assert_eq!(r.ids().collect::<Vec<_>>(), ["test"]);
     assert!(r.get("test").is_some());
 }
+
+#[tokio::test]
+async fn editing_a_stations_url_bypasses_the_old_cache_entry() {
+    let src = Arc::new(Scripted::new(Ok(Some(StreamDescriptor::direct(
+        "http://old-result",
+    )))));
+    let r = registry(src.clone());
+    let (ctx, _, _) = ctx(FakeHttp::default());
+    let d = r
+        .resolve(&station(Some("http://128k")), &ctx)
+        .await
+        .unwrap();
+    assert_eq!(d.urls, ["http://old-result"]);
+    // The user edits the station's url in stations.toml.
+    src.set_discovery(Ok(Some(StreamDescriptor::direct("http://new-result"))));
+    let d = r
+        .resolve(&station(Some("http://320k")), &ctx)
+        .await
+        .unwrap();
+    assert_eq!(
+        d.urls,
+        ["http://new-result"],
+        "not the cached result of the old url"
+    );
+    assert_eq!(src.discover_calls.load(Ordering::SeqCst), 2);
+}

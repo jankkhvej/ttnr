@@ -60,6 +60,10 @@ impl Runtime {
                 self.start_metadata(&st);
                 Ok(())
             }
+            Effect::StopMetadata => {
+                self.stop_metadata();
+                Ok(())
+            }
             Effect::Search(query) => {
                 self.search(query);
                 Ok(())
@@ -136,6 +140,7 @@ impl Runtime {
             return;
         };
         let tx = self.msg_tx.clone();
+        let key = st.key();
         self.metadata = Some(tokio::spawn(async move {
             let (np_tx, mut np_rx) = mpsc::channel(8);
             // The provider ends once `np_rx` is dropped (task aborted).
@@ -145,7 +150,11 @@ impl Runtime {
                 }
             });
             while let Some(np) = np_rx.recv().await {
-                if tx.send(Msg::NowPlaying(np)).is_err() {
+                let msg = Msg::NowPlaying {
+                    key: key.clone(),
+                    np,
+                };
+                if tx.send(msg).is_err() {
                     break;
                 }
             }

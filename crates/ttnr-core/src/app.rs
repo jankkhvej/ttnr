@@ -7,7 +7,8 @@ use std::collections::{BTreeMap, VecDeque};
 use std::time::{Duration, SystemTime};
 
 use crate::{
-    Action, Failover, Merger, NowPlaying, Station, StreamDescriptor, StreamInfo, StreamTags,
+    Action, Failover, InfoSource, Merger, NowPlaying, Station, StreamDescriptor, StreamInfo,
+    StreamTags,
 };
 
 /// Volume change per key press, in percent.
@@ -321,8 +322,14 @@ pub enum Msg {
         /// URLs or an error message.
         result: Result<StreamDescriptor, String>,
     },
-    /// Now-playing from a metadata provider (subject to the sync offset).
-    NowPlaying(NowPlaying),
+    /// Now-playing from a station's metadata provider (subject to the sync
+    /// offset); ignored unless `key` is the current station.
+    NowPlaying {
+        /// [`Station::key`] of the station whose provider sent it.
+        key: String,
+        /// The update.
+        np: NowPlaying,
+    },
     /// Time to re-check the pending now-playing update (scheduled by
     /// [`Effect::Delay`]); stale generations are ignored.
     NowPlayingDue {
@@ -391,6 +398,8 @@ pub enum Effect {
     SetDevice(Option<String>),
     /// Start the station's metadata provider (stop any previous one).
     StartMetadata(Station),
+    /// Stop the metadata provider (the station changed).
+    StopMetadata,
     /// Search the station directory for this text.
     Search(String),
     /// Deliver `msg` back to [`App::update`] after `after`.
@@ -474,9 +483,9 @@ impl App {
             Msg::Player(ev) => self.on_player(ev),
             Msg::Resolved { key, result } => self.on_resolved(&key, result, false),
             Msg::Refreshed { key, result } => self.on_resolved(&key, result, true),
-            Msg::NowPlaying(np) => {
-                if self.current_key().is_none() {
-                    return vec![];
+            Msg::NowPlaying { key, np } => {
+                if self.current_key().as_deref() != Some(key.as_str()) {
+                    return vec![]; // a late update from the previous station
                 }
                 // Only the newest provider update matters (it describes now).
                 self.pending = Some(np);
@@ -626,7 +635,7 @@ impl App {
         self.played = false;
         self.retry_attempt = 0;
         self.retry_gen += 1;
-        vec![Effect::Stop, Effect::Resolve(st)]
+        vec![Effect::Stop, Effect::StopMetadata, Effect::Resolve(st)]
     }
 
     /// Schedule the next reconnection attempt with backoff.
@@ -735,11 +744,23 @@ impl App {
                 }
             }
             PlayerEvent::StreamInfo(info) => self.state.stream = Some(info),
-            PlayerEvent::Tags(tags) => {
-                if let Some(np) = NowPlaying::from_tags(&tags, SystemTime::now()) {
-                    self.show_now(np);
+            PlayerEvent::Tags(tags) => match NowPlaying::from_tags(&tags, SystemTime::now()) {
+                Some(np) => self.show_now(np),
+                // An empty StreamTitle (ads, jingles, speech) clears the
+                // stream's title; an external listing may still show.
+                None => {
+                    if let Some(next) = self.merger.forget(&[InfoSource::Tags, InfoSource::Icy]) {
+                        let next = next.cloned();
+                        if let Some(old) = self.state.now.take()
+                            && self.history_len > 0
+                        {
+                            self.state.history.push_front(old);
+                            self.state.history.truncate(self.history_len);
+                        }
+                        self.state.now = next;
+                    }
                 }
-            }
+            },
             PlayerEvent::Ended => {
                 // A file ends; a live stream (not seekable) that "ends" lost
                 // its connection.

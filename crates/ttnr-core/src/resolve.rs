@@ -68,6 +68,15 @@ pub enum ResolveError {
     },
 }
 
+/// Cache key of a station: its key plus its own URL, if any, so editing a
+/// station's `url` in `stations.toml` never replays the old result.
+pub fn cache_key(st: &Station) -> String {
+    match &st.url {
+        Some(url) => format!("{} {url}", st.key()),
+        None => st.key(),
+    }
+}
+
 /// Resolve `st` through the chain. Successful discovery/pattern results are
 /// cached; the user override is the last resort and never cached.
 pub async fn resolve_chain(
@@ -76,7 +85,7 @@ pub async fn resolve_chain(
     ctx: &ResolveCtx,
     mode: Mode,
 ) -> Result<StreamDescriptor, ResolveError> {
-    let key = st.key();
+    let key = cache_key(st);
     let mut trace = ResolverTrace::default();
     let done = |mut d: StreamDescriptor, trace: ResolverTrace| {
         d.trace = trace;
