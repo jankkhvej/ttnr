@@ -2,6 +2,9 @@
 
 Newest entry on top. Each entry: date · milestone/task · what changed · how to try it · next step · open questions for the owner.
 
+## 2026-11-03 · M5 · Fix: boot's last frame could stay on screen (owner)
+- Owner: `pdp11-vt100-amber` looked hung on the boot's last frame after switching. Cause: a race – the next wake-up was computed (and the boot expired) just after its last frame was drawn, so no further redraw was scheduled. `Fx::tick` no longer expires anything; an ended animation always gets one more frame. Regression test `an_ended_boot_still_gets_a_final_frame`; pty: 8/8 runs show the UI after the boot, quit in ~10 ms.
+
 ## 2026-11-03 · M5 · VT100 boot noise static (owner)
 - The VT100 power-on noise no longer changes per frame. Research: DEC documents ~1 s reset, self-test, keyboard LEDs + bell, cursor at line 1 column 1; random characters only on fatal errors; per-character attributes need the AVO → static garbage without attributes kept as a short design choice (RESEARCH.md).
 

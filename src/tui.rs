@@ -360,7 +360,7 @@ async fn ui_loop(
             if !printout.busy() {
                 last_tick = Instant::now();
             }
-            let wake = [printout.tick(), fx.tick(Instant::now()), slow.tick()]
+            let wake = [printout.tick(), fx.tick(), slow.tick()]
                 .into_iter()
                 .flatten()
                 .min();

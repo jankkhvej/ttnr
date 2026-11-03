@@ -164,8 +164,11 @@ impl Fx {
     }
 
     /// When to draw the next frame; `None` when nothing animates.
-    pub fn tick(&mut self, now: Instant) -> Option<Duration> {
-        self.expire(now);
+    ///
+    /// Does not expire anything: an animation that ended after the last
+    /// drawn frame still asks for one more frame, which `frame` then draws
+    /// without it (otherwise its last frame could stay on screen).
+    pub fn tick(&self) -> Option<Duration> {
         (self.boot.is_some() || self.load.is_some()).then_some(FRAME)
     }
 
@@ -554,11 +557,11 @@ mod tests {
                 ..
             })
         ));
-        assert_eq!(fx.tick(t0), Some(FRAME));
+        assert_eq!(fx.tick(), Some(FRAME));
         let after = t0 + boot_length(BootEffect::ZxSpectrum, 0);
         fx.observe(&state(Status::Idle), &zx, after);
         assert_eq!(fx.frame(after), None, "same theme: no new boot");
-        assert_eq!(fx.tick(after), None, "idle: no ticks");
+        assert_eq!(fx.tick(), None, "idle: no ticks");
         let plain = theme("plain");
         fx.observe(&state(Status::Idle), &plain, after);
         assert_eq!(fx.frame(after), None, "plain has no boot");
@@ -569,13 +572,28 @@ mod tests {
     }
 
     #[test]
+    fn an_ended_boot_still_gets_a_final_frame() {
+        // Regression: the boot ended between drawing its last frame and
+        // computing the next wake-up → no wake-up, boot frame stuck.
+        let t0 = Instant::now();
+        let mut fx = Fx::new(true, ColorDepth::TrueColor);
+        let vt = theme("pdp11-vt100-amber");
+        fx.observe(&state(Status::Idle), &vt, t0);
+        let end = t0 + boot_length(BootEffect::Vt100, vt.effects.boot_text.len());
+        assert!(fx.frame(end - Duration::from_millis(1)).is_some());
+        assert_eq!(fx.tick(), Some(FRAME), "one more frame after the end");
+        assert_eq!(fx.frame(end), None);
+        assert_eq!(fx.tick(), None);
+    }
+
+    #[test]
     fn disabled_never_animates() {
         let t0 = Instant::now();
         let mut fx = Fx::new(false, ColorDepth::TrueColor);
         let zx = theme("zx-spectrum");
         fx.observe(&state(Status::Resolving), &zx, t0);
         assert_eq!(fx.frame(t0), None);
-        assert_eq!(fx.tick(t0), None);
+        assert_eq!(fx.tick(), None);
     }
 
     #[test]
@@ -599,7 +617,7 @@ mod tests {
         // Playing since 0.5 s: tail until 2.5 s, minimum pilot+data 2.8 s.
         assert!(fx.frame(ms(2700)).is_some());
         assert_eq!(fx.frame(ms(2800)), None);
-        assert_eq!(fx.tick(ms(2800)), None);
+        assert_eq!(fx.tick(), None);
     }
 
     #[test]
