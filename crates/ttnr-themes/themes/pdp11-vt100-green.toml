@@ -48,6 +48,7 @@ banner       = ["RSX-11M V4.6 BL56   TTNR V0.1", ""]
 prompt       = "MCR>"
 cursor       = "block"
 cursor_blink = true
+serial       = true             # speed key: 9600/1200/300/110 baud
 
 [status]                        # RSX-style messages
 idle         = ">"

@@ -299,6 +299,9 @@ pub struct Chrome {
     /// Teletype mode: new information is printed (appended) rather than
     /// redrawn in place.
     pub printout: bool,
+    /// A terminal on a serial line: the speed key (config `baud`) slows
+    /// its output down.
+    pub serial: bool,
 }
 
 /// Status line templates; `{glyph}`, `{message}`, `{percent}` (" 40%" or

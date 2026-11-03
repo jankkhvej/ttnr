@@ -49,6 +49,7 @@ banner   = ["TTNR V0.1", "READY", ""]
 prompt   = "."
 cursor   = "block"
 printout = true                 # print new lines instead of redrawing
+serial   = true                 # speed key: 110 baud = 10 chars/s
 
 [status]
 idle         = "IDLE"

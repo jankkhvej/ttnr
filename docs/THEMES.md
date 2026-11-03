@@ -69,9 +69,16 @@ Added in M5 (all optional; `plain.toml` lists the defaults):
   theme is switched to (and at start; any key skips it) and an animation
   while a station loads. Config `effects = false` turns all of them off;
   the UI ticks (25 fps) only while one runs.
-- Config `baud = 110|300|9600|…` prints printout themes at that line speed
-  (10 bits per character; 0 = instant); old queued lines are printed at
-  once when more than ~4 s would be queued.
+- `[chrome] serial = true` marks a terminal on a serial line
+  (`pdp11-teletype`, `pdp11-vt100*`): the `b` key (`cycle_baud`) cycles the
+  line speed off → 9600 → 1200 → 300 → 110 baud (start value: config
+  `baud`), shown as `9600 BAUD` next to the volume. Printout themes print at
+  that speed (old queued lines are printed at once when more than ~4 s would
+  be queued); screen themes receive their changed cells one by one, row by
+  row (10 bits per character; cursor-addressing bytes not counted). Boot
+  sequences run at their own pace; switching a speed on keeps the current
+  screen, only later changes arrive slowly; at start the screen is typed
+  out from blank.
 
 Real DECDHL double height is not used: ratatui cannot emit the line
 attribute escapes, so double height is emulated by two rows.

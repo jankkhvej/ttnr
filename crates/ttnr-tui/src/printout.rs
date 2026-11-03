@@ -26,6 +26,7 @@ struct Seen {
     track: Option<String>,
     format: String,
     volume: (u8, bool),
+    baud: u32,
 }
 
 /// The printed lines so far, optionally printed at a simulated line speed.
@@ -42,6 +43,8 @@ pub struct Printout {
     done: usize,
     /// Printing time not yet spent on a whole character.
     budget: Duration,
+    /// A state has been observed (speed changes are printed after that).
+    seen_once: bool,
 }
 
 impl Printout {
@@ -67,6 +70,19 @@ impl Printout {
     /// Lines printed so far, oldest first (the last may be partial).
     pub fn lines(&self) -> &[String] {
         &self.lines
+    }
+
+    /// Change the line speed (bits/s, 0 = instant: queued lines print now).
+    pub fn set_baud(&mut self, baud: u32) {
+        self.cps = baud / 10;
+        if self.cps == 0 {
+            if self.done > 0 {
+                self.lines.pop();
+            }
+            self.done = 0;
+            self.lines.extend(self.queue.drain(..));
+            self.budget = Duration::ZERO;
+        }
     }
 
     /// Whether characters are waiting to be printed.
@@ -134,6 +150,7 @@ impl Printout {
                 .map(ttnr_core::StreamInfo::summary)
                 .unwrap_or_default(),
             volume: (s.volume, s.muted),
+            baud: s.baud,
         };
         let prev = self.seen.take().unwrap_or_default();
         if next.station != prev.station
@@ -165,6 +182,14 @@ impl Printout {
                 format!("vol {}", theme.percent(u64::from(v)))
             });
         }
+        if next.baud != prev.baud && self.seen_once {
+            self.print(match next.baud {
+                0 => "speed: instant".to_owned(),
+                b => format!("speed: {b} baud"),
+            });
+        }
+        self.set_baud(next.baud);
+        self.seen_once = true;
         self.seen = Some(next);
     }
 
@@ -248,7 +273,10 @@ mod tests {
         // 300 baud = 30 characters per second.
         let mut p = Printout::with_baud(&theme, 300);
         assert!(!p.busy());
-        let s = AppState::default();
+        let mut s = AppState {
+            baud: 300,
+            ..AppState::default()
+        };
         p.observe(&s, &theme); // "■ idle" (6 chars + CR LF)
         assert!(p.busy());
         assert_eq!(p.tick(), Some(Duration::from_secs(1) / 30));
@@ -261,6 +289,11 @@ mod tests {
         assert!(!p.advance(step * 2));
         assert!(!p.busy());
         assert_eq!(p.tick(), None);
+        // Speed key: the change is printed; instant flushes the queue.
+        s.baud = 0;
+        p.observe(&s, &theme);
+        assert!(!p.busy());
+        assert_eq!(p.lines(), ["■ idle", "speed: instant"]);
     }
 
     #[test]

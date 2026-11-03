@@ -15,5 +15,5 @@ source: crates/ttnr-tui/tests/snapshots.rs
 "q    quit                       "
 "]    track info later (+1 s)    "
 "[    track info earlier (-1 s)  "
-"                                "
+"b    line speed (terminal the..."
 "                                "

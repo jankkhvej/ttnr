@@ -358,3 +358,18 @@ fn sync_offset_keys_adjust_per_source() {
     assert_eq!(a.update(Msg::NowPlaying(np)), []);
     assert_eq!(a.state.now.as_ref().unwrap().title.as_deref(), Some("Now"));
 }
+
+#[test]
+fn cycle_baud_steps_and_wraps() {
+    use ttnr_core::app::BAUD_STEPS;
+    let mut a = App::new(Vec::new(), 80, 5);
+    let mut seen = Vec::new();
+    for _ in 0..BAUD_STEPS.len() {
+        assert_eq!(a.update(Msg::Command(Command::CycleBaud)), []);
+        seen.push(a.state.baud);
+    }
+    assert_eq!(seen, [9600, 1200, 300, 110, 0]);
+    a.state.baud = 2400; // from config, not a step
+    a.update(Msg::Command(Command::CycleBaud));
+    assert_eq!(a.state.baud, 9600);
+}

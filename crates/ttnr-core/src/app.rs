@@ -104,12 +104,19 @@ pub struct AppState {
     pub view: View,
     /// Theme selection, an index into the UI's theme list (wraps around).
     pub theme_index: usize,
+    /// Simulated serial line speed for terminal-like themes (bits/s,
+    /// 0 = instant); cycled through [`BAUD_STEPS`].
+    pub baud: u32,
     /// Delay applied to now-playing from external providers of the
     /// current station's source, to match the audio (SPEC F4.3).
     pub sync_offset: Duration,
     /// Set when the app should exit.
     pub quit: bool,
 }
+
+/// Line speeds the speed key cycles through: instant, then common serial
+/// rates from fast to slow (110 = Teletype Model 33).
+pub const BAUD_STEPS: [u32; 5] = [0, 9600, 1200, 300, 110];
 
 /// What the player reported (the engine's events, mapped by the runtime).
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -164,6 +171,8 @@ pub enum Command {
     ToggleHelp,
     /// Next theme.
     CycleTheme,
+    /// Next simulated line speed (terminal-like themes).
+    CycleBaud,
     /// Show external now-playing later (+1 s).
     SyncLater,
     /// Show external now-playing earlier (−1 s, not below 0).
@@ -647,6 +656,11 @@ impl App {
             }
             Command::CycleTheme => {
                 self.state.theme_index = self.state.theme_index.wrapping_add(1);
+                vec![]
+            }
+            Command::CycleBaud => {
+                let i = BAUD_STEPS.iter().position(|b| *b == self.state.baud);
+                self.state.baud = BAUD_STEPS[i.map_or(1, |i| (i + 1) % BAUD_STEPS.len())];
                 vec![]
             }
             Command::Quit => {

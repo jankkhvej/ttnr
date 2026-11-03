@@ -101,6 +101,12 @@ const ACTIONS: &[Action] = &[
         help: "track info earlier (-1 s)",
         defaults: &["["],
     },
+    Action {
+        name: "cycle_baud",
+        command: Command::CycleBaud,
+        help: "line speed (terminal themes)",
+        defaults: &["b"],
+    },
 ];
 
 /// Footer entries: (actions, short label), in display order; help and quit
@@ -465,7 +471,7 @@ mod tests {
         let km = Keymap::with_overrides(&overrides(&[
             ("quit", &["x", "ctrl-q"]),
             ("toggle_pause", &["p"]),
-            ("prev_station", &["b"]),
+            ("prev_station", &["v"]),
         ]))
         .unwrap();
         let main = View::Main;

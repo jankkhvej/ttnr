@@ -2,6 +2,10 @@
 
 Newest entry on top. Each entry: date · milestone/task · what changed · how to try it · next step · open questions for the owner.
 
+## 2026-11-03 · M5 · Line speed key (owner)
+- `b` cycles the simulated line speed off → 9600 → 1200 → 300 → 110 baud on terminal themes (`[chrome] serial`: teletype, VT100 variants); shown as `9600 BAUD`; teletype prints at that speed, VT100 receives changed cells one by one (ADR-035). Config `baud` is the start value.
+- Tests: core cycling, `SlowScreen` (row order, line speed, no banked idle time, switch-on keeps the screen), printout speed change, view label; pty: `b` on VT100 → only the label changes, at 110 baud a volume change arrives ~0.1 s per character; start with `baud = 1200` types the screen out.
+
 ## 2026-11-03 · M5 · Fix: list highlight showed through boot animations
 - Owner: the station list's highlight was visible during every boot sequence. Cause: effect cells were style-*patched* over the UI, keeping its reverse-video modifier. Cells are now reset before painting; regression test `boot_frames_hide_the_ui_below` (fails without the fix).
 

@@ -202,3 +202,9 @@ Rejected: data-driven keyframe animations in TOML (much larger engine for five s
 Consequences: snapshots of characteristic animation frames (`fx@…`); `plain` and theme main views unchanged. The Teletype "everything on paper" idea is recorded as a proposal in THEMES.md.
 Amended 2026-11-03 (owner review): the Spectrum boot shows *static* garbage, then black with thin red `¦` lines, then the copyright line (~1.4 s, less intrusive); `[screen] margin_x`/`margin_y` add paper around the content so border effects never touch text.
 
+## ADR-035 · 2026-11-03 · Line speed key for terminal themes
+Context: owner wants a key to change the simulated speed for themes that imitate terminals.
+Decision: `AppState::baud` (core, like `theme_index`), `Command::CycleBaud` over `BAUD_STEPS` = 0, 9600, 1200, 300, 110 (start value from config `baud`); key `b` (`cycle_baud`, remappable). Themes opt in with `[chrome] serial = true`. Printout themes use `Printout`'s character queue (speed changes are printed as a line; 0 flushes the queue). Screen themes go through `SlowScreen`: the app renders as usual, then the frame shown is the previous one with changed cells copied in row-major order at baud/10 per second; ticks only while cells are pending; idle time is not banked; boot frames bypass it (and re-sync). The speed is shown next to the volume on serial themes.
+Rejected: emulating the exact escape-sequence byte stream (cursor addressing, attributes) – more faithful timing, much more code, no visible benefit.
+Consequences: at 9600 baud a full 80×24 redraw takes ~2 s, like a real VT100; resizes retype the screen.
+

@@ -369,8 +369,13 @@ fn main_view(frame: &mut Frame, area: Rect, state: &AppState, theme: &Theme) {
             theme.number(state.sync_offset.as_secs())
         )
     };
+    let baud = if theme.chrome.serial && state.baud > 0 {
+        format!("{}{} baud", theme.glyphs.separator, state.baud)
+    } else {
+        String::new()
+    };
     let vol = format!(
-        "vol {}{}{}{}{sync}",
+        "vol {}{}{}{}{sync}{baud}",
         theme.percent(u64::from(state.volume)),
         if state.muted { " muted" } else { "" },
         theme.glyphs.separator,

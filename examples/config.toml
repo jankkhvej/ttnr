@@ -26,9 +26,9 @@
 # loading. false = never animate.
 # effects = true
 
-# Printout themes (pdp11-teletype): simulated line speed in bits per
-# second, 10 bits per character – 110 = Teletype Model 33 (10 chars/s),
-# 300, 9600; 0 = print instantly.
+# Terminal themes (pdp11-teletype, pdp11-vt100*): simulated serial line
+# speed in bits per second, 10 bits per character – 110 = Teletype Model 33
+# (10 chars/s), 300, 1200, 9600; 0 = instant. The `b` key cycles it live.
 # baud = 0
 
 # Key bindings (SPEC F5.3 defaults shown). Giving an action replaces its
@@ -50,5 +50,6 @@
 # cycle_theme  = "t"
 # sync_later   = "]"
 # sync_earlier = "["
+# cycle_baud   = "b"   # line speed of terminal themes: off/9600/1200/300/110
 # help         = "?"
 # quit         = "q"

@@ -53,6 +53,7 @@ pub async fn run(cfg: &EngineConfig, theme: Option<&str>) -> Result<()> {
     let mut app =
         App::new(stations, volume, DEFAULT_HISTORY).with_sync_offsets(config.sync_offsets());
     app.state.theme_index = theme_index;
+    app.state.baud = config.baud.unwrap_or(0);
     for e in &theme_errors {
         tracing::warn!(error = %e, "skipping theme");
     }
@@ -311,6 +312,7 @@ async fn ui_loop(
         let mut printout = ttnr_tui::Printout::with_baud(&themes[0], options.baud);
         let mut fx = ttnr_tui::Fx::new(options.effects, options.depth);
         let mut last_tick = Instant::now();
+        let mut slow = ttnr_tui::SlowScreen::default();
         loop {
             let state = state_rx.borrow_and_update().clone();
             if state.quit {
@@ -328,12 +330,25 @@ async fn ui_loop(
                     printout.observe(&state, theme);
                 }
                 let fx_frame = fx.frame(now);
+                // Serial terminal themes (not printout ones, which print at
+                // their own speed) receive the screen at the line speed.
+                let line = theme.chrome.serial && !theme.chrome.printout;
+                slow.set_baud(if line { state.baud } else { 0 });
+                let booting = fx.booting(now);
                 terminal.draw(|frame| {
                     let extras = ttnr_tui::Extras {
                         printout: printout.lines(),
                         fx: fx_frame.map(|f| (&fx, f)),
                     };
                     ttnr_tui::draw_with(frame, &state, theme, &keymap, &extras);
+                    if booting {
+                        // Boot sequences run at their own pace.
+                        if slow.active() {
+                            slow.sync(frame.buffer_mut());
+                        }
+                    } else if let Some(shown) = slow.present(frame.buffer_mut(), now) {
+                        *frame.buffer_mut() = shown;
+                    }
                 })?;
                 // Park the (hidden) cursor top-left: some terminals
                 // (Terminal.app) scroll the screen to keep the cursor visible
@@ -345,7 +360,7 @@ async fn ui_loop(
             if !printout.busy() {
                 last_tick = Instant::now();
             }
-            let wake = [printout.tick(), fx.tick(Instant::now())]
+            let wake = [printout.tick(), fx.tick(Instant::now()), slow.tick()]
                 .into_iter()
                 .flatten()
                 .min();

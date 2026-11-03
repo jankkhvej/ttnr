@@ -264,3 +264,22 @@ fn boot_frames_hide_the_ui_below() {
         );
     }
 }
+
+#[test]
+fn line_speed_is_shown_on_serial_themes_only() {
+    use ttnr_themes::{ColorDepth, ThemeSet};
+    let set = ThemeSet::builtin();
+    let mut s = state();
+    s.baud = 9600;
+    let shown = |name: &str| {
+        let theme = set
+            .get(set.position(name).unwrap())
+            .for_depth(ColorDepth::TrueColor);
+        let mut t = Terminal::new(TestBackend::new(100, 30)).unwrap();
+        t.draw(|f| ttnr_tui::draw(f, &s, &theme, &Keymap::default()))
+            .unwrap();
+        t.backend().to_string()
+    };
+    assert!(shown("pdp11-vt100").contains("9600 BAUD"));
+    assert!(!shown("plain").contains("baud"));
+}
