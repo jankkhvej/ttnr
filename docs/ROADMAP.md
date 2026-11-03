@@ -49,7 +49,7 @@ Work top to bottom. Tick `[x]` when a task meets its acceptance criteria and
 **Acceptance:** owner judges each theme recognisable at a glance. (Accepted 2026-11-03.)
 
 ## M6 — macOS integration
-- [ ] Now Playing / Control Center + media keys (MediaPlayer framework via `objc2`; terminal app has no window — solve and document).
+- [x] Now Playing / Control Center + media keys (MediaPlayer framework via `objc2`; terminal app has no window — solve and document).
 - [ ] Follow default-device changes; pinned device option; device picker uses mpv's device list.
 - [ ] Sleep/wake and network change: reconnect with backoff.
 - [ ] Optional exclusive mode and sample-rate matching.

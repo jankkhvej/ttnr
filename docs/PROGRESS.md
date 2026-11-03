@@ -2,6 +2,9 @@
 
 Newest entry on top. Each entry: date · milestone/task · what changed · how to try it · next step · open questions for the owner.
 
+## 2026-11-03 · M6 · Task 1 done – owner confirmed
+- Now Playing / Control Center and media keys work in the TUI in kitty and Terminal.app (keys, Control Center, headphones). Next: M6 task 2 – follow default-device changes, pinned device, device picker from mpv's list.
+
 ## 2026-11-03 · M6 · Next/previous greyed out where they do nothing
 - Owner: next/previous "did not work in Terminal.app" (keys, Control Center, headphones). Log: those sessions were `ttnr play`, which receives every command but ignores next/previous by design (one target); the TUI switches stations. Fix: `NowPlayingInfo::can_skip` – Control Center/media next/previous are disabled in `ttnr play` and in the TUI without a station list. TUI logs the terminal program at start.
 
