@@ -140,3 +140,27 @@ fn errors_and_empty_station_list() {
     s.view = View::Stations { selected: 0 };
     assert!(render(&s, 60, 16).contains("no stations – see examples/stations.toml"));
 }
+
+/// Snapshots carry no colours, so check styles directly: the station name
+/// uses the accent colour, downgraded per colour depth.
+#[test]
+fn palette_follows_colour_depth() {
+    use ratatui::style::Color;
+    use ttnr_themes::ColorDepth;
+    let accent_of = |depth| {
+        let theme = Theme::plain().for_depth(depth);
+        let mut t = Terminal::new(TestBackend::new(40, 16)).unwrap();
+        t.draw(|f| ttnr_tui::draw(f, &state(), &theme, &Keymap::default()))
+            .unwrap();
+        // Row 1 (inside the frame), first letter of the station name.
+        let buf = t.backend().buffer();
+        let cell = (0..40)
+            .map(|x| &buf[(x, 1)])
+            .find(|c| c.symbol() == "S")
+            .unwrap();
+        cell.fg
+    };
+    assert_eq!(accent_of(ColorDepth::Ansi16), Color::Cyan);
+    assert_eq!(accent_of(ColorDepth::TrueColor), Color::Cyan);
+    assert_eq!(accent_of(ColorDepth::Mono), Color::Reset);
+}

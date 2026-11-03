@@ -98,6 +98,8 @@ pub struct AppState {
     pub stations: Vec<Station>,
     /// Current screen.
     pub view: View,
+    /// Theme selection, an index into the UI's theme list (wraps around).
+    pub theme_index: usize,
     /// Set when the app should exit.
     pub quit: bool,
 }
@@ -224,8 +226,6 @@ pub enum Effect {
     SetDevice(Option<String>),
     /// Start the station's metadata provider (stop any previous one).
     StartMetadata(Station),
-    /// Switch to the next theme.
-    CycleTheme,
     /// Exit.
     Quit,
 }
@@ -541,7 +541,10 @@ impl App {
                 };
                 vec![]
             }
-            Command::CycleTheme => vec![Effect::CycleTheme],
+            Command::CycleTheme => {
+                self.state.theme_index = self.state.theme_index.wrapping_add(1);
+                vec![]
+            }
             Command::Quit => {
                 self.state.quit = true;
                 vec![Effect::Stop, Effect::Quit]

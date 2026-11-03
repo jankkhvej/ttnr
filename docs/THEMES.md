@@ -29,6 +29,30 @@ show the same information as `plain`.
 Fonts: themes must work with any monospace font. README may *suggest*
 open-licence retro fonts per theme; never require them.
 
+## Theme files (implemented in M3)
+
+A theme is one TOML file; built-ins are embedded from
+`crates/ttnr-themes/themes/*.toml`, user themes live in
+`~/.config/ttnr/themes/*.toml` (a user theme with a built-in's `name`
+replaces it). Start from `crates/ttnr-themes/themes/plain.toml`.
+
+- `name`, optional `title` (frame banner, default `ttnr`), `uppercase`.
+- `[palette]` roles `fg`, `bg`, `accent`, `dim`, `warn`, `error`: `"default"`,
+  ANSI names (`black` … `bright_white`), `"#rrggbb"`, or `0`–`255`.
+  Optional `[palette_256]` / `[palette_16]` override single roles at those
+  depths; otherwise colours are downgraded automatically (truecolor → nearest
+  xterm-256 cube/grey → nearest of 16 ANSI → terminal default in mono).
+- `[glyphs]`: `borders` (`"box"`, `"double"`, `"ascii"`, `"none"`, or a table
+  `top_left`/`top_right`/`bottom_left`/`bottom_right`/`horizontal`/`vertical`),
+  `ellipsis`, `dash`, `separator`, status glyphs `playing`/`paused`/`busy`/
+  `stopped`/`error`, list marks `current`/`cursor`.
+- Unknown keys are errors; a broken user theme is skipped and reported.
+- Colour depth: config `color = "auto|truecolor|256|16|mono"`; auto uses
+  `NO_COLOR`, `COLORTERM`, `TERM` (Terminal.app is treated as 256).
+
+The remaining controls listed above (logical width, prompt, cursor, number
+format, effects, banner) are added with the retro themes in M5.
+
 ## Built-in themes
 
 ### `plain` (default)

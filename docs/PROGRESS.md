@@ -2,6 +2,11 @@
 
 Newest entry on top. Each entry: date · milestone/task · what changed · how to try it · next step · open questions for the owner.
 
+## 2026-11-03 · M3 · Theme engine
+- `ttnr-themes`: TOML theme files (`themes/plain.toml` embedded), `ThemeSet` (built-ins + `~/.config/ttnr/themes/`), `ColorDepth` detection, downgrading with per-depth overrides; config `theme` and `color`; `t` cycles themes (ADR-025, THEMES.md "Theme files").
+- Tests: colour parsing/downgrade/detection, theme parsing errors, set loading/overrides, view styles per depth, CLI unknown theme; pty: user theme with ASCII borders cycled in, `#ffb000` → 256-colour 214.
+- Next: M3 task 5 – snapshot tests for all views at 3 sizes.
+
 ## 2026-11-03 · M3 · Remappable keymap
 - `ttnr-tui::Keymap` (defaults per SPEC F5.3, overrides, validation, help/footer from bindings), `src/config.rs` + `examples/config.toml` (ADR-024).
 - Tests: keymap defaults/overrides/errors/labels, config parsing and example validity, CLI: bad `[keys]` reported before the TUI starts.

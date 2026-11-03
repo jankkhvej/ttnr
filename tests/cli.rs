@@ -489,3 +489,15 @@ fn bad_keymap_is_reported() {
         "{stderr}"
     );
 }
+
+#[test]
+fn unknown_theme_is_reported() {
+    let dir = tempfile::tempdir().unwrap();
+    std::fs::create_dir_all(dir.path().join("ttnr")).unwrap();
+    std::fs::write(dir.path().join("ttnr/config.toml"), "theme = \"neon\"\n").unwrap();
+    let stderr = text(&ttnr(dir.path(), &[]).stderr);
+    assert!(
+        stderr.contains("unknown theme `neon`") && stderr.contains("available: plain"),
+        "{stderr}"
+    );
+}

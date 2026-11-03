@@ -1,6 +1,15 @@
 # Sample configuration. Copy to ~/.config/ttnr/config.toml
 # (or $XDG_CONFIG_HOME/ttnr/config.toml); every setting is optional.
 
+# Theme: a built-in (plain; retro themes in M5) or the `name` of a file
+# in ~/.config/ttnr/themes/*.toml. `t` cycles through all of them.
+# theme = "plain"
+
+# Colour depth: "auto" (detect: NO_COLOR, COLORTERM, TERM), "truecolor",
+# "256", "16", "mono". Terminal.app (macOS 26+) supports truecolor but is
+# detected as 256 – set "truecolor" to use it.
+# color = "auto"
+
 # Key bindings (SPEC F5.3 defaults shown). Giving an action replaces its
 # default keys; use a string or a list. Key names: a single character,
 # space, enter, tab, backspace, esc, up, down, left, right, home, end,

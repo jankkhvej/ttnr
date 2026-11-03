@@ -13,7 +13,7 @@ use ttnr_core::app::{App, AppState, Command, DEFAULT_HISTORY, Device, Effect, Ms
 use ttnr_core::{ResolveCtx, SourceRegistry, StreamDescriptor};
 use ttnr_engine::{EngineConfig, EngineEvent, MpvPlayer, Player};
 
-use crate::{config, play, stations};
+use crate::{config, paths, play, stations};
 
 /// Run the TUI until the user quits.
 pub async fn run(cfg: &EngineConfig) -> Result<()> {
@@ -21,12 +21,35 @@ pub async fn run(cfg: &EngineConfig) -> Result<()> {
     let config = config::load()?;
     let keymap = ttnr_tui::Keymap::with_overrides(&config.key_overrides())
         .context("invalid [keys] in config.toml")?;
+    let themes_dir = paths::config_dir().map(|d| d.join("themes"));
+    let (themes, theme_errors) = match &themes_dir {
+        Some(dir) => ttnr_themes::ThemeSet::load(dir),
+        None => (ttnr_themes::ThemeSet::builtin(), Vec::new()),
+    };
+    let theme_index = match &config.theme {
+        None => 0,
+        Some(name) => themes.position(name).with_context(|| {
+            format!(
+                "unknown theme `{name}` in config.toml (available: {})",
+                themes.names().join(", ")
+            )
+        })?,
+    };
+    let depth = config.color.depth();
+    tracing::info!(?depth, themes = ?themes.names(), "themes");
     let (stations, load_error) = match stations::load() {
         Ok(list) => (list.stations().to_vec(), None),
         Err(e) => (Vec::new(), Some(format!("{e:#}"))),
     };
     let volume = cfg.volume.clamp(0.0, 100.0).round() as u8;
     let mut app = App::new(stations, volume, DEFAULT_HISTORY);
+    app.state.theme_index = theme_index;
+    for e in &theme_errors {
+        tracing::warn!(error = %e, "skipping theme");
+    }
+    if let Some(e) = theme_errors.first() {
+        app.state.status = ttnr_core::app::Status::Error(e.to_string());
+    }
     if let Some(e) = load_error {
         app.state.status = ttnr_core::app::Status::Error(e);
     } else if !app.state.stations.is_empty() {
@@ -42,7 +65,10 @@ pub async fn run(cfg: &EngineConfig) -> Result<()> {
 
     let (msg_tx, mut msg_rx) = mpsc::unbounded_channel::<Msg>();
     let (state_tx, state_rx) = watch::channel(app.state.clone());
-    let ui = tokio::spawn(ui_loop(state_rx, msg_tx.clone(), keymap));
+    let resolved: Vec<ttnr_themes::Theme> = (0..themes.len())
+        .map(|i| themes.get(i).for_depth(depth))
+        .collect();
+    let ui = tokio::spawn(ui_loop(state_rx, msg_tx.clone(), keymap, resolved));
     let mut runtime = Runtime {
         registry,
         ctx,
@@ -116,8 +142,8 @@ impl Runtime {
                 self.start_metadata(&st);
                 Ok(())
             }
-            // Themes arrive in M3 task 4; quitting is handled by the loop.
-            Effect::CycleTheme | Effect::Quit => Ok(()),
+            // Quitting is handled by the loop.
+            Effect::Quit => Ok(()),
         };
         if let Err(e) = result {
             tracing::warn!(error = %e, "player command failed");
@@ -229,10 +255,10 @@ async fn ui_loop(
     mut state_rx: watch::Receiver<AppState>,
     msg_tx: mpsc::UnboundedSender<Msg>,
     keymap: ttnr_tui::Keymap,
+    themes: Vec<ttnr_themes::Theme>,
 ) -> Result<()> {
     let mut terminal = ratatui::try_init().context("cannot initialise the terminal")?;
     let result = async {
-        let theme = ttnr_themes::Theme::plain();
         let mut events = EventStream::new();
         let mut dirty = true;
         loop {
@@ -241,7 +267,8 @@ async fn ui_loop(
                 return Ok(());
             }
             if dirty {
-                terminal.draw(|frame| ttnr_tui::draw(frame, &state, &theme, &keymap))?;
+                let theme = &themes[state.theme_index % themes.len()];
+                terminal.draw(|frame| ttnr_tui::draw(frame, &state, theme, &keymap))?;
                 dirty = false;
             }
             tokio::select! {

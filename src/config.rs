@@ -6,6 +6,7 @@ use std::path::Path;
 
 use anyhow::{Context, Result};
 use serde::Deserialize;
+use ttnr_themes::ColorDepth;
 
 use crate::paths;
 
@@ -19,10 +20,46 @@ pub enum Keys {
     Many(Vec<String>),
 }
 
+/// Colour depth setting.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum ColorSetting {
+    /// Detect from the environment.
+    #[default]
+    Auto,
+    /// 24-bit.
+    Truecolor,
+    /// 256 colours.
+    #[serde(rename = "256")]
+    Ansi256,
+    /// 16 colours.
+    #[serde(rename = "16")]
+    Ansi16,
+    /// No colour.
+    Mono,
+}
+
+impl ColorSetting {
+    /// The depth to use (`auto` = detect from the environment).
+    pub fn depth(self) -> ColorDepth {
+        match self {
+            Self::Auto => ColorDepth::detect(|k| std::env::var(k).ok()),
+            Self::Truecolor => ColorDepth::TrueColor,
+            Self::Ansi256 => ColorDepth::Ansi256,
+            Self::Ansi16 => ColorDepth::Ansi16,
+            Self::Mono => ColorDepth::Mono,
+        }
+    }
+}
+
 /// The whole configuration (grows with later milestones).
 #[derive(Debug, Clone, Default, PartialEq, Eq, Deserialize)]
 #[serde(default, deny_unknown_fields)]
 pub struct Config {
+    /// Theme name (built-in or from `themes/`); default `plain`.
+    pub theme: Option<String>,
+    /// Colour depth: `auto` (default), `truecolor`, `256`, `16`, `mono`.
+    pub color: ColorSetting,
     /// Key bindings: action → key(s); replaces that action's defaults.
     pub keys: BTreeMap<String, Keys>,
 }
@@ -72,6 +109,14 @@ mod tests {
         let o = c.key_overrides();
         assert_eq!(o["quit"], ["x"]);
         assert_eq!(o["volume_up"], ["+", "k"]);
+    }
+
+    #[test]
+    fn theme_and_color() {
+        let c: Config = toml::from_str("theme = \"amber\"\ncolor = \"256\"\n").unwrap();
+        assert_eq!(c.theme.as_deref(), Some("amber"));
+        assert_eq!(c.color.depth(), ColorDepth::Ansi256);
+        assert!(toml::from_str::<Config>("color = \"8\"\n").is_err());
     }
 
     #[test]

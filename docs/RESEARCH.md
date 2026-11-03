@@ -210,3 +210,11 @@ anything older than ~3 months before relying on it.
 | `TestBackend` Display (used by insta snapshots) contains symbols only, no colours/styles | https://ratatui.rs/recipes/testing/snapshots/ | VERIFIED 2026-11-02 (subagent, docs) |
 | No colour-depth detection in crossterm/ratatui; convention: `NO_COLOR` → mono, `COLORTERM=truecolor|24bit` → truecolor, `TERM=*256color*` → 256, else 16; Terminal.app gained 24-bit colour in macOS 26 but is not known to set `COLORTERM` | https://no-color.org · https://www.macrumors.com/2025/06/16/apples-terminal-app-macos-tahoe/ | partly UNVERIFIED (Terminal.app env to be checked on the owner's Mac in task 4) |
 | mpv `audio-device-list` read as a string is JSON `[{"name":"coreaudio/…","description":"…"}, …]` incl. `auto` and `avfoundation/…` duplicates | engine scratch run on the owner's Mac | VERIFIED 2026-11-02 |
+
+### 2026-11-03 · Colour depth on the owner's Mac
+
+| Fact | Source | Status |
+|---|---|---|
+| Owner's terminal: kitty – `TERM=xterm-kitty`, `COLORTERM=truecolor` | env in the session | VERIFIED 2026-11-03 |
+| Terminal.app on this Mac: build 488.9, version 2.15 (macOS 26 brought 24-bit colour per press reports); whether it sets `COLORTERM` was not checked (needs the GUI app) → ttnr treats `TERM_PROGRAM=Apple_Terminal` as 256 colours unless `color = "truecolor"` | `PlistBuddy` on `/System/Applications/Utilities/Terminal.app/Contents/Info.plist`; https://www.macrumors.com/2025/06/16/apples-terminal-app-macos-tahoe/ | UNVERIFIED (truecolor detection) |
+| xterm default RGB for ANSI 0–15 and the 6×6×6 cube levels (0, 95, 135, 175, 215, 255) + grey ramp 8 + 10·i are the usual 256-colour mapping | xterm `256colres.pl` / common knowledge | from knowledge; pinned by unit tests |

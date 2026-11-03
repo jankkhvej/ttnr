@@ -251,6 +251,13 @@ fn device_picker() {
 }
 
 #[test]
+fn cycle_theme_changes_state_only() {
+    let mut a = app();
+    assert_eq!(a.update(Msg::Command(Command::CycleTheme)), []);
+    assert_eq!(a.state.theme_index, 1);
+}
+
+#[test]
 fn help_back_quit() {
     let mut a = app();
     a.update(Msg::Command(Command::ToggleHelp));

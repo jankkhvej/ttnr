@@ -1,0 +1,32 @@
+# ttnr theme: plain (default) – the terminal's own colours, box-drawing
+# borders. Copy to ~/.config/ttnr/themes/<name>.toml as a starting point
+# for your own theme (see docs/THEMES.md).
+name      = "plain"
+title     = "ttnr"
+uppercase = false
+
+# Colours: "default" (terminal colour), ANSI names (black, red, green,
+# yellow, blue, magenta, cyan, white, bright_black … bright_white),
+# "#rrggbb", or a 256-colour index (0–255). Downgraded automatically to
+# the terminal's depth; optional [palette_256] / [palette_16] override
+# single roles for those depths.
+[palette]
+fg     = "default"
+bg     = "default"
+accent = "cyan"
+dim    = "bright_black"
+warn   = "yellow"
+error  = "red"
+
+[glyphs]
+borders   = "box"      # "box", "ascii", "none", or a table of six glyphs
+ellipsis  = "…"
+dash      = " – "
+separator = " · "
+playing   = "▶"
+paused    = "‖"
+busy      = "…"
+stopped   = "■"
+error     = "✕"
+current   = "•"
+cursor    = "›"

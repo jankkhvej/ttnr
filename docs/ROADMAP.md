@@ -31,7 +31,7 @@ Work top to bottom. Tick `[x]` when a task meets its acceptance criteria and
 - [x] App state machine in core; ratatui UI on its own task; redraw only on change.
 - [x] Main view per SPEC F5.1; station list; open-URL prompt; help overlay; device picker.
 - [x] Keymap (SPEC F5.3), remappable in config.
-- [ ] Theme model + TOML loader + `plain` theme; colour-depth fallback.
+- [x] Theme model + TOML loader + `plain` theme; colour-depth fallback.
 - [ ] Snapshot tests for all views at 3 sizes.
 **Acceptance:** owner uses it for an hour with no glitches; resize is clean.
 
