@@ -294,7 +294,19 @@ async fn ui_loop(
                             let _ = msg_tx.send(Msg::Command(cmd));
                         }
                     }
-                    Some(Ok(Event::Resize(..))) => dirty = true,
+                    Some(Ok(Event::Resize(w, h))) => {
+                        // The terminal may have reflowed or scrolled the old
+                        // frame (iTerm2 rewraps lines on width changes), so
+                        // the diff renderer's idea of the screen is stale:
+                        // clear and repaint everything. (`resize` does not
+                        // query the cursor, unlike `clear`, which would race
+                        // with the input stream.)
+                        // Inside a synchronized update (closed by the next
+                        // draw) so the clear never shows on its own.
+                        crossterm::execute!(std::io::stdout(), BeginSynchronizedUpdate)?;
+                        terminal.resize(ratatui::layout::Rect::new(0, 0, w, h))?;
+                        dirty = true;
+                    }
                     Some(Ok(_)) => {}
                     Some(Err(e)) => return Err(anyhow::Error::from(e).context("terminal input")),
                     None => return Ok(()),

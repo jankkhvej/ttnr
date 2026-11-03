@@ -6,6 +6,7 @@ Newest entry on top. Each entry: date · milestone/task · what changed · how t
 - Owner: Terminal.app looks as intended; kitty colours off (secondary text brown); Terminal.app jumped a line on vertical resize; kitty slight flicker at resize start; everything else OK.
 - Fixed: `faint` colour value, `plain` dim = faint; synchronized output around every frame; cursor parked at (0,0) after each frame (ADR-027). Terminal.app resize verified by screen recording before/after (recordings deleted).
 - To check by the owner: kitty and iTerm2 resize/colours.
+- iTerm2 (owner's recording): reflowed garbage stayed after a width change → full repaint on every resize event (ADR-028); verified with an AppleScript-driven iTerm2 recording: clean as soon as the drag stops; during the drag iTerm2's own reflow remains (normal terminal behaviour).
 - Owner's kitty recording analysed frame by frame: the black rectangles are kitty's size overlay; the start-of-resize flicker is one fully blank frame drawn by kitty before ttnr is told about the resize (kitty `resize_debounce_time`), so not fixable in ttnr (RESEARCH.md).
 
 ## 2026-11-03 · M3 · Snapshot tests – **M3 complete, waiting for owner review**

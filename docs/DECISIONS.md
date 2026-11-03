@@ -166,3 +166,8 @@ Consequences: each M5 theme automatically gets 24 snapshots once its file is add
 Context: owner review of M3 – `plain` looked brown in kitty (ANSI 8 = `#5a3625` there); Terminal.app jumped one line during vertical resize; kitty flickered at the start of a resize.
 Decision: theme colour value `"faint"` = default foreground + SGR 2; `plain` uses it for `dim` (secondary text, borders, footer) instead of `bright_black`. Every frame is wrapped in synchronized output (DEC 2026) so ratatui's clear-on-resize never shows as a blank frame, and the hidden cursor is parked at (0,0) after each frame so terminals that scroll to keep the cursor visible on shrink (Terminal.app) do not shift the UI.
 Consequences: accents remain ANSI colours (they follow the user's scheme by design); custom themes can choose any style. Verified by recording in Terminal.app; kitty and iTerm2 rely on the same mechanisms (both document mode 2026 support – to be confirmed by eye).
+
+## ADR-028 · 2026-11-03 · Full repaint on every resize event
+Context: iTerm2 reflows the screen on width changes; the diff renderer then kept the garbled content until the next state change (owner's recording).
+Decision: on each `Event::Resize(w, h)` the UI opens a synchronized update and calls `Terminal::resize(Rect(0, 0, w, h))` (clears the screen and resets ratatui's buffers without querying the cursor – `clear()` would race with the input stream), so the next draw repaints everything; the draw closes the synchronized update.
+Consequences: a resize costs one full repaint (cheap, no visible flash). What terminals draw *during* a live drag (iTerm2 reflow, kitty blank frame) is outside the app's control.
