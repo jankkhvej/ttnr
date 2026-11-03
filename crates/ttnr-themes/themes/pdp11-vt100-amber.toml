@@ -62,4 +62,12 @@ ended        = "?TTNR-I-END OF STREAM"
 error        = "?TTNR-F-{message}"
 
 [effects]
-boot    = "vt100"
+boot      = "vt100"
+boot_text = [                   # RSX-11M V4.6 console boot (SIMH logs)
+  "RSX-11M V4.6 BL56   128.K MAPPED",
+  ">RED DU:=SY:",
+  ">RED DU:=LB:",
+  ">MOU DU:RSXM56",
+  ">@DU:[1,2]STARTUP",
+  ">",
+]

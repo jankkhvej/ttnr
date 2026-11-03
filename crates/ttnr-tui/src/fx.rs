@@ -52,17 +52,6 @@ mod zx {
     pub const ALL: [(u8, u8, u8); 8] = [BLACK, BLUE, RED, MAGENTA, GREEN, CYAN, YELLOW, WHITE];
 }
 
-/// RSX-11M console lines during boot (SIMH logs of RSX-11M V4.6 BL56,
-/// RESEARCH.md); the device name varies per system.
-const RSX_BOOT: &[&str] = &[
-    "RSX-11M V4.6 BL56   128.K MAPPED",
-    ">RED DU:=SY:",
-    ">RED DU:=LB:",
-    ">MOU DU:RSXM56",
-    ">@DU:[1,2]STARTUP",
-    ">",
-];
-
 #[derive(Debug, Clone, Copy)]
 struct Load {
     kind: LoadingEffect,
@@ -104,7 +93,8 @@ pub struct Fx {
     enabled: bool,
     depth: ColorDepth,
     theme: Option<String>,
-    boot: Option<(BootEffect, Instant)>,
+    /// Running boot sequence: effect, start, length.
+    boot: Option<(BootEffect, Instant, Duration)>,
     load: Option<Load>,
 }
 
@@ -125,8 +115,14 @@ impl Fx {
         if self.theme.as_deref() != Some(theme.name.as_str()) {
             self.theme = Some(theme.name.clone());
             self.load = None;
-            self.boot = (self.enabled && theme.effects.boot != BootEffect::None)
-                .then_some((theme.effects.boot, now));
+            let effect = theme.effects.boot;
+            self.boot = (self.enabled && effect != BootEffect::None).then(|| {
+                (
+                    effect,
+                    now,
+                    boot_length(effect, theme.effects.boot_text.len()),
+                )
+            });
         }
         let kind = theme.effects.loading;
         if !self.enabled || kind == LoadingEffect::None {
@@ -165,9 +161,8 @@ impl Fx {
 
     /// Whether a boot sequence is showing.
     pub fn booting(&self, now: Instant) -> bool {
-        self.boot.is_some_and(|(effect, start)| {
-            now.saturating_duration_since(start) < boot_length(effect)
-        })
+        self.boot
+            .is_some_and(|(_, start, length)| now.saturating_duration_since(start) < length)
     }
 
     /// When to draw the next frame; `None` when nothing animates.
@@ -180,7 +175,7 @@ impl Fx {
     pub fn frame(&mut self, now: Instant) -> Option<FxFrame> {
         self.expire(now);
         let seed = frame_seed(now, self.boot.map(|b| b.1).or(self.load.map(|l| l.start)));
-        if let Some((effect, start)) = self.boot {
+        if let Some((effect, start, _)) = self.boot {
             return Some(FxFrame::Boot {
                 effect,
                 t: now.saturating_duration_since(start),
@@ -384,14 +379,25 @@ impl Fx {
                         base.add_modifier(Modifier::REVERSED),
                     );
                 } else {
-                    let shown = usize::try_from((ms - 800) / 350 + 1).unwrap_or(usize::MAX);
+                    let lines = &theme.effects.boot_text;
+                    let per_line = u128::from(line_delay(lines.len()));
+                    let shown = usize::try_from((ms - 800) / per_line + 1)
+                        .unwrap_or(usize::MAX)
+                        .min(lines.len());
+                    // The console scrolls when the lines exceed the screen.
+                    let rows = usize::from(screen.height);
+                    let first = shown.saturating_sub(rows);
                     let mut y = screen.top();
-                    for line in RSX_BOOT.iter().take(shown) {
+                    for line in &lines[first..shown] {
                         text(buf, screen.left(), y, screen.width, line, base);
                         y += 1;
                     }
-                    if shown >= RSX_BOOT.len() {
-                        let x = screen.left() + 1;
+                    if let Some(last) = lines[first..shown].last()
+                        && shown == lines.len()
+                    {
+                        // Cursor after the final prompt.
+                        let len = u16::try_from(last.chars().count()).unwrap_or(0);
+                        let x = (screen.left() + len).min(screen.right().saturating_sub(1));
                         put(buf, x, y - 1, " ", base.add_modifier(Modifier::REVERSED));
                     }
                 }
@@ -400,14 +406,25 @@ impl Fx {
     }
 }
 
+/// Time between console lines of a `vt100` boot: 350 ms, faster for long
+/// transcripts so the whole boot stays under ~3 s of text.
+fn line_delay(lines: usize) -> u64 {
+    let n = u64::try_from(lines.max(1)).unwrap_or(1);
+    (2400 / n).clamp(80, 350)
+}
+
 /// How long each boot sequence lasts.
-pub fn boot_length(effect: BootEffect) -> Duration {
+/// `boot_lines` = number of `boot_text` lines (for the `vt100` boot).
+pub fn boot_length(effect: BootEffect, boot_lines: usize) -> Duration {
     Duration::from_millis(match effect {
         BootEffect::None => 0,
         BootEffect::ZxSpectrum => 1400,
         BootEffect::Zx80 => 1200,
         BootEffect::BbcMicro => 1900,
-        BootEffect::Vt100 => 800 + 350 * RSX_BOOT.len() as u64 + 600,
+        BootEffect::Vt100 => {
+            let n = u64::try_from(boot_lines).unwrap_or(0);
+            800 + line_delay(boot_lines) * n + 600
+        }
     })
 }
 
@@ -540,7 +557,7 @@ mod tests {
             })
         ));
         assert_eq!(fx.tick(t0), Some(FRAME));
-        let after = t0 + boot_length(BootEffect::ZxSpectrum);
+        let after = t0 + boot_length(BootEffect::ZxSpectrum, 0);
         fx.observe(&state(Status::Idle), &zx, after);
         assert_eq!(fx.frame(after), None, "same theme: no new boot");
         assert_eq!(fx.tick(after), None, "idle: no ticks");

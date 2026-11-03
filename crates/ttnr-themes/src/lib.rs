@@ -262,18 +262,21 @@ pub enum BootEffect {
     Zx80,
     /// "BBC Computer 32K", "BASIC", ">".
     BbcMicro,
-    /// VT100 self-test, then RSX-11M boot lines.
+    /// VT100 self-test, then the theme's `boot_text` lines.
     Vt100,
 }
 
 /// Theme animations (off globally with config `effects = false`).
-#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Deserialize)]
+#[derive(Debug, Clone, Default, PartialEq, Eq, Deserialize)]
 #[serde(default, deny_unknown_fields)]
 pub struct Effects {
     /// While loading a station.
     pub loading: LoadingEffect,
     /// When the theme is switched to (and at start).
     pub boot: BootEffect,
+    /// Console lines of the operating system's boot (`vt100` boot: shown
+    /// after the terminal's self-test, one by one).
+    pub boot_text: Vec<String>,
 }
 
 /// Machine "chrome": banner, prompt, cursor, title style, decoration,
