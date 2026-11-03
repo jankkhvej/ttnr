@@ -2,6 +2,9 @@
 
 Newest entry on top. Each entry: date · milestone/task · what changed · how to try it · next step · open questions for the owner.
 
+## 2026-11-03 · M6 · Task 2 done – owner confirmed
+- Default-device following, pinned fallback/return and the device label work (owner: "everything is nice"). Next: M6 task 3 – sleep/wake and network changes: reconnect with backoff.
+
 ## 2026-11-03 · M6 · Output devices
 - mpv already follows the system default (verified in its CoreAudio source). Added: pinned device as a preference (plays while present, falls back to the default, returns when replugged), config `output_device`, default device name in the view (`system default (MAJOR IV)`) from CoreAudio with a change listener (ADR-037).
 - Tests: core fallback/return/no-op, picker; platform query + listener (ignored test needs a device); pty: label shown, quit 0.1 s. Waiting for the owner's AirPods test.
