@@ -1,0 +1,19 @@
+---
+source: crates/ttnr-tui/tests/snapshots.rs
+---
+"┌ ttnr ────────────────────────┐"
+"│FIP (Radio France)            │"
+"│                              │"
+"│✕ error: server unreachable (…│"
+"│vol 100% · system default     │"
+"│                              │"
+"│                              │"
+"│                              │"
+"│                              │"
+"│                              │"
+"│                              │"
+"│                              │"
+"│                              │"
+"│                              │"
+"│spc play · ? help · q quit    │"
+"└──────────────────────────────┘"

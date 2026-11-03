@@ -4,3 +4,4 @@
 /tests/fixtures/generated/
 .claude/settings.local.json
 /third_party/mpv/
+*.snap.new

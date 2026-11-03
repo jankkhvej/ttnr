@@ -1,0 +1,19 @@
+---
+source: crates/ttnr-tui/tests/snapshots.rs
+---
+"┌ ttnr ────────────────────────┐"
+"│┌ keys ──────────────────────┐│"
+"││spc  play / pause           ││"
+"││+ =  volume up              ││"
+"││-    volume down            ││"
+"││m    mute                   ││"
+"││n    next station           ││"
+"││p    previous station       ││"
+"││s    station list           ││"
+"││o    open URL               ││"
+"││d    output device          ││"
+"││t    next theme             ││"
+"││?    help                   ││"
+"││q    quit                   ││"
+"│└────────────────────────────┘│"
+"└──────────────────────────────┘"

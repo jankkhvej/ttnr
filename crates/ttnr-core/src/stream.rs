@@ -128,11 +128,13 @@ impl StreamInfo {
     pub fn summary(&self) -> String {
         let mut parts = Vec::new();
         if let Some(codec) = &self.codec {
-            let mut c = codec.to_uppercase();
-            if let Some(profile) = &self.codec_profile {
-                c.push(' ');
-                c.push_str(profile);
-            }
+            let codec = codec.to_uppercase();
+            // "HE-AAC" already says AAC; "LC" does not.
+            let c = match &self.codec_profile {
+                Some(p) if p.to_uppercase().contains(&codec) => p.clone(),
+                Some(p) => format!("{codec} {p}"),
+                None => codec,
+            };
             parts.push(c);
         }
         if let Some(rate) = self.sample_rate {
@@ -204,7 +206,13 @@ mod tests {
             output_channels: Some("stereo".into()),
             ..StreamInfo::default()
         };
-        assert_eq!(info.summary(), "AAC HE-AACv2 · 44.1 kHz · stereo · 96 kbps");
+        assert_eq!(info.summary(), "HE-AACv2 · 44.1 kHz · stereo · 96 kbps");
+        let lc = StreamInfo {
+            codec: Some("aac".into()),
+            codec_profile: Some("LC".into()),
+            ..StreamInfo::default()
+        };
+        assert_eq!(lc.summary(), "AAC LC");
     }
 
     #[test]

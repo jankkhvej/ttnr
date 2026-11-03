@@ -2,6 +2,12 @@
 
 Newest entry on top. Each entry: date · milestone/task · what changed · how to try it · next step · open questions for the owner.
 
+## 2026-11-03 · M3 · Snapshot tests – **M3 complete, waiting for owner review**
+- 24 insta snapshots (8 view states × 3 sizes, theme `plain`) reviewed by hand; review fixed blank-line collapsing, `HE-AAC` label, URL prompt ellipsis (ADR-026).
+- M3 summary: Elm-style app state machine in core; TUI runtime (UI task, redraw on change/resize, terminal restored on every exit); main view per SPEC F5.1 + stations / open URL / help / device picker; remappable keymap in `config.toml`; TOML theme engine with colour-depth fallback and user themes; snapshot + style tests.
+- Open follow-up: `ttnr play` still has its own loop (ADR-022).
+- Next after review: M4 – BBC source.
+
 ## 2026-11-03 · M3 · Theme engine
 - `ttnr-themes`: TOML theme files (`themes/plain.toml` embedded), `ThemeSet` (built-ins + `~/.config/ttnr/themes/`), `ColorDepth` detection, downgrading with per-depth overrides; config `theme` and `color`; `t` cycles themes (ADR-025, THEMES.md "Theme files").
 - Tests: colour parsing/downgrade/detection, theme parsing errors, set loading/overrides, view styles per depth, CLI unknown theme; pty: user theme with ASCII borders cycled in, `#ffb000` → 256-colour 214.

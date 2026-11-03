@@ -32,7 +32,7 @@ Work top to bottom. Tick `[x]` when a task meets its acceptance criteria and
 - [x] Main view per SPEC F5.1; station list; open-URL prompt; help overlay; device picker.
 - [x] Keymap (SPEC F5.3), remappable in config.
 - [x] Theme model + TOML loader + `plain` theme; colour-depth fallback.
-- [ ] Snapshot tests for all views at 3 sizes.
+- [x] Snapshot tests for all views at 3 sizes.
 **Acceptance:** owner uses it for an hour with no glitches; resize is clean.
 
 ## M4 — BBC source

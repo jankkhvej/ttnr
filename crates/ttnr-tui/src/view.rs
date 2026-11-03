@@ -248,7 +248,18 @@ fn main_view(frame: &mut Frame, area: Rect, state: &AppState, theme: &Theme) {
         };
         lines.remove(idx);
     }
-    let text: Vec<Line> = lines.into_iter().map(|(_, l)| l).collect();
+    // No blank line twice in a row, none at the start or end.
+    let mut text: Vec<Line> = Vec::new();
+    for (_, line) in lines {
+        let blank = line.width() == 0;
+        if blank && text.last().is_none_or(|l: &Line| l.width() == 0) {
+            continue;
+        }
+        text.push(line);
+    }
+    while text.last().is_some_and(|l| l.width() == 0) {
+        text.pop();
+    }
     frame.render_widget(Paragraph::new(text), area);
 }
 
@@ -344,8 +355,15 @@ fn open_url(frame: &mut Frame, area: Rect, input: &str, theme: &Theme) {
     let room = w.saturating_sub(prompt.len() + 1);
     let shown: String = {
         let chars: Vec<char> = input.chars().collect();
-        let start = chars.len().saturating_sub(room);
-        chars[start..].iter().collect()
+        if chars.len() <= room {
+            input.to_owned()
+        } else {
+            // Mark the cut-off start with the theme's ellipsis.
+            let mark = &theme.glyphs.ellipsis;
+            let keep = room.saturating_sub(mark.chars().count());
+            let tail: String = chars[chars.len() - keep..].iter().collect();
+            format!("{mark}{tail}")
+        }
     };
     let line = Line::from(vec![
         Span::styled(prompt, accent(theme)),
