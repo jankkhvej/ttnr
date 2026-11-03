@@ -87,7 +87,7 @@ impl Printout {
             self.print(if muted {
                 "muted".to_owned()
             } else {
-                format!("vol {}%", theme.number(u64::from(v)))
+                format!("vol {}", theme.percent(u64::from(v)))
             });
         }
         self.seen = Some(next);

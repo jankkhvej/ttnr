@@ -437,6 +437,11 @@ impl Theme {
         self.text_rules.number(n)
     }
 
+    /// A percentage per the theme's rules (`80%`, octal `120`).
+    pub fn percent(&self, n: u64) -> String {
+        self.text_rules.percent(n)
+    }
+
     /// The status line for `kind`, from the theme's template.
     pub fn status_line(
         &self,
@@ -458,7 +463,7 @@ impl Theme {
             StatusKind::Error => &s.error,
         };
         let percent = percent
-            .map(|p| format!(" {}%", self.number(u64::from(p))))
+            .map(|p| format!(" {}", self.text_rules.percent(u64::from(p))))
             .unwrap_or_default();
         template
             .replace("{glyph}", glyph)
@@ -658,6 +663,7 @@ mod tests {
         let get = |n: &str| set.get(set.position(n).unwrap());
         let vt = get("pdp11-vt100");
         assert_eq!(vt.number(80), "120");
+        assert_eq!(vt.percent(100), "144");
         assert_eq!(vt.text("Lauren Laverne"), "LAUREN LAVERNE");
         assert_eq!(
             vt.status_line(StatusKind::Error, "?", "HTTP 404", None),
@@ -665,7 +671,7 @@ mod tests {
         );
         assert_eq!(
             vt.status_line(StatusKind::Buffering, "▒", "", Some(64)),
-            "▒ BUFFERING 100%",
+            "▒ BUFFERING 100",
             "percent in octal"
         );
         let zx = get("zx80");

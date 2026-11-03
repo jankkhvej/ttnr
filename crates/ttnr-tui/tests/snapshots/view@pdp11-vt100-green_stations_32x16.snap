@@ -12,7 +12,7 @@ source: crates/ttnr-tui/tests/snapshots.rs
 "││ ◆ BBC RADIO 6 MUSIC        ││"
 "││   BBC RADIO 3              ││"
 "│└────────────────────────────┘│"
-"│VOL 120%  MAJOR IV            │"
+"│VOL 120  MAJOR IV             │"
 "│RECENT                        │"
 "│  WET LEG - CHAISE LONGUE     │"
 "│SPC PLAY  ? HELP  Q QUIT      │"

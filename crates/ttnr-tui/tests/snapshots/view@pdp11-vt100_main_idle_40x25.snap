@@ -7,7 +7,7 @@ source: crates/ttnr-tui/tests/snapshots.rs
 "│NO STATION – PRESS S OR O             │"
 "│                                      │"
 "│>                                     │"
-"│VOL 144%  SYSTEM DEFAULT              │"
+"│VOL 144  SYSTEM DEFAULT               │"
 "│                                      │"
 "│                                      │"
 "│                                      │"

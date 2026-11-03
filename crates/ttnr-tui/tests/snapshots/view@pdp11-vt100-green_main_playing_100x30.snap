@@ -15,7 +15,7 @@ source: crates/ttnr-tui/tests/snapshots.rs
 "          │                                                                              │          "
 "          │ HE-AAC  48 KHZ  STEREO  96 KBPS                                              │          "
 "          │ ◆ PLAYING                                                                    │          "
-"          │ VOL 120%  MAJOR IV                                                           │          "
+"          │ VOL 120  MAJOR IV                                                            │          "
 "          │                                                                              │          "
 "          │ RECENT                                                                       │          "
 "          │   WET LEG - CHAISE LONGUE                                                    │          "

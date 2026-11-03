@@ -44,6 +44,7 @@ cursor    = "›"
 # ascii_only = false       # transliterate (Ż → Z), else "?"
 # map        = {}          # per-character substitutions, e.g. { "#" = "£" }
 # numbers    = "decimal"   # or "octal" (volume, sync offset, percentages)
+# percent_sign = true      # append "%" to percentages
 #
 # [chrome]
 # banner        = []       # lines shown at the top (and as printout start)

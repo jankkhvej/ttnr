@@ -7,7 +7,7 @@ source: crates/ttnr-tui/tests/snapshots.rs
 "│BBC RADIO 6 MUSIC             │"
 "│                              │"
 "│?TTNR-W-HTTP 404 NOT FOUND;...│"
-"│VOL 120% MUTED  MAJOR IV      │"
+"│VOL 120 MUTED  MAJOR IV       │"
 "│                              │"
 "│                              │"
 "│                              │"

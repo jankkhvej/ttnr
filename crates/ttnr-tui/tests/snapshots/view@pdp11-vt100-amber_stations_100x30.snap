@@ -15,7 +15,7 @@ source: crates/ttnr-tui/tests/snapshots.rs
 "          │                                                                              │          "
 "          │ HE-AAC  48 KHZ┌ STATIONS ────────────────────────────────────┐               │          "
 "          │ ◆ PLAYING     │   SOMAFM GROOVE SALAD                        │               │          "
-"          │ VOL 120%  MAJO│>  FIP (RADIO FRANCE)                         │               │          "
+"          │ VOL 120  MAJOR│>  FIP (RADIO FRANCE)                         │               │          "
 "          │               │ ◆ BBC RADIO 6 MUSIC                          │               │          "
 "          │ RECENT        │   BBC RADIO 3                                │               │          "
 "          │   WET LEG - CH└──────────────────────────────────────────────┘               │          "

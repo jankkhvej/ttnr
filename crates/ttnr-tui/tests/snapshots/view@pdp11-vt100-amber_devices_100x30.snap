@@ -15,7 +15,7 @@ source: crates/ttnr-tui/tests/snapshots.rs
 "          │                                                                              │          "
 "          │ HE-AAC  48 KHZ┌ OUTPUT DEVICE ───────────────────────────────┐               │          "
 "          │ ◆ PLAYING     │>  SYSTEM DEFAULT                             │               │          "
-"          │ VOL 120%  MAJO│   MACBOOK AIR SPEAKERS                       │               │          "
+"          │ VOL 120  MAJOR│   MACBOOK AIR SPEAKERS                       │               │          "
 "          │               │ ◆ MAJOR IV                                   │               │          "
 "          │ RECENT        └──────────────────────────────────────────────┘               │          "
 "          │   WET LEG - CHAISE LONGUE                                                    │          "

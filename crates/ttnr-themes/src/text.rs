@@ -17,7 +17,7 @@ pub enum Numbers {
 }
 
 /// How a theme transforms every piece of content text.
-#[derive(Debug, Clone, Default, PartialEq, Eq, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
 #[serde(default, deny_unknown_fields)]
 pub struct TextRules {
     /// Map all text to upper case (ZX80, Teletype).
@@ -29,6 +29,20 @@ pub struct TextRules {
     pub map: BTreeMap<char, String>,
     /// Number base.
     pub numbers: Numbers,
+    /// Append `%` to percentages (off for octal themes: `VOL 144`).
+    pub percent_sign: bool,
+}
+
+impl Default for TextRules {
+    fn default() -> Self {
+        Self {
+            uppercase: false,
+            ascii_only: false,
+            map: BTreeMap::new(),
+            numbers: Numbers::Decimal,
+            percent_sign: true,
+        }
+    }
 }
 
 impl TextRules {
@@ -65,6 +79,12 @@ impl TextRules {
             Numbers::Decimal => n.to_string(),
             Numbers::Octal => format!("{n:o}"),
         }
+    }
+
+    /// A percentage in the theme's number base, with `%` if wanted.
+    pub fn percent(&self, n: u64) -> String {
+        let sign = if self.percent_sign { "%" } else { "" };
+        format!("{}{sign}", self.number(n))
     }
 }
 
@@ -146,10 +166,13 @@ mod tests {
             ascii_only: true,
             map: BTreeMap::from([('^', "↑".to_owned()), ('_', "←".to_owned())]),
             numbers: Numbers::Octal,
+            percent_sign: false,
         };
         assert_eq!(rules.apply("Żółw – piosenka_1^"), "ZOLW - PIOSENKA←1↑");
         assert_eq!(rules.apply("Björk… 华"), "BJORK... ?");
         assert_eq!(rules.number(100), "144");
+        assert_eq!(rules.percent(100), "144");
+        assert_eq!(TextRules::default().percent(100), "100%");
     }
 
     #[test]

@@ -15,7 +15,7 @@ source: crates/ttnr-tui/tests/snapshots.rs
 "          │                   │m    MUTE                             │                   │          "
 "          │ HE-AAC  48 KHZ  ST│n    NEXT STATION                     │                   │          "
 "          │ ◆ PLAYING         │p    PREVIOUS STATION                 │                   │          "
-"          │ VOL 120%  MAJOR IV│s    STATION LIST                     │                   │          "
+"          │ VOL 120  MAJOR IV │s    STATION LIST                     │                   │          "
 "          │                   │o    OPEN URL                         │                   │          "
 "          │ RECENT            │d    OUTPUT DEVICE                    │                   │          "
 "          │   WET LEG - CHAISE│t    NEXT THEME                       │                   │          "

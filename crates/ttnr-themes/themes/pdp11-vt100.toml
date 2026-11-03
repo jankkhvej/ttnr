@@ -41,6 +41,7 @@ border = "#000000"
 [text]
 uppercase = true                # RSX-11M output style
 numbers   = "octal"             # DEC convention
+percent_sign = false            # "VOL 144", not "VOL 144%"
 
 [chrome]
 banner       = ["RSX-11M V4.6 BL56   TTNR V0.1", ""]

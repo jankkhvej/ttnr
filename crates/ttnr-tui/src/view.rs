@@ -326,8 +326,8 @@ fn main_view(frame: &mut Frame, area: Rect, state: &AppState, theme: &Theme) {
         )
     };
     let vol = format!(
-        "vol {}%{}{}{}{sync}",
-        theme.number(u64::from(state.volume)),
+        "vol {}{}{}{}{sync}",
+        theme.percent(u64::from(state.volume)),
         if state.muted { " muted" } else { "" },
         theme.glyphs.separator,
         device_label(state)
