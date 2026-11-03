@@ -153,7 +153,8 @@ fn all_views_all_sizes() {
         for (name, state) in cases() {
             for (w, h) in SIZES {
                 let mut t = Terminal::new(TestBackend::new(w, h)).unwrap();
-                t.draw(|f| ttnr_tui::draw(f, &state, &theme, &keymap)).unwrap();
+                t.draw(|f| ttnr_tui::draw(f, &state, &theme, &keymap))
+                    .unwrap();
                 insta::with_settings!({
                     snapshot_suffix => format!("{}_{name}_{w}x{h}", theme.name),
                     omit_expression => true,
