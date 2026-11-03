@@ -2,6 +2,7 @@
 
 mod config;
 mod logging;
+mod media;
 mod paths;
 mod play;
 mod stations;
@@ -85,11 +86,31 @@ fn main() -> ExitCode {
 }
 
 fn run(cli: Cli) -> Result<()> {
+    // Playing commands integrate with Now Playing / media keys; on macOS the
+    // app then runs on a worker thread while the main thread hosts AppKit.
+    // `--audio-output null` (tests) plays nothing audible: no integration.
+    let plays = match &cli.command {
+        None => true,
+        Some(Command::Play(args)) => !matches!(args.audio_output, Output::Null),
+        Some(_) => false,
+    };
+    let media = plays
+        && config::load()
+            .map(|c| c.media_controls_enabled())
+            .unwrap_or(true);
+    ttnr_platform::run_app(media, move |link| run_app(cli, link))
+}
+
+fn run_app(cli: Cli, media: Option<ttnr_platform::MediaLink>) -> Result<()> {
     let runtime = tokio::runtime::Builder::new_current_thread()
         .enable_all()
         .build()?;
     match cli.command {
-        None => runtime.block_on(tui::run(&EngineConfig::default(), cli.theme.as_deref())),
+        None => runtime.block_on(tui::run(
+            &EngineConfig::default(),
+            cli.theme.as_deref(),
+            media,
+        )),
         Some(Command::Play(args)) => {
             let cfg = EngineConfig {
                 audio_output: match args.audio_output {
@@ -99,7 +120,7 @@ fn run(cli: Cli) -> Result<()> {
                 volume: args.volume,
                 ..EngineConfig::default()
             };
-            runtime.block_on(play::run(&args.target, &cfg))
+            runtime.block_on(play::run(&args.target, &cfg, media))
         }
         Some(Command::Refresh { target }) => runtime.block_on(play::refresh(target.as_deref())),
         Some(Command::Stations { search }) => stations::print(search),

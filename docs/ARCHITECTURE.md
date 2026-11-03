@@ -21,7 +21,9 @@ flowchart LR
 ```
 
 One async runtime (tokio). Components talk through typed channels; the UI
-never blocks on network or audio.
+never blocks on network or audio. On macOS the main thread hosts AppKit for
+Now Playing / media keys and the tokio app runs on a worker thread
+(`ttnr_platform::run_app`, ADR-036).
 
 ## Cargo workspace
 

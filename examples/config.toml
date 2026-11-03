@@ -31,6 +31,10 @@
 # (10 chars/s), 300, 1200, 9600; 0 = instant. The `b` key cycles it live.
 # baud = 0
 
+# macOS: show the station and track in Control Center / Now Playing and
+# react to media keys (play/pause, next/previous station).
+# media_controls = true
+
 # Key bindings (SPEC F5.3 defaults shown). Giving an action replaces its
 # default keys; use a string or a list. Key names: a single character,
 # space, enter, tab, backspace, esc, up, down, left, right, home, end,

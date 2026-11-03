@@ -91,6 +91,8 @@ pub struct Config {
     /// Simulated line speed for printout themes (bits/s, e.g. 110, 300,
     /// 9600); 0 or unset = print instantly.
     pub baud: Option<u32>,
+    /// macOS Now Playing / Control Center and media keys; default on.
+    pub media_controls: Option<bool>,
     /// Key bindings: action → key(s); replaces that action's defaults.
     pub keys: BTreeMap<String, Keys>,
     /// Delay (seconds) for external now-playing per source, e.g. `bbc = 25`.
@@ -103,6 +105,11 @@ pub struct Config {
 pub const DEFAULT_SYNC_OFFSETS: &[(&str, u32)] = &[];
 
 impl Config {
+    /// Whether to integrate with Now Playing and media keys (default true).
+    pub fn media_controls_enabled(&self) -> bool {
+        self.media_controls.unwrap_or(true)
+    }
+
     /// Whether theme animations run (`effects`, default true).
     pub fn effects_enabled(&self) -> bool {
         self.effects.unwrap_or(true)

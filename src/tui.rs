@@ -20,7 +20,12 @@ use crate::{config, paths, play, stations};
 
 /// Run the TUI until the user quits.
 /// `theme` (from `--theme`) overrides `theme` in config.toml.
-pub async fn run(cfg: &EngineConfig, theme: Option<&str>) -> Result<()> {
+/// `media` connects to the system's Now Playing / media keys (macOS).
+pub async fn run(
+    cfg: &EngineConfig,
+    theme: Option<&str>,
+    media: Option<ttnr_platform::MediaLink>,
+) -> Result<()> {
     // Config problems are reported before the terminal is taken over.
     let config = config::load()?;
     let keymap = ttnr_tui::Keymap::with_overrides(&config.key_overrides())
@@ -106,6 +111,20 @@ pub async fn run(cfg: &EngineConfig, theme: Option<&str>) -> Result<()> {
     };
     let mut sigterm = tokio::signal::unix::signal(tokio::signal::unix::SignalKind::terminate())
         .context("cannot listen for SIGTERM")?;
+    // Media keys arrive on a blocking channel; forward them into the loop.
+    let (remote_tx, mut remote_rx) = mpsc::unbounded_channel::<ttnr_platform::RemoteCommand>();
+    let updater = media.map(|link| {
+        let updater = link.updater();
+        std::thread::spawn(move || {
+            while let Ok(cmd) = link.commands.recv() {
+                if remote_tx.send(cmd).is_err() {
+                    break;
+                }
+            }
+        });
+        updater
+    });
+    let mut shown_media = None;
 
     while !app.state.quit {
         let msg = tokio::select! {
@@ -114,6 +133,13 @@ pub async fn run(cfg: &EngineConfig, theme: Option<&str>) -> Result<()> {
                 None => continue,
             },
             Some(msg) = msg_rx.recv() => msg,
+            Some(remote) = remote_rx.recv() => {
+                tracing::info!(?remote, "media key");
+                match crate::media::command_for(remote, &app.state) {
+                    Some(cmd) => Msg::Command(cmd),
+                    None => continue,
+                }
+            }
             _ = sigterm.recv() => Msg::Command(Command::Quit),
             else => break,
         };
@@ -128,6 +154,13 @@ pub async fn run(cfg: &EngineConfig, theme: Option<&str>) -> Result<()> {
             }
             changed
         });
+        if let Some(updater) = &updater {
+            let info = crate::media::from_state(&app.state);
+            if info != shown_media {
+                updater.update(info.clone());
+                shown_media = info;
+            }
+        }
         if ui.is_finished() {
             break;
         }

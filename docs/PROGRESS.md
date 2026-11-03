@@ -2,6 +2,11 @@
 
 Newest entry on top. Each entry: date · milestone/task · what changed · how to try it · next step · open questions for the owner.
 
+## 2026-11-03 · M6 · Now Playing + media keys in the app
+- Owner's spike test: all four checks passed (Control Center entry, F8, F7/F9, Control Center buttons) with `.accessory` + embedded Info.plist. Owner approved the design (ADR-036).
+- `ttnr-platform`: `run_app`, `MediaLink`, `NowPlayingInfo`, `RemoteCommand`; macOS host (NSApplication accessory, remote command targets, Now Playing with heartbeat). Binary: `src/media.rs` mapping, TUI and `ttnr play` integration, config `media_controls`, Info.plist in `ttnr`.
+- Tests: platform link/no-host, media mapping (track/programme/station lines, states, keys); pty: TUI under the host draws and quits in 80 ms. Waiting for the owner's check in the real app.
+
 ## 2026-11-03 · M6 · Now Playing spike
 - Research (RESEARCH.md): libmpv's own Now Playing is unusable for us; plan = own module in `ttnr-platform` on objc2 + objc2-media-player, AppKit host on the main thread, app on a worker thread (needs owner OK – large structural change), 1 s heartbeat.
 - Spike `crates/ttnr-platform/examples/nowplaying_spike.rs` (+ embedded Info.plist `org.hcc07.ttnr`, opt-out `TTNR_NO_PLIST=1`): plays a stream, publishes Now Playing as a live stream, prints received remote commands. Waiting for the owner's test (Control Center + media keys, kitty and Terminal.app).

@@ -2572,6 +2572,7 @@ dependencies = [
  "tracing-subscriber",
  "ttnr-core",
  "ttnr-engine",
+ "ttnr-platform",
  "ttnr-sources",
  "ttnr-themes",
  "ttnr-tui",
@@ -2615,6 +2616,7 @@ dependencies = [
  "objc2-app-kit",
  "objc2-foundation",
  "objc2-media-player",
+ "tracing",
  "ttnr-core",
  "ttnr-engine",
 ]

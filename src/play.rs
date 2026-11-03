@@ -19,7 +19,13 @@ use crate::{config, paths, stations};
 /// are expanded; if one of several streams fails, the next is tried.
 /// Now-playing info from the stream (ICY, tags) and from the station's
 /// metadata provider is merged by priority.
-pub async fn run(target: &str, cfg: &EngineConfig) -> Result<()> {
+/// `media` connects to the system's Now Playing / media keys (macOS):
+/// play/pause work, next/previous are ignored (one target).
+pub async fn run(
+    target: &str,
+    cfg: &EngineConfig,
+    media: Option<ttnr_platform::MediaLink>,
+) -> Result<()> {
     let station = station_for(target)?;
     let mut player = MpvPlayer::new(cfg).context("cannot start the audio engine")?;
     let mut events = player
@@ -86,10 +92,11 @@ pub async fn run(target: &str, cfg: &EngineConfig) -> Result<()> {
     }
     let mut merger = Merger::default();
     let mut programme: Option<String> = None;
-    let mut show = |np: NowPlaying, merger: &mut Merger| {
+    let mut show = |np: NowPlaying, merger: &mut Merger, latest: &mut Option<NowPlaying>| {
         let Some(best) = merger.update(np) else {
             return;
         };
+        *latest = Some(best.clone());
         if best.programme.is_some() && best.programme != programme {
             programme.clone_from(&best.programme);
             println!("on air: {}", programme.as_deref().unwrap_or_default());
@@ -99,8 +106,43 @@ pub async fn run(target: &str, cfg: &EngineConfig) -> Result<()> {
         }
     };
 
+    let mut latest: Option<NowPlaying> = None;
+    let mut paused = false;
+    let (remote_tx, mut remote_rx) = mpsc::unbounded_channel::<ttnr_platform::RemoteCommand>();
+    let updater = media.map(|link| {
+        let updater = link.updater();
+        std::thread::spawn(move || {
+            while let Ok(cmd) = link.commands.recv() {
+                if remote_tx.send(cmd).is_err() {
+                    break;
+                }
+            }
+        });
+        updater
+    });
+    let mut published = None;
     loop {
+        if let Some(updater) = &updater {
+            let info = Some(crate::media::info(&station.name, latest.as_ref(), !paused));
+            if info != published {
+                updater.update(info.clone());
+                published = info;
+            }
+        }
         tokio::select! {
+            Some(remote) = remote_rx.recv() => {
+                tracing::info!(?remote, "media key");
+                use ttnr_platform::RemoteCommand::{Pause, Play, TogglePause};
+                let want = match remote {
+                    TogglePause => !paused,
+                    Play => false,
+                    Pause => true,
+                    _ => continue,
+                };
+                if want != paused {
+                    player.pause(want)?;
+                }
+            }
             event = events.recv() => {
                 let Some(event) = event else {
                     bail!("audio engine stopped unexpectedly");
@@ -116,9 +158,10 @@ pub async fn run(target: &str, cfg: &EngineConfig) -> Result<()> {
                     ),
                     EngineEvent::Tags(tags) => {
                         if let Some(np) = NowPlaying::from_tags(&tags, SystemTime::now()) {
-                            show(np, &mut merger);
+                            show(np, &mut merger, &mut latest);
                         }
                     }
+                    EngineEvent::Paused(on) => paused = on,
                     EngineEvent::Eof => return Ok(()),
                     EngineEvent::Error { kind, detail } => {
                         let action = if kind.is_retryable() {
@@ -147,6 +190,7 @@ pub async fn run(target: &str, cfg: &EngineConfig) -> Result<()> {
                             },
                         };
                         merger.clear();
+                        latest = None;
                         start(&mut player, &failover, url)?;
                     }
                     EngineEvent::Shutdown => bail!("audio engine shut down"),
@@ -155,7 +199,7 @@ pub async fn run(target: &str, cfg: &EngineConfig) -> Result<()> {
             }
             Some(np) = np_rx.recv() => {
                 tracing::info!(?np, "provider");
-                show(np, &mut merger);
+                show(np, &mut merger, &mut latest);
             }
             _ = tokio::signal::ctrl_c() => {
                 println!("[stopped]");

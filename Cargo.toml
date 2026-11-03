@@ -25,6 +25,7 @@ tracing-appender.workspace = true
 tracing-subscriber.workspace = true
 ttnr-core.workspace = true
 ttnr-engine.workspace = true
+ttnr-platform.workspace = true
 ttnr-sources.workspace = true
 ttnr-themes.workspace = true
 ttnr-tui.workspace = true
