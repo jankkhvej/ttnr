@@ -2,6 +2,11 @@
 
 Newest entry on top. Each entry: date · milestone/task · what changed · how to try it · next step · open questions for the owner.
 
+## 2026-11-03 · M3 review follow-up
+- Owner: Terminal.app looks as intended; kitty colours off (secondary text brown); Terminal.app jumped a line on vertical resize; kitty slight flicker at resize start; everything else OK.
+- Fixed: `faint` colour value, `plain` dim = faint; synchronized output around every frame; cursor parked at (0,0) after each frame (ADR-027). Terminal.app resize verified by screen recording before/after (recordings deleted).
+- To check by the owner: kitty and iTerm2 resize/colours.
+
 ## 2026-11-03 · M3 · Snapshot tests – **M3 complete, waiting for owner review**
 - 24 insta snapshots (8 view states × 3 sizes, theme `plain`) reviewed by hand; review fixed blank-line collapsing, `HE-AAC` label, URL prompt ellipsis (ADR-026).
 - M3 summary: Elm-style app state machine in core; TUI runtime (UI task, redraw on change/resize, terminal restored on every exit); main view per SPEC F5.1 + stations / open URL / help / device picker; remappable keymap in `config.toml`; TOML theme engine with colour-depth fallback and user themes; snapshot + style tests.

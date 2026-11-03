@@ -218,3 +218,12 @@ anything older than ~3 months before relying on it.
 | Owner's terminal: kitty – `TERM=xterm-kitty`, `COLORTERM=truecolor` | env in the session | VERIFIED 2026-11-03 |
 | Terminal.app on this Mac: build 488.9, version 2.15 (macOS 26 brought 24-bit colour per press reports); whether it sets `COLORTERM` was not checked (needs the GUI app) → ttnr treats `TERM_PROGRAM=Apple_Terminal` as 256 colours unless `color = "truecolor"` | `PlistBuddy` on `/System/Applications/Utilities/Terminal.app/Contents/Info.plist`; https://www.macrumors.com/2025/06/16/apples-terminal-app-macos-tahoe/ | UNVERIFIED (truecolor detection) |
 | xterm default RGB for ANSI 0–15 and the 6×6×6 cube levels (0, 95, 135, 175, 215, 255) + grey ramp 8 + 10·i are the usual 256-colour mapping | xterm `256colres.pl` / common knowledge | from knowledge; pinned by unit tests |
+
+### 2026-11-03 · Owner review of M3: colours and resizing
+
+| Fact | Source | Status |
+|---|---|---|
+| The owner's kitty scheme maps ANSI 8 (`bright_black`) to `#5a3625` (dark brown), so `plain`'s secondary text/borders looked brown; palette-relative colours vary per terminal scheme → secondary text now uses SGR 2 (faint) on the default colour | `~/.config/kitty/kitty.conf` (read-only); owner screenshot | VERIFIED 2026-11-03 |
+| ratatui-core 0.1.2: on any size change `Terminal::autoresize` → `resize` → `clear_viewport` (`ClearType::All` for fullscreen) before redrawing → a blank flash between clear and redraw | `ratatui-core-0.1.2/src/terminal/{resize,buffers}.rs` | VERIFIED 2026-11-03 |
+| crossterm 0.29 provides `BeginSynchronizedUpdate` / `EndSynchronizedUpdate` (DEC private mode 2026; frame shown only when complete; ignored by terminals without support) | `crossterm-0.29.0/src/terminal.rs` | VERIFIED 2026-11-03 |
+| Terminal.app (build 488.9): while the window is resized vertically the UI was shifted by one line until the next redraw; screen recording of an automated resize showed the top row missing on shrink and an extra row on grow. Parking the hidden cursor at (0,0) after each frame (plus synchronized output) removed it in the same recording | `screencapture -v` of a Terminal.app window resized via AppleScript (recordings deleted after analysis) | VERIFIED 2026-11-03 (Terminal.app); kitty/iTerm2 to be checked by the owner |

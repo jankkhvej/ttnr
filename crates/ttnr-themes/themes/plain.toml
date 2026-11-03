@@ -5,7 +5,8 @@ name      = "plain"
 title     = "ttnr"
 uppercase = false
 
-# Colours: "default" (terminal colour), ANSI names (black, red, green,
+# Colours: "default" (terminal colour), "faint" (terminal colour drawn
+# faint – independent of the terminal's palette), ANSI names (black, red, green,
 # yellow, blue, magenta, cyan, white, bright_black … bright_white),
 # "#rrggbb", or a 256-colour index (0–255). Downgraded automatically to
 # the terminal's depth; optional [palette_256] / [palette_16] override
@@ -14,7 +15,7 @@ uppercase = false
 fg     = "default"
 bg     = "default"
 accent = "cyan"
-dim    = "bright_black"
+dim    = "faint"         # not bright_black: its look depends on the terminal scheme
 warn   = "yellow"
 error  = "red"
 

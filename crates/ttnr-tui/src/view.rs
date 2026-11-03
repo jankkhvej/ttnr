@@ -69,7 +69,17 @@ fn footer_text(theme: &Theme, keymap: &Keymap, width: usize) -> String {
     theme.fit(&parts.join(sep), width)
 }
 
-/// ThemeColor → ratatui colour (depth fallback comes with the theme engine).
+/// Foreground style for a palette role (`Faint` = default colour + SGR 2).
+pub fn fg(c: ThemeColor) -> Style {
+    match c {
+        ThemeColor::Faint => Style::default()
+            .fg(Color::Reset)
+            .add_modifier(Modifier::DIM),
+        c => Style::default().fg(color(c)),
+    }
+}
+
+/// ThemeColor → ratatui colour (already downgraded by `Theme::for_depth`).
 pub fn color(c: ThemeColor) -> Color {
     const ANSI: [Color; 16] = [
         Color::Black,
@@ -90,7 +100,7 @@ pub fn color(c: ThemeColor) -> Color {
         Color::White,
     ];
     match c {
-        ThemeColor::Reset => Color::Reset,
+        ThemeColor::Reset | ThemeColor::Faint => Color::Reset,
         ThemeColor::Ansi(n) => ANSI[usize::from(n & 15)],
         ThemeColor::Indexed(n) => Color::Indexed(n),
         ThemeColor::Rgb(r, g, b) => Color::Rgb(r, g, b),
@@ -98,11 +108,11 @@ pub fn color(c: ThemeColor) -> Color {
 }
 
 fn dim(theme: &Theme) -> Style {
-    Style::default().fg(color(theme.palette.dim))
+    fg(theme.palette.dim)
 }
 
 fn accent(theme: &Theme) -> Style {
-    Style::default().fg(color(theme.palette.accent))
+    fg(theme.palette.accent)
 }
 
 /// Draw the theme's frame (if it has borders) with `title`; returns the
@@ -160,7 +170,7 @@ pub fn status_parts(status: &Status, theme: &Theme) -> (String, String, Style) {
         Status::Ended => (&g.stopped, "stream ended".into(), p.dim),
         Status::Error(e) => (&g.error, format!("error: {e}"), p.error),
     };
-    (glyph.clone(), text, Style::default().fg(color(c)))
+    (glyph.clone(), text, fg(c))
 }
 
 /// The output device label: pinned device's description or "system default".

@@ -5,6 +5,8 @@
 use std::sync::Arc;
 
 use anyhow::{Context, Result};
+use crossterm::cursor::MoveTo;
+use crossterm::terminal::{BeginSynchronizedUpdate, EndSynchronizedUpdate};
 use futures::StreamExt;
 use ratatui::crossterm::event::{Event, EventStream};
 use tokio::sync::{mpsc, watch};
@@ -268,7 +270,15 @@ async fn ui_loop(
             }
             if dirty {
                 let theme = &themes[state.theme_index % themes.len()];
+                // Synchronized output (DEC mode 2026): the terminal shows the
+                // frame only when complete – no blank flash from ratatui's
+                // clear-on-resize. Terminals without it ignore the sequence.
+                crossterm::execute!(std::io::stdout(), BeginSynchronizedUpdate)?;
                 terminal.draw(|frame| ttnr_tui::draw(frame, &state, theme, &keymap))?;
+                // Park the (hidden) cursor top-left: some terminals
+                // (Terminal.app) scroll the screen to keep the cursor visible
+                // when the window shrinks, shifting the UI by a line.
+                crossterm::execute!(std::io::stdout(), MoveTo(0, 0), EndSynchronizedUpdate)?;
                 dirty = false;
             }
             tokio::select! {

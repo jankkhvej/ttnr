@@ -164,3 +164,22 @@ fn palette_follows_colour_depth() {
     assert_eq!(accent_of(ColorDepth::TrueColor), Color::Cyan);
     assert_eq!(accent_of(ColorDepth::Mono), Color::Reset);
 }
+
+/// `plain` draws secondary text faint in the terminal's own colour, so it
+/// fits any colour scheme (a palette colour like bright_black does not).
+#[test]
+fn plain_dim_is_faint_default_colour() {
+    use ratatui::style::{Color, Modifier};
+    let theme = Theme::plain().for_depth(ttnr_themes::ColorDepth::TrueColor);
+    let mut t = Terminal::new(TestBackend::new(60, 16)).unwrap();
+    t.draw(|f| ttnr_tui::draw(f, &state(), &theme, &Keymap::default()))
+        .unwrap();
+    let buf = t.backend().buffer();
+    // The footer's first letter ("spc play …") on the second-to-last row.
+    let cell = (0..60)
+        .map(|x| &buf[(x, 14)])
+        .find(|c| c.symbol() == "s")
+        .unwrap();
+    assert_eq!(cell.fg, Color::Reset);
+    assert!(cell.modifier.contains(Modifier::DIM));
+}

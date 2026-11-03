@@ -14,6 +14,9 @@ pub enum ThemeColor {
     Indexed(u8),
     /// 24-bit colour.
     Rgb(u8, u8, u8),
+    /// The terminal's default colour drawn faint (SGR 2): secondary text
+    /// that suits any terminal colour scheme.
+    Faint,
 }
 
 const NAMES: [&str; 16] = [
@@ -64,6 +67,9 @@ impl ThemeColor {
         if t == "default" || t == "reset" {
             return Ok(Self::Reset);
         }
+        if t == "faint" {
+            return Ok(Self::Faint);
+        }
         if let Some(i) = NAMES.iter().position(|n| *n == t) {
             return Ok(Self::Ansi(u8::try_from(i).unwrap_or(0)));
         }
@@ -75,13 +81,14 @@ impl ThemeColor {
             return Ok(Self::Rgb(r, g, b));
         }
         Err(format!(
-            "unknown colour `{s}` (use default, an ANSI name, #rrggbb or 0–255)"
+            "unknown colour `{s}` (use default, faint, an ANSI name, #rrggbb or 0–255)"
         ))
     }
 
     /// This colour as the terminal at `depth` can show it.
     pub fn downgrade(self, depth: ColorDepth) -> Self {
         match (self, depth) {
+            (Self::Faint, _) => Self::Faint,
             (_, ColorDepth::Mono) | (Self::Reset, _) => Self::Reset,
             (c, ColorDepth::TrueColor) => c,
             (Self::Rgb(r, g, b), ColorDepth::Ansi256) => Self::Indexed(rgb_to_256(r, g, b)),
@@ -212,6 +219,11 @@ mod tests {
     #[test]
     fn parse_syntax() {
         assert_eq!(ThemeColor::parse("Default"), Ok(ThemeColor::Reset));
+        assert_eq!(ThemeColor::parse("faint"), Ok(ThemeColor::Faint));
+        assert_eq!(
+            ThemeColor::Faint.downgrade(ColorDepth::Mono),
+            ThemeColor::Faint
+        );
         assert_eq!(ThemeColor::parse("cyan"), Ok(ThemeColor::Ansi(6)));
         assert_eq!(ThemeColor::parse("bright_black"), Ok(ThemeColor::Ansi(8)));
         assert_eq!(
