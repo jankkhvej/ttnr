@@ -2,6 +2,12 @@
 
 Newest entry on top. Each entry: date · milestone/task · what changed · how to try it · next step · open questions for the owner.
 
+## 2026-11-03 · M6 complete – accepted by the owner
+- Now Playing / Control Center + media keys (AppKit host on the main thread, ADR-036); output devices: default followed by mpv, name shown, pinned device falls back and returns (ADR-037); reconnect with backoff + wake (ADR-038); optional exclusive mode and sample-rate matching (ADR-039).
+- Owner on exclusive mode: macOS reroutes other apps to another output instead of muting them – keep it that way (option 1); muting other outputs was rejected as too invasive.
+- Open: sample-rate switching not explicitly confirmed in Audio MIDI Setup; the owner's config has `exclusive`/`match_sample_rate` enabled from the test.
+- Next: M7 – radio-browser source, `exec` source, `ttnr now --json` + control socket. Follow-up: move `ttnr play` onto `App` (ADR-022; gains reconnects).
+
 ## 2026-11-03 · M6 · Exclusive mode and sample-rate matching
 - Config `exclusive` (mpv `audio-exclusive`, CoreAudio hog mode) and `match_sample_rate` (mpv `coreaudio-change-physical-format`), both off by default, for TUI and `ttnr play` (ADR-039). Test: options read back from libmpv. Waiting for the owner's check by ear / Audio MIDI Setup – then M6 is complete.
 

@@ -52,8 +52,8 @@ Work top to bottom. Tick `[x]` when a task meets its acceptance criteria and
 - [x] Now Playing / Control Center + media keys (MediaPlayer framework via `objc2`; terminal app has no window — solve and document).
 - [x] Follow default-device changes; pinned device option; device picker uses mpv's device list.
 - [x] Sleep/wake and network change: reconnect with backoff.
-- [ ] Optional exclusive mode and sample-rate matching.
-**Acceptance:** AirPods connect/disconnect while playing → audio follows; media keys work; laptop sleep → resumes.
+- [x] Optional exclusive mode and sample-rate matching.
+**Acceptance:** AirPods connect/disconnect while playing → audio follows; media keys work; laptop sleep → resumes. (Accepted 2026-11-03.)
 
 ## M7 — Extensibility
 - [ ] `radio-browser` source (search/browse the open directory).
