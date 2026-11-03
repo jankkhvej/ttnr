@@ -270,3 +270,63 @@ fn help_back_quit() {
     );
     assert!(a.state.quit);
 }
+
+#[test]
+fn provider_now_playing_is_delayed_by_the_sync_offset() {
+    use std::collections::BTreeMap;
+    use std::time::Duration;
+    let mut a = App::new(stations(), 50, 2)
+        .with_sync_offsets(BTreeMap::from([("url".into(), Duration::from_secs(20))]));
+    a.update(Msg::Play(a.state.stations[0].clone()));
+    assert_eq!(a.state.sync_offset, Duration::from_secs(20));
+    let np = NowPlaying {
+        title: Some("Later".into()),
+        ..NowPlaying::empty(InfoSource::External, SystemTime::now())
+    };
+    let fx = a.update(Msg::NowPlaying(np.clone()));
+    let [Effect::Delay { after, msg }] = fx.as_slice() else {
+        panic!("{fx:?}")
+    };
+    assert_eq!(*after, Duration::from_secs(20));
+    assert!(a.state.now.is_none(), "not shown yet");
+    a.update((**msg).clone());
+    assert_eq!(
+        a.state.now.as_ref().unwrap().title.as_deref(),
+        Some("Later")
+    );
+
+    // A due update for a station we left is dropped.
+    let Msg::NowPlayingDue { np: due_np, .. } = (**msg).clone() else {
+        panic!()
+    };
+    a.update(Msg::Play(a.state.stations[1].clone()));
+    a.update(Msg::NowPlayingDue {
+        key: "url:http://a/s".into(),
+        np: due_np,
+    });
+    assert!(a.state.now.is_none());
+}
+
+#[test]
+fn sync_offset_keys_adjust_per_source() {
+    use std::time::Duration;
+    let mut a = app();
+    a.update(Msg::Play(a.state.stations[0].clone()));
+    a.update(Msg::Command(Command::SyncEarlier));
+    assert_eq!(a.state.sync_offset, Duration::ZERO, "not below zero");
+    for _ in 0..3 {
+        a.update(Msg::Command(Command::SyncLater));
+    }
+    assert_eq!(a.state.sync_offset, Duration::from_secs(3));
+    // Same source keeps the tuned value on the next station.
+    a.update(Msg::Command(Command::NextStation));
+    assert_eq!(a.state.sync_offset, Duration::from_secs(3));
+    // Zero offset: shown immediately.
+    a.state.sync_offset = Duration::ZERO;
+    let np = NowPlaying {
+        title: Some("Now".into()),
+        ..NowPlaying::empty(InfoSource::External, SystemTime::now())
+    };
+    assert_eq!(a.update(Msg::NowPlaying(np)), []);
+    assert_eq!(a.state.now.as_ref().unwrap().title.as_deref(), Some("Now"));
+}

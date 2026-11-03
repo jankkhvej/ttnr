@@ -183,3 +183,11 @@ fn plain_dim_is_faint_default_colour() {
     assert_eq!(cell.fg, Color::Reset);
     assert!(cell.modifier.contains(Modifier::DIM));
 }
+
+#[test]
+fn sync_offset_is_shown_when_set() {
+    let mut s = state();
+    assert!(!render(&s, 60, 16).contains("sync"));
+    s.sync_offset = std::time::Duration::from_secs(25);
+    assert!(render(&s, 60, 16).contains("vol 80% · system default · sync 25s"));
+}

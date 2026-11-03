@@ -10,6 +10,12 @@
 # detected as 256 – set "truecolor" to use it.
 # color = "auto"
 
+# Sync offset: seconds to delay track info from external providers (BBC's
+# now-playing API, HLS ID3 polling) so it matches what you hear. Tune live
+# with ] and [ in the TUI, then put the value here.
+# [sync_offset]
+# bbc = 0
+
 # Key bindings (SPEC F5.3 defaults shown). Giving an action replaces its
 # default keys; use a string or a list. Key names: a single character,
 # space, enter, tab, backspace, esc, up, down, left, right, home, end,
@@ -27,5 +33,7 @@
 # open_url     = "o"
 # devices      = "d"
 # cycle_theme  = "t"
+# sync_later   = "]"
+# sync_earlier = "["
 # help         = "?"
 # quit         = "q"

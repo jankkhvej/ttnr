@@ -62,9 +62,28 @@ pub struct Config {
     pub color: ColorSetting,
     /// Key bindings: action → key(s); replaces that action's defaults.
     pub keys: BTreeMap<String, Keys>,
+    /// Delay (seconds) for external now-playing per source, e.g. `bbc = 25`.
+    pub sync_offset: BTreeMap<String, u32>,
 }
 
+/// Built-in sync offsets (seconds) per source, overridable in config.
+/// Values come from listening tests with the owner (ROADMAP M4).
+pub const DEFAULT_SYNC_OFFSETS: &[(&str, u32)] = &[];
+
 impl Config {
+    /// Effective sync offsets: built-in defaults, then `[sync_offset]`.
+    pub fn sync_offsets(&self) -> BTreeMap<String, std::time::Duration> {
+        let secs = |s: u32| std::time::Duration::from_secs(u64::from(s));
+        let mut out: BTreeMap<String, std::time::Duration> = DEFAULT_SYNC_OFFSETS
+            .iter()
+            .map(|(source, s)| ((*source).to_owned(), secs(*s)))
+            .collect();
+        for (source, s) in &self.sync_offset {
+            out.insert(source.clone(), secs(*s));
+        }
+        out
+    }
+
     /// `[keys]` as action → list of key names.
     pub fn key_overrides(&self) -> BTreeMap<String, Vec<String>> {
         self.keys
@@ -117,6 +136,12 @@ mod tests {
         assert_eq!(c.theme.as_deref(), Some("amber"));
         assert_eq!(c.color.depth(), ColorDepth::Ansi256);
         assert!(toml::from_str::<Config>("color = \"8\"\n").is_err());
+    }
+
+    #[test]
+    fn sync_offsets_from_config() {
+        let c: Config = toml::from_str("[sync_offset]\nbbc = 25\n").unwrap();
+        assert_eq!(c.sync_offsets()["bbc"], std::time::Duration::from_secs(25));
     }
 
     #[test]

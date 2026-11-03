@@ -44,7 +44,8 @@ pub async fn run(cfg: &EngineConfig) -> Result<()> {
         Err(e) => (Vec::new(), Some(format!("{e:#}"))),
     };
     let volume = cfg.volume.clamp(0.0, 100.0).round() as u8;
-    let mut app = App::new(stations, volume, DEFAULT_HISTORY);
+    let mut app =
+        App::new(stations, volume, DEFAULT_HISTORY).with_sync_offsets(config.sync_offsets());
     app.state.theme_index = theme_index;
     for e in &theme_errors {
         tracing::warn!(error = %e, "skipping theme");
@@ -142,6 +143,14 @@ impl Runtime {
             Effect::SetDevice(d) => player.set_device(d.as_deref()),
             Effect::StartMetadata(st) => {
                 self.start_metadata(&st);
+                Ok(())
+            }
+            Effect::Delay { after, msg } => {
+                let tx = self.msg_tx.clone();
+                tokio::spawn(async move {
+                    tokio::time::sleep(after).await;
+                    let _ = tx.send(*msg);
+                });
                 Ok(())
             }
             // Quitting is handled by the loop.

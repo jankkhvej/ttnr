@@ -12,7 +12,7 @@ use ttnr_core::{
 use ttnr_engine::{EngineConfig, EngineEvent, MpvPlayer, Player};
 use ttnr_sources::{BbcSource, ReqwestHttp, StationsSource, UrlSource};
 
-use crate::{paths, stations};
+use crate::{config, paths, stations};
 
 /// Play `target` – a URL, a file path or a station id from
 /// `stations.toml` – until it ends, fails, or Ctrl-C is pressed. Playlists
@@ -55,9 +55,28 @@ pub async fn run(target: &str, cfg: &EngineConfig) -> Result<()> {
         .get(&station.source)
         .and_then(|s| s.metadata(&station, &ctx))
     {
+        let offset = config::load()
+            .map(|c| {
+                c.sync_offsets()
+                    .get(&station.source)
+                    .copied()
+                    .unwrap_or_default()
+            })
+            .unwrap_or_default();
+        let (raw_tx, mut raw_rx) = mpsc::channel::<NowPlaying>(8);
         tokio::spawn(async move {
-            if let Err(e) = provider.run(np_tx).await {
+            if let Err(e) = provider.run(raw_tx).await {
                 tracing::warn!(error = %e, "metadata provider stopped");
+            }
+        });
+        // Delay provider updates by the source's sync offset.
+        tokio::spawn(async move {
+            while let Some(np) = raw_rx.recv().await {
+                let tx = np_tx.clone();
+                tokio::spawn(async move {
+                    tokio::time::sleep(offset).await;
+                    let _ = tx.send(np).await;
+                });
             }
         });
     }

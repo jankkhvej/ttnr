@@ -3,8 +3,8 @@
 //! perform (play, resolve, …). Pure and synchronous, so the TUI and the CLI
 //! share it and it is tested without audio, network or a terminal (ADR-022).
 
-use std::collections::VecDeque;
-use std::time::SystemTime;
+use std::collections::{BTreeMap, VecDeque};
+use std::time::{Duration, SystemTime};
 
 use crate::{
     Action, Failover, Merger, NowPlaying, Station, StreamDescriptor, StreamInfo, StreamTags,
@@ -14,6 +14,10 @@ use crate::{
 pub const VOLUME_STEP: u8 = 5;
 /// Default number of recent tracks kept (SPEC F4.4).
 pub const DEFAULT_HISTORY: usize = 5;
+/// Sync-offset change per key press.
+pub const SYNC_STEP: Duration = Duration::from_secs(1);
+/// Largest sync offset.
+pub const MAX_SYNC: Duration = Duration::from_secs(120);
 
 /// Playback status shown to the user (SPEC F5.1).
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
@@ -100,6 +104,9 @@ pub struct AppState {
     pub view: View,
     /// Theme selection, an index into the UI's theme list (wraps around).
     pub theme_index: usize,
+    /// Delay applied to now-playing from external providers of the
+    /// current station's source, to match the audio (SPEC F4.3).
+    pub sync_offset: Duration,
     /// Set when the app should exit.
     pub quit: bool,
 }
@@ -157,6 +164,10 @@ pub enum Command {
     ToggleHelp,
     /// Next theme.
     CycleTheme,
+    /// Show external now-playing later (+1 s).
+    SyncLater,
+    /// Show external now-playing earlier (−1 s, not below 0).
+    SyncEarlier,
     /// Exit.
     Quit,
     /// Move the highlight up.
@@ -194,8 +205,15 @@ pub enum Msg {
         /// URLs or an error message.
         result: Result<StreamDescriptor, String>,
     },
-    /// Now-playing from a metadata provider.
+    /// Now-playing from a metadata provider (subject to the sync offset).
     NowPlaying(NowPlaying),
+    /// A delayed now-playing update is due (for the station with this key).
+    NowPlayingDue {
+        /// [`Station::key`] it belongs to.
+        key: String,
+        /// The update.
+        np: NowPlaying,
+    },
     /// The output device list changed.
     Devices(Vec<Device>),
     /// A user command.
@@ -226,6 +244,13 @@ pub enum Effect {
     SetDevice(Option<String>),
     /// Start the station's metadata provider (stop any previous one).
     StartMetadata(Station),
+    /// Deliver `msg` back to [`App::update`] after `after`.
+    Delay {
+        /// How long to wait.
+        after: Duration,
+        /// What to deliver.
+        msg: Box<Msg>,
+    },
     /// Exit.
     Quit,
 }
@@ -238,6 +263,7 @@ pub struct App {
     failover: Option<Failover>,
     merger: Merger,
     history_len: usize,
+    sync_offsets: BTreeMap<String, Duration>,
 }
 
 impl App {
@@ -252,7 +278,14 @@ impl App {
             failover: None,
             merger: Merger::default(),
             history_len,
+            sync_offsets: BTreeMap::new(),
         }
+    }
+
+    /// Per-source sync offsets (source id → delay), e.g. from config.
+    pub fn with_sync_offsets(mut self, offsets: BTreeMap<String, Duration>) -> Self {
+        self.sync_offsets = offsets;
+        self
     }
 
     /// Apply `msg`; returns the effects to perform, in order.
@@ -263,7 +296,22 @@ impl App {
             Msg::Resolved { key, result } => self.on_resolved(&key, result, false),
             Msg::Refreshed { key, result } => self.on_resolved(&key, result, true),
             Msg::NowPlaying(np) => {
-                self.show_now(np);
+                let Some(key) = self.current_key() else {
+                    return vec![];
+                };
+                if self.state.sync_offset.is_zero() {
+                    self.show_now(np);
+                    return vec![];
+                }
+                vec![Effect::Delay {
+                    after: self.state.sync_offset,
+                    msg: Box::new(Msg::NowPlayingDue { key, np }),
+                }]
+            }
+            Msg::NowPlayingDue { key, np } => {
+                if self.current_key().as_deref() == Some(key.as_str()) {
+                    self.show_now(np);
+                }
                 vec![]
             }
             Msg::Devices(devices) => {
@@ -279,6 +327,11 @@ impl App {
     }
 
     fn play(&mut self, st: Station) -> Vec<Effect> {
+        self.state.sync_offset = self
+            .sync_offsets
+            .get(&st.source)
+            .copied()
+            .unwrap_or_default();
         self.state.station = Some(st.clone());
         self.state.status = Status::Resolving;
         self.state.now = None;
@@ -539,6 +592,19 @@ impl App {
                 } else {
                     View::Help
                 };
+                vec![]
+            }
+            Command::SyncLater | Command::SyncEarlier => {
+                let now = self.state.sync_offset;
+                let next = if cmd == Command::SyncLater {
+                    (now + SYNC_STEP).min(MAX_SYNC)
+                } else {
+                    now.saturating_sub(SYNC_STEP)
+                };
+                self.state.sync_offset = next;
+                if let Some(st) = &self.state.station {
+                    self.sync_offsets.insert(st.source.clone(), next);
+                }
                 vec![]
             }
             Command::CycleTheme => {

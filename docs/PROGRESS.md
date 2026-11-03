@@ -2,6 +2,10 @@
 
 Newest entry on top. Each entry: date · milestone/task · what changed · how to try it · next step · open questions for the owner.
 
+## 2026-11-03 · M4 · Sync offset mechanism
+- Per-source sync offset (`[sync_offset]`, live `]`/`[` keys, shown in the view; applied in TUI and `ttnr play`) (ADR-031). BBC default awaits the owner's ears.
+- Tests: delayed/dropped provider updates, key adjustment per source, view, config; help snapshots updated (two new bindings, cut first at 32×16).
+
 ## 2026-11-03 · M4 · BBC now-playing
 - `BbcNowPlaying` provider (programme + current track, speech handling, backoff), `ttnr play` prints `on air:` (ADR-030).
 - Tests: recorded fixtures (6 Music music/just-ended, Radio 4 speech, both programme formats), provider with virtual time (change-only, speech → programme only, backoff 60/120/240 s, stop).

@@ -230,8 +230,17 @@ fn main_view(frame: &mut Frame, area: Rect, state: &AppState, theme: &Theme) {
         2,
         Line::styled(theme.fit(&format!("{glyph} {text}"), w), style),
     ));
+    let sync = if state.sync_offset.is_zero() {
+        String::new()
+    } else {
+        format!(
+            "{}sync {}s",
+            theme.glyphs.separator,
+            state.sync_offset.as_secs()
+        )
+    };
     let vol = format!(
-        "vol {}%{}{}{}",
+        "vol {}%{}{}{}{sync}",
         state.volume,
         if state.muted { " muted" } else { "" },
         theme.glyphs.separator,

@@ -88,6 +88,19 @@ const ACTIONS: &[Action] = &[
         help: "quit",
         defaults: &["q"],
     },
+    // Least important last: cut first when the help does not fit.
+    Action {
+        name: "sync_later",
+        command: Command::SyncLater,
+        help: "track info later (+1 s)",
+        defaults: &["]"],
+    },
+    Action {
+        name: "sync_earlier",
+        command: Command::SyncEarlier,
+        help: "track info earlier (-1 s)",
+        defaults: &["["],
+    },
 ];
 
 /// Footer entries: (actions, short label), in display order; help and quit
