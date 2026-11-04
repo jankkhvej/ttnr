@@ -8,7 +8,9 @@ Native libraries: what libmpv links (recursively, `otool -L`) from Homebrew,
 with Homebrew's licence metadata (`brew info --json=v2`, read-only).
 
   scripts/notices.py           write THIRD_PARTY_NOTICES.md
-  scripts/notices.py --check   exit 1 if the file is out of date
+  scripts/notices.py --check   exit 1 if the Rust part is out of date (the
+                               native table depends on Homebrew versions and
+                               is refreshed by running without --check)
 """
 import json
 import pathlib
@@ -55,9 +57,8 @@ def rust_crates():
 
 
 def libmpv():
-    local = ROOT / "third_party/mpv/prefix/lib/libmpv.2.dylib"
-    if local.exists():
-        return str(local)
+    # Homebrew's libmpv: what a published build links (the optional local
+    # build in third_party/ loads a subset of the same libraries).
     prefix = run("brew", "--prefix", "mpv").strip()
     return f"{prefix}/lib/libmpv.2.dylib"
 
@@ -85,8 +86,13 @@ def native_formulae():
     return sorted(out, key=lambda f: f["name"])
 
 
-def render():
-    crates, native = rust_crates(), native_formulae()
+def render_rust_only():
+    return render(native=[])
+
+
+def render(native=None):
+    crates = rust_crates()
+    native = native_formulae() if native is None else native
     lines = [
         "# Third-party notices",
         "",
@@ -140,13 +146,23 @@ def render():
     return "\n".join(lines)
 
 
+NATIVE = re.compile(r"## Native libraries.*?(?=\n## )", re.S)
+
+
+def deterministic(text):
+    """The part fixed by Cargo.lock (the native table depends on the
+    machine's Homebrew versions)."""
+    return NATIVE.sub("", text)
+
+
 def main():
-    text = render()
     if "--check" in sys.argv:
-        if not OUT.exists() or OUT.read_text() != text:
+        current = OUT.read_text() if OUT.exists() else ""
+        if deterministic(current) != deterministic(render_rust_only()):
             print("THIRD_PARTY_NOTICES.md is out of date: run scripts/notices.py", file=sys.stderr)
             sys.exit(1)
         return
+    text = render()
     OUT.write_text(text)
     print(f"wrote {OUT.relative_to(ROOT)}")
 

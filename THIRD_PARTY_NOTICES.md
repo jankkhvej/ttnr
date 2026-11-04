@@ -18,6 +18,7 @@ version 2 or later instead, which the combined work does (ADR-045).
 | brotli | 1.2.1 | MIT | https://github.com/google/brotli |
 | dav1d | 1.5.4 | BSD-2-Clause | https://code.videolan.org/videolan/dav1d |
 | ffmpeg | 9.0.2 | GPL-3.0-or-later | https://ffmpeg.org/ |
+| fontconfig | 2.18.3 | HPND-sell-variant AND Unicode-3.0 AND MIT-Modern-Variant AND MIT AND LicenseRef-Homebrew-public-domain | https://wiki.freedesktop.org/www/Software/fontconfig/ |
 | freetype | 2.15.0 | FTL | https://www.freetype.org/ |
 | fribidi | 1.0.18 | GPL-2.0-or-later AND LGPL-2.1-or-later | https://github.com/fribidi/fribidi |
 | gettext | 1.0 | GPL-3.0-or-later AND LGPL-2.1-or-later | https://www.gnu.org/software/gettext/ |
@@ -26,24 +27,36 @@ version 2 or later instead, which the combined work does (ADR-045).
 | harfbuzz | 15.0.0 | MIT | https://github.com/harfbuzz/harfbuzz |
 | jpeg-turbo | 3.2.1 | IJG AND Zlib AND BSD-3-Clause | https://www.libjpeg-turbo.org/ |
 | lame | 4.0 | LGPL-2.0-or-later | https://lame.sourceforge.io/ |
+| libarchive | 3.8.11 | BSD-2-Clause | https://www.libarchive.org |
 | libass | 0.17.5 | ISC | https://github.com/libass/libass |
+| libb2 | 0.98.1 | CC0-1.0 | https://blake2.net/ |
+| libbluray | 1.5.0 | LGPL-2.1-or-later | https://www.videolan.org/developers/libbluray.html |
 | libplacebo | 7.387.0 | LGPL-2.1-or-later | https://code.videolan.org/videolan/libplacebo |
 | libpng | 1.6.59 | libpng-2.0 | https://www.libpng.org/pub/png/libpng.html |
+| libsamplerate | 0.2.2 | BSD-2-Clause | https://github.com/libsndfile/libsamplerate |
+| libudfread | 1.2.0 | LGPL-2.1-or-later | https://code.videolan.org/videolan/libudfread |
 | libunibreak | 8.0 | Zlib | https://github.com/adah1972/libunibreak |
 | libvmaf | 3.2.1 | BSD-2-Clause-Patent | https://github.com/Netflix/vmaf |
 | libvpx | 1.17.0 | BSD-3-Clause | https://www.webmproject.org/code/ |
 | little-cms2 | 2.19.1 | MIT | https://www.littlecms.com/ |
+| luajit | 2.1.1793383622 | MIT | https://luajit.org/luajit.html |
+| lz4 | 1.10.0 | BSD-2-Clause | https://lz4.github.io/lz4/ |
 | mpg123 | 1.33.7 | LGPL-2.1-only | https://www.mpg123.de/ |
 | mpv | 0.41.0 | GPL-2.0-or-later AND LGPL-2.1-or-later | https://mpv.io |
+| mujs | 1.3.11 | ISC | https://www.mujs.com/ |
 | openssl@4 | 4.1.0 | Apache-2.0 | https://openssl-library.org |
 | opus | 1.6.1 | BSD-3-Clause | https://www.opus-codec.org/ |
 | pcre2 | 10.49 | BSD-3-Clause | https://www.pcre.org/ |
+| rubberband | 4.0.0 | GPL-2.0-or-later | https://breakfastquay.com/rubberband/ |
 | shaderc | 2026.4 | Apache-2.0 | https://github.com/google/shaderc |
 | svt-av1 | 4.3.0 | BSD-3-Clause | https://gitlab.com/AOMediaCodec/SVT-AV1 |
+| uchardet | 0.0.8 | MPL-1.1 OR GPL-2.0-or-later OR LGPL-2.1-or-later | https://www.freedesktop.org/wiki/Software/uchardet/ |
 | vulkan-loader | 1.4.363.0 | Apache-2.0 | https://github.com/KhronosGroup/Vulkan-Loader |
 | x264 | r3222 | GPL-2.0-or-later | https://www.videolan.org/developers/x264.html |
 | x265 | 4.3 | GPL-2.0-or-later | https://github.com/Multicorewareinc/x265 |
 | xz | 5.8.4 | 0BSD AND GPL-2.0-or-later | https://tukaani.org/xz/ |
+| zimg | 3.0.6 | WTFPL | https://github.com/sekrit-twc/zimg |
+| zstd | 1.5.7 | (BSD-3-Clause OR GPL-2.0-only) AND BSD-2-Clause AND MIT | https://facebook.github.io/zstd/ |
 
 Their licence texts are installed by Homebrew with each formula
 (`$(brew --prefix <name>)`).
