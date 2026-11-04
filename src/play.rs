@@ -39,38 +39,11 @@ pub async fn run(
     let (msg_tx, mut msg_rx) = mpsc::unbounded_channel::<Msg>();
     // The control socket (`ttnr now`, `ttnr ctl`) reads the published state.
     let (state_tx, state_rx) = tokio::sync::watch::channel(app.state.clone());
-    let socket = crate::control::socket_path();
-    let mut _socket_cleanup = None;
-    match crate::control::bind(&socket).await {
-        Ok(Some(listener)) => {
-            _socket_cleanup = Some(crate::control::SocketCleanup(socket.clone()));
-            tokio::spawn(crate::control::serve(
-                listener,
-                socket,
-                state_rx,
-                msg_tx.clone(),
-            ));
-        }
-        Ok(None) => {
-            tracing::warn!(path = %socket.display(), "another ttnr owns the control socket")
-        }
-        Err(e) => tracing::warn!(error = %e, "no control socket"),
-    }
+    let _socket_cleanup = crate::runtime::serve_control(state_rx, msg_tx.clone()).await;
     let mut runtime = Runtime::new(Arc::new(registry), ctx, msg_tx);
     let mut printer = Printer::new(&station);
 
-    let (remote_tx, mut remote_rx) = mpsc::unbounded_channel::<ttnr_platform::SystemEvent>();
-    let updater = media.map(|link| {
-        let updater = link.updater();
-        std::thread::spawn(move || {
-            while let Ok(event) = link.events.recv() {
-                if remote_tx.send(event).is_err() {
-                    break;
-                }
-            }
-        });
-        updater
-    });
+    let (updater, mut remote_rx) = crate::runtime::forward_system_events(media);
     let mut published = None;
 
     let mut next = Some(Msg::Play(station));

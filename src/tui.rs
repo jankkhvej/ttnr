@@ -105,23 +105,7 @@ pub async fn run(
         .collect();
     // Control socket for `ttnr now`, `ttnr ctl` and other tools; another
     // running ttnr keeps its socket.
-    let socket = crate::control::socket_path();
-    let mut _socket_cleanup = None;
-    match crate::control::bind(&socket).await {
-        Ok(Some(listener)) => {
-            _socket_cleanup = Some(crate::control::SocketCleanup(socket.clone()));
-            tokio::spawn(crate::control::serve(
-                listener,
-                socket,
-                state_rx.clone(),
-                msg_tx.clone(),
-            ));
-        }
-        Ok(None) => {
-            tracing::warn!(path = %socket.display(), "another ttnr owns the control socket")
-        }
-        Err(e) => tracing::warn!(error = %e, "no control socket"),
-    }
+    let _socket_cleanup = crate::runtime::serve_control(state_rx.clone(), msg_tx.clone()).await;
     // Diagnostics: the last HTTP request, refreshed once a second while
     // that indicator is shown; otherwise the task waits for a state change.
     let (mut diag_rx, diag_tx) = (state_rx.clone(), msg_tx.clone());
@@ -180,18 +164,7 @@ pub async fn run(
     let mut sigterm = tokio::signal::unix::signal(tokio::signal::unix::SignalKind::terminate())
         .context("cannot listen for SIGTERM")?;
     // Media keys arrive on a blocking channel; forward them into the loop.
-    let (remote_tx, mut remote_rx) = mpsc::unbounded_channel::<ttnr_platform::SystemEvent>();
-    let updater = media.map(|link| {
-        let updater = link.updater();
-        std::thread::spawn(move || {
-            while let Ok(cmd) = link.events.recv() {
-                if remote_tx.send(cmd).is_err() {
-                    break;
-                }
-            }
-        });
-        updater
-    });
+    let (updater, mut remote_rx) = crate::runtime::forward_system_events(media);
     let mut shown_media = None;
 
     while !app.state.quit {

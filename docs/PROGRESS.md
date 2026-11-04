@@ -2,6 +2,11 @@
 
 Newest entry on top. Each entry: date · milestone/task · what changed · how to try it · next step · open questions for the owner.
 
+## 2026-11-04 · Whole-repo security and code review – fixes
+- Security (ADR-047): CLI output of network text (ICY titles, directory names, server messages) passed terminal control sequences through (verified OSC 0 / OSC 52); now neutralised. TUI was safe (ratatui drops control characters).
+- Code review fixes: old station's metadata provider stopped at once and its late updates dropped (keyed messages); resolve cache key includes the station URL; empty ICY title clears the track; radio-browser refresh prefers the fresh click URL; teletype banner from the active theme; exec `now` stderr drained; superseded resolution answers ignored (refresh vs reconnect race); future `at` never waits longer than the sync offset, config offsets clamped to 120 s; CoreAudio listener callback never freed (no use-after-free at exit); socket/system-event plumbing shared by TUI and `play`.
+- Tests: a regression test per fix (security and exec tests confirmed failing without the fix); teletype banner checked in a pty run.
+
 ## 2026-11-04 · M9 complete – roadmap M0–M9 done
 - Owner: `i` works. All milestones accepted.
 - Open (owner decisions, nothing scheduled): public repository / release archive, project page on hcc07.org (formula homepage), publishing the Homebrew formula (tap + `brew audit`), binary-distribution duties (GPL-3.0 text, source offer, objc2 licence texts); Teletype "everything on paper" proposal (THEMES.md); drop the local libmpv build once Homebrew ships mpv ≥ 0.42.

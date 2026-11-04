@@ -81,8 +81,8 @@ pub struct DeviceWatch {
     callback: *mut Callback,
 }
 
-// SAFETY: the callback is `Send + Sync`; the pointer is only freed in Drop
-// after the listeners are removed.
+// SAFETY: the callback is `Send + Sync` and never freed (see Drop), so the
+// pointer stays valid for any in-flight listener call.
 unsafe impl Send for DeviceWatch {}
 
 impl std::fmt::Debug for DeviceWatch {
@@ -144,8 +144,10 @@ impl Drop for DeviceWatch {
                 );
             }
         }
-        // SAFETY: allocated in `watch`; no listener refers to it any more.
-        drop(unsafe { Box::from_raw(self.callback) });
+        // The callback is deliberately not freed: removing a listener does
+        // not wait for a call already running on a CoreAudio thread, so
+        // freeing here could be a use-after-free. One small closure per
+        // process (the watch lives as long as the UI) is leaked instead.
     }
 }
 

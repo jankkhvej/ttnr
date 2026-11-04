@@ -169,6 +169,53 @@ impl Runtime {
     }
 }
 
+/// Serve the control socket for `state` / `msgs` unless another ttnr owns
+/// it; the returned guard removes the socket file when dropped.
+pub async fn serve_control(
+    state: tokio::sync::watch::Receiver<ttnr_core::app::AppState>,
+    msgs: mpsc::UnboundedSender<Msg>,
+) -> Option<crate::control::SocketCleanup> {
+    let socket = crate::control::socket_path();
+    match crate::control::bind(&socket).await {
+        Ok(Some(listener)) => {
+            let cleanup = crate::control::SocketCleanup(socket.clone());
+            tokio::spawn(crate::control::serve(listener, socket, state, msgs));
+            Some(cleanup)
+        }
+        Ok(None) => {
+            tracing::warn!(path = %socket.display(), "another ttnr owns the control socket");
+            None
+        }
+        Err(e) => {
+            tracing::warn!(error = %e, "no control socket");
+            None
+        }
+    }
+}
+
+/// Bridge the system integration (media keys, wake) into async code:
+/// returns the Now Playing updater and a receiver of system events.
+pub fn forward_system_events(
+    media: Option<ttnr_platform::MediaLink>,
+) -> (
+    Option<ttnr_platform::Updater>,
+    mpsc::UnboundedReceiver<ttnr_platform::SystemEvent>,
+) {
+    let (tx, rx) = mpsc::unbounded_channel();
+    let updater = media.map(|link| {
+        let updater = link.updater();
+        std::thread::spawn(move || {
+            while let Ok(event) = link.events.recv() {
+                if tx.send(event).is_err() {
+                    break;
+                }
+            }
+        });
+        updater
+    });
+    (updater, rx)
+}
+
 /// Map an engine event to an app message (`None` = not interesting).
 pub fn engine_msg(ev: EngineEvent) -> Option<Msg> {
     let player = |p| Some(Msg::Player(p));

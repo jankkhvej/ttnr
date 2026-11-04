@@ -436,6 +436,18 @@ pub struct App {
     last_failure: Option<String>,
     /// Indicators the config selects for `i` (none = all).
     diag_config: DiagSelection,
+    /// The resolution answer the app waits for; others (superseded by a
+    /// reconnect or a newer request) are ignored.
+    awaiting: Option<Awaiting>,
+}
+
+/// Which resolution answer is expected.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum Awaiting {
+    /// `Msg::Resolved` (after `Effect::Resolve`).
+    Resolve,
+    /// `Msg::Refreshed` (after `Effect::Refresh`).
+    Refresh,
 }
 
 /// Waits between reconnection attempts; the last repeats forever.
@@ -461,12 +473,17 @@ impl App {
             retry_gen: 0,
             last_failure: None,
             diag_config: DiagSelection::default(),
+            awaiting: None,
         }
     }
 
     /// Per-source sync offsets (source id → delay), e.g. from config.
     pub fn with_sync_offsets(mut self, offsets: BTreeMap<String, Duration>) -> Self {
-        self.sync_offsets = offsets;
+        // Same range as the live keys (0–120 s).
+        self.sync_offsets = offsets
+            .into_iter()
+            .map(|(source, d)| (source, d.min(MAX_SYNC)))
+            .collect();
         self
     }
 
@@ -589,8 +606,15 @@ impl App {
         let Some(np) = &self.pending else {
             return vec![];
         };
+        // `at` is when the info became true on air, so it lies in the past;
+        // a future `at` means clock skew or a wrong base (e.g. a segment
+        // offset taken against the next programme): treat it as "now", i.e.
+        // never wait longer than the sync offset.
         let due = np.at + self.state.sync_offset;
-        match due.duration_since(SystemTime::now()) {
+        match due
+            .duration_since(SystemTime::now())
+            .map(|left| left.min(self.state.sync_offset))
+        {
             // Not yet (allow 50 ms of timer slack).
             Ok(left) if left > Duration::from_millis(50) => {
                 let Some(key) = self.current_key() else {
@@ -635,6 +659,7 @@ impl App {
         self.played = false;
         self.retry_attempt = 0;
         self.retry_gen += 1;
+        self.awaiting = Some(Awaiting::Resolve);
         vec![Effect::Stop, Effect::StopMetadata, Effect::Resolve(st)]
     }
 
@@ -670,6 +695,7 @@ impl App {
         };
         self.retry_gen += 1;
         self.failover = None;
+        self.awaiting = Some(Awaiting::Resolve);
         self.state.status = Status::Reconnecting(why.to_owned());
         vec![Effect::Stop, Effect::Resolve(st)]
     }
@@ -695,6 +721,15 @@ impl App {
         if self.current_key().as_deref() != Some(key) {
             return vec![]; // a late answer for a station we left
         }
+        let expected = if refresh {
+            Awaiting::Refresh
+        } else {
+            Awaiting::Resolve
+        };
+        if self.awaiting != Some(expected) {
+            return vec![]; // superseded (e.g. a reconnect started meanwhile)
+        }
+        self.awaiting = None;
         // After a playback failure, say what failed, then why recovery did.
         let why = |e: &str| match (&self.last_failure, refresh) {
             (Some(f), true) => format!("{f}; re-resolving failed: {e}"),
@@ -793,6 +828,7 @@ impl App {
                     Action::Refresh => {
                         self.state.status =
                             Status::Reconnecting(format!("{message}; re-resolving the station"));
+                        self.awaiting = Some(Awaiting::Refresh);
                         self.state
                             .station
                             .clone()

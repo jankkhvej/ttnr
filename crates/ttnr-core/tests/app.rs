@@ -761,3 +761,92 @@ fn an_empty_icy_title_clears_the_shown_track() {
         "kept in history"
     );
 }
+
+#[test]
+fn a_refresh_superseded_by_a_reconnect_is_ignored() {
+    let mut a = playing_app();
+    let st = a.state.stations[0].clone();
+    // 404 on the only URL → re-resolve once.
+    assert_eq!(a.update(failed(true)), [Effect::Refresh(st.clone())]);
+    // The laptop wakes meanwhile → reconnect from scratch.
+    assert_eq!(
+        a.update(Msg::Woke),
+        [Effect::Stop, Effect::Resolve(st.clone())]
+    );
+    // The late refresh answer must neither fail nor start a second stream.
+    let key = st.key();
+    let late = Msg::Refreshed {
+        key: key.clone(),
+        result: Ok(StreamDescriptor::direct("http://fresh")),
+    };
+    assert_eq!(a.update(late), []);
+    assert!(
+        matches!(a.state.status, Status::Reconnecting(_)),
+        "{:?}",
+        a.state.status
+    );
+    // The reconnect's own answer plays exactly once.
+    let fx = a.update(Msg::Resolved {
+        key: key.clone(),
+        result: Ok(StreamDescriptor::direct("http://fresh")),
+    });
+    assert_eq!(
+        fx.iter()
+            .filter(|e| matches!(e, Effect::Play { .. }))
+            .count(),
+        1
+    );
+    // A duplicate answer afterwards is ignored too.
+    assert_eq!(
+        a.update(Msg::Resolved {
+            key,
+            result: Ok(StreamDescriptor::direct("http://fresh")),
+        }),
+        []
+    );
+}
+
+#[test]
+fn info_from_the_future_waits_no_longer_than_the_sync_offset() {
+    use std::time::Duration;
+    let mut a = playing_app();
+    // Clock skew: the listing claims the track starts in 3 minutes.
+    let skewed = NowPlaying {
+        title: Some("Song".into()),
+        ..NowPlaying::empty(
+            InfoSource::External,
+            SystemTime::now() + Duration::from_secs(180),
+        )
+    };
+    assert_eq!(a.update(np_msg(&a, skewed)), [], "offset 0: shown at once");
+    assert_eq!(a.state.now.as_ref().unwrap().title.as_deref(), Some("Song"));
+
+    // With an offset, the wait is the offset, not 3 min + offset.
+    let mut offsets = std::collections::BTreeMap::new();
+    offsets.insert("url".to_owned(), Duration::from_secs(10));
+    let mut b = App::new(stations(), 50, 2).with_sync_offsets(offsets);
+    let st = b.state.stations[0].clone();
+    b.update(Msg::Play(st));
+    b.update(resolved(&b, &["http://m1"]));
+    b.update(Msg::Player(PlayerEvent::Playing));
+    let late = NowPlaying {
+        title: Some("Song".into()),
+        ..NowPlaying::empty(
+            InfoSource::External,
+            SystemTime::now() + Duration::from_secs(180),
+        )
+    };
+    let fx = b.update(np_msg(&b, late));
+    let Some(Effect::Delay { after, .. }) = fx.first() else {
+        panic!("{fx:?}")
+    };
+    assert!(*after <= Duration::from_secs(10), "{after:?}");
+
+    // Config offsets are clamped like the live keys.
+    let mut big = std::collections::BTreeMap::new();
+    big.insert("url".to_owned(), Duration::from_secs(10_000));
+    let mut c = App::new(stations(), 50, 2).with_sync_offsets(big);
+    let st = c.state.stations[0].clone();
+    c.update(Msg::Play(st));
+    assert_eq!(c.state.sync_offset, ttnr_core::app::MAX_SYNC);
+}
