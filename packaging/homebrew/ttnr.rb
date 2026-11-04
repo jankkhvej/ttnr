@@ -6,8 +6,8 @@
 class Ttnr < Formula
   desc "Minimal, themeable terminal player for network radio"
   homepage "https://github.com/jankkhvej/ttnr"
-  url "https://github.com/jankkhvej/ttnr/archive/refs/tags/v0.1.0.tar.gz" # TODO: tag the release
-  sha256 "0000000000000000000000000000000000000000000000000000000000000000" # TODO: after tagging
+  url "https://github.com/jankkhvej/ttnr/archive/refs/tags/v0.1.0.tar.gz"
+  sha256 "1b217bf69993492e4fb3b9fcbc26de4625eca8ecf9682dcbb237105d8081380b"
   # The source is BSD-2-Clause; the installed binary links Homebrew's GPL
   # builds of mpv and FFmpeg (README "Licence").
   license "BSD-2-Clause"
