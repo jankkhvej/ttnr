@@ -21,10 +21,13 @@ see "Licence").
 ### With Homebrew (tap)
 
 ```zsh
-brew install jankkhvej/ttnr/ttnr     # taps github.com/jankkhvej/homebrew-ttnr
+brew tap jankkhvej/ttnr              # github.com/jankkhvej/homebrew-ttnr
+brew trust jankkhvej/ttnr            # Homebrew loads third-party taps only once trusted
+brew install jankkhvej/ttnr/ttnr
 ```
 
-This builds the latest release with Homebrew's mpv; `brew upgrade ttnr`
+This builds the latest release with Homebrew's mpv (Rust is a build-time
+dependency); `brew upgrade ttnr`
 updates it, `brew install --HEAD jankkhvej/ttnr/ttnr` builds `main`.
 Homebrew's mpv 0.41.0 has a CoreAudio bug on macOS 27, so until mpv 0.42
 ttnr uses AVFoundation there (volume and mute react up to ~2 s late); the

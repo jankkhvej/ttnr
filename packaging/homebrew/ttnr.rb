@@ -1,6 +1,9 @@
 # Homebrew formula for ttnr (ADR-044). Published through the tap
 # github.com/jankkhvej/homebrew-ttnr as Formula/ttnr.rb:
+#   brew tap jankkhvej/ttnr && brew trust jankkhvej/ttnr
 #   brew install jankkhvej/ttnr/ttnr
+# Checked 2026-11-04: `brew audit --strict --new --online`, install from
+# source, `brew test` (Homebrew 7.0.12, macOS 27).
 # On a new release: update `url` to the tag's archive and `sha256` to
 # `curl -sL <url> | shasum -a 256`.
 class Ttnr < Formula
