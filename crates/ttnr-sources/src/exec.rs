@@ -83,6 +83,15 @@ impl ExecSource {
     }
 
     fn spawn(&self, verb: &str) -> Result<tokio::process::Child, SourceError> {
+        // One spawn at a time: on macOS the pipes of a spawn in progress can
+        // leak into a child started concurrently by another thread (before
+        // they are marked close-on-exec); a long-lived `now` script holding
+        // another script's stdin keeps it from ever seeing EOF (observed as
+        // `resolve` timeouts when spawns overlapped).
+        static SPAWN: std::sync::Mutex<()> = std::sync::Mutex::new(());
+        let _one_at_a_time = SPAWN
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
         Command::new(&self.command[0])
             .args(&self.command[1..])
             .arg(verb)
