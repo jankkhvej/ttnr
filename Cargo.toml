@@ -5,6 +5,8 @@ version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
 license.workspace = true
+repository.workspace = true
+homepage.workspace = true
 publish = false
 
 [[bin]]
@@ -46,6 +48,8 @@ version = "0.1.0"
 edition = "2024"
 rust-version = "1.99"
 license = "BSD-2-Clause"
+repository = "https://github.com/jankkhvej/ttnr"
+homepage = "https://github.com/jankkhvej/ttnr"
 
 [workspace.dependencies]
 anyhow = "1.0.104"

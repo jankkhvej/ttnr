@@ -2,6 +2,10 @@
 
 Newest entry on top. Each entry: date · milestone/task · what changed · how to try it · next step · open questions for the owner.
 
+## 2026-11-04 · Publication prep
+- Fresh-clone gate fixed (notices check deterministic). Commit author rewritten to the owner's GitHub noreply address (backup branch `backup/pre-author-rewrite`); repo-local `user.email` set.
+- Repository URL `https://github.com/jankkhvej/ttnr` in Cargo.toml, README and the formula draft; `origin` set locally. Creating the public GitHub repo was blocked by Claude Code's permission classifier → the owner creates it and pushes.
+
 ## 2026-11-04 · Whole-repo security and code review – fixes
 - Security (ADR-047): CLI output of network text (ICY titles, directory names, server messages) passed terminal control sequences through (verified OSC 0 / OSC 52); now neutralised. TUI was safe (ratatui drops control characters).
 - Code review fixes: old station's metadata provider stopped at once and its late updates dropped (keyed messages); resolve cache key includes the station URL; empty ICY title clears the track; radio-browser refresh prefers the fresh click URL; teletype banner from the active theme; exec `now` stderr drained; superseded resolution answers ignored (refresh vs reconnect race); future `at` never waits longer than the sync offset, config offsets clamped to 120 s; CoreAudio listener callback never freed (no use-after-free at exit); socket/system-event plumbing shared by TUI and `play`.

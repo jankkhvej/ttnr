@@ -1,15 +1,16 @@
 # DRAFT – not published, not tested with `brew install` (ADR-044).
-# Needs a public source archive: replace URL and SHA-256, then put this file
-# in a tap (Homebrew installs formulae from taps, e.g. one made with
-# `brew tap-new <user>/<tap>`).
+# Needs a release: tag v0.1.0 on GitHub, fill in the archive's SHA-256
+# (`curl -L <url> | shasum -a 256`), then put this file in a tap (Homebrew
+# installs formulae from taps, e.g. one made with `brew tap-new <user>/<tap>`).
 class Ttnr < Formula
   desc "Minimal, themeable terminal player for network radio"
-  homepage "https://hcc07.org/ttnr" # UNVERIFIED: the project page is not online yet
-  url "https://example.invalid/ttnr-0.1.0.tar.gz" # TODO: real release archive
-  sha256 "0000000000000000000000000000000000000000000000000000000000000000" # TODO
+  homepage "https://github.com/jankkhvej/ttnr"
+  url "https://github.com/jankkhvej/ttnr/archive/refs/tags/v0.1.0.tar.gz" # TODO: tag the release
+  sha256 "0000000000000000000000000000000000000000000000000000000000000000" # TODO: after tagging
   # The source is BSD-2-Clause; the installed binary links Homebrew's GPL
   # builds of mpv and FFmpeg (README "Licence").
   license "BSD-2-Clause"
+  head "https://github.com/jankkhvej/ttnr.git", branch: "main"
 
   depends_on "pkgconf" => :build
   depends_on "rust" => :build

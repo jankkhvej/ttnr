@@ -19,7 +19,7 @@ Rust (<https://rustup.rs>; the toolchain is pinned in `rust-toolchain.toml`).
 
 ```zsh
 brew install mpv pkgconf ffmpeg
-git clone <this repository> ttnr && cd ttnr
+git clone https://github.com/jankkhvej/ttnr.git && cd ttnr
 ./scripts/build-libmpv.zsh     # recommended, see below (~20 s, no system changes)
 cargo install --path .         # installs `ttnr` into ~/.cargo/bin
 ```
