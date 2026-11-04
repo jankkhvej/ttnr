@@ -2,6 +2,10 @@
 
 Newest entry on top. Each entry: date · milestone/task · what changed · how to try it · next step · open questions for the owner.
 
+## 2026-11-04 · Release 0.1.0 published; 0.1.1 prepared
+- 0.1.0: GitHub release, tap github.com/jankkhvej/homebrew-ttnr (formula verified: strict audit, source install, `brew test`, fresh install from the public tap; all cleaned up afterwards).
+- 0.1.1: the exec spawn fix (`dd56d89`) found after tagging 0.1.0; version bump, CHANGELOG, local tag `v0.1.1`. Next: owner pushes the tag and creates the release; then the formula's url/sha256 and the tap update.
+
 ## 2026-11-04 · Release 0.1.0 prepared
 - Owner created github.com/jankkhvej/ttnr (public) and pushed `main`; local backup refs of the old history removed.
 - `CHANGELOG.md` (0.1.0, source-only release), README install section with the Homebrew tap (`brew install jankkhvej/ttnr/ttnr`, formula – not a cask, since ttnr is built from source), local annotated tag `v0.1.0`. Next: owner pushes the tag and creates the GitHub release; then the formula's SHA-256 from GitHub's archive and the tap repo `jankkhvej/homebrew-ttnr`.

@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.1.1 – 2026-11-04
+
+### Fixed
+- Script sources (`[sources.<id>]`): while a source's `now` script ran, a
+  concurrent `list` or `resolve` call to a script could hang until its 15 s
+  timeout and fail. Script processes are now started one at a time.
+
+### Documentation
+- Homebrew install: `brew tap jankkhvej/ttnr`, `brew trust jankkhvej/ttnr`
+  (Homebrew loads third-party taps only once trusted), then
+  `brew install jankkhvej/ttnr/ttnr`.
+
 ## 0.1.0 – 2026-11-04
 
 First release. Source only: build with `cargo install --path .` (see
