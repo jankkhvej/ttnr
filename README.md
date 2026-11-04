@@ -14,8 +14,27 @@ reconnects after sleep or a dropped network.
 
 ## Install
 
-Requirements: macOS on Apple Silicon (the only tested platform), Homebrew,
-Rust (<https://rustup.rs>; the toolchain is pinned in `rust-toolchain.toml`).
+Requirements: macOS on Apple Silicon (the only tested platform) and
+Homebrew. ttnr is built from source either way (no prebuilt binaries:
+see "Licence").
+
+### With Homebrew (tap)
+
+```zsh
+brew install jankkhvej/ttnr/ttnr     # taps github.com/jankkhvej/homebrew-ttnr
+```
+
+This builds the latest release with Homebrew's mpv; `brew upgrade ttnr`
+updates it, `brew install --HEAD jankkhvej/ttnr/ttnr` builds `main`.
+Homebrew's mpv 0.41.0 has a CoreAudio bug on macOS 27, so until mpv 0.42
+ttnr uses AVFoundation there (volume and mute react up to ~2 s late); the
+source build below avoids it. Example configuration:
+`$(brew --prefix)/share/ttnr/examples`; man page: `man ttnr`.
+
+### From source
+
+Needs Rust (<https://rustup.rs>; the toolchain is pinned in
+`rust-toolchain.toml`).
 
 ```zsh
 brew install mpv pkgconf ffmpeg
@@ -29,7 +48,8 @@ upstream CoreAudio fix into `third_party/mpv/` and `ttnr` links to it.
 Without it ttnr uses Homebrew's libmpv, whose CoreAudio output fails on
 macOS 27 for many streams; it then falls back to AVFoundation, where volume
 and mute react up to ~2 s late (ADR-015). Release builds: see
-"Release build" below.
+"Release build" below. The man page is `docs/ttnr.1`
+(`man ./docs/ttnr.1`).
 
 ## Quick start
 
@@ -106,8 +126,9 @@ cargo build --release          # target/release/ttnr
 
 The binary links libmpv by absolute path (the local build in
 `third_party/mpv/prefix` or Homebrew's), so keep that library where it is.
-A Homebrew formula draft (not published) is in
-`packaging/homebrew/ttnr.rb`.
+The Homebrew formula is `packaging/homebrew/ttnr.rb`; the tap
+repository `jankkhvej/homebrew-ttnr` carries a copy as `Formula/ttnr.rb`.
+Releases: `CHANGELOG.md`.
 
 ## Development
 

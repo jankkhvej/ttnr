@@ -1,7 +1,8 @@
-# DRAFT – not published, not tested with `brew install` (ADR-044).
-# Needs a release: tag v0.1.0 on GitHub, fill in the archive's SHA-256
-# (`curl -L <url> | shasum -a 256`), then put this file in a tap (Homebrew
-# installs formulae from taps, e.g. one made with `brew tap-new <user>/<tap>`).
+# Homebrew formula for ttnr (ADR-044). Published through the tap
+# github.com/jankkhvej/homebrew-ttnr as Formula/ttnr.rb:
+#   brew install jankkhvej/ttnr/ttnr
+# On a new release: update `url` to the tag's archive and `sha256` to
+# `curl -sL <url> | shasum -a 256`.
 class Ttnr < Formula
   desc "Minimal, themeable terminal player for network radio"
   homepage "https://github.com/jankkhvej/ttnr"
