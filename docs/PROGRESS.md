@@ -2,6 +2,10 @@
 
 Newest entry on top. Each entry: date · milestone/task · what changed · how to try it · next step · open questions for the owner.
 
+## 2026-11-06 · Branch protection on `main`
+- `main` requires a PR (0 approvals – one account cannot approve its own PRs) and a passing `check` job; applies to admins too (the agent works with the owner's admin account); force-push and deletion blocked (issue #20). Owner can switch it off under Settings → Branches if ever needed.
+- Next: nothing scheduled. Open: the curl backend (#16).
+
 ## 2026-11-06 · Release 0.1.3
 - Version bump, CHANGELOG 0.1.3: mpv 0.42 support (`curl-enabled=no`, HTTP errors recognised again – #15), mpv ≥ 0.42 recommended, local libmpv build retired; the embedded Info.plist now carries the crate version (was 0.1.0). Release issue #17.
 - Try: `brew upgrade mpv && brew upgrade jankkhvej/ttnr/ttnr` (after the tap update), `ttnr --version` → `ttnr 0.1.3`.
