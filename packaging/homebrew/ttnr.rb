@@ -3,14 +3,15 @@
 #   brew tap jankkhvej/ttnr && brew trust jankkhvej/ttnr
 #   brew install jankkhvej/ttnr/ttnr
 # Checked 2026-11-04: `brew audit --strict --new --online`, install from
-# source, `brew test` (Homebrew 7.0.12, macOS 27).
+# source, `brew test` (Homebrew 7.0.12, macOS 27). v0.1.2 (2026-11-06):
+# `brew audit --strict --online` from the tap (no install).
 # On a new release: update `url` to the tag's archive and `sha256` to
 # `curl -sL <url> | shasum -a 256`.
 class Ttnr < Formula
   desc "Minimal, themeable terminal player for network radio"
   homepage "https://github.com/jankkhvej/ttnr"
-  url "https://github.com/jankkhvej/ttnr/archive/refs/tags/v0.1.1.tar.gz"
-  sha256 "bfeea6ab9071612a7de6d3c200ac24b983f66b53e1dfedeb702c26457b2364e6"
+  url "https://github.com/jankkhvej/ttnr/archive/refs/tags/v0.1.2.tar.gz"
+  sha256 "a1e0d0b2e5fa3f52678b82c9f3a5916111d4af026a14d527dc143498ed2805ec"
   # The source is BSD-2-Clause; the installed binary links Homebrew's GPL
   # builds of mpv and FFmpeg (README "Licence").
   license "BSD-2-Clause"
