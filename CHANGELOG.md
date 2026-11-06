@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.1.2 – 2026-11-06
 
 ### Fixed
 - Live streams no longer fall behind after a pause: pausing a live station
