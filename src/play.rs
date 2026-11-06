@@ -4,7 +4,7 @@ use std::sync::Arc;
 
 use anyhow::{Context, Result, anyhow, bail};
 use tokio::sync::mpsc;
-use ttnr_core::app::{App, AppState, DEFAULT_HISTORY, Effect, Msg, Status};
+use ttnr_core::app::{App, AppState, Command, DEFAULT_HISTORY, Effect, Msg, Status};
 use ttnr_core::{NowPlaying, ResolveCache, ResolveCtx, SourceRegistry, Station, StreamInfo};
 use ttnr_engine::{EngineConfig, EngineEvent, MpvPlayer, Player};
 use ttnr_sources::{BbcSource, RadioBrowserSource, ReqwestHttp, StationsSource, UrlSource};
@@ -13,7 +13,9 @@ use crate::runtime::{Runtime, engine_msg};
 use crate::{config, paths, stations};
 
 /// Play `target` – a URL, a file path, a station id from `stations.toml`
-/// or `radio-browser:<uuid>` – until it ends, fails, or Ctrl-C is pressed.
+/// or `radio-browser:<uuid>` – until it ends, fails, or is stopped (Ctrl-C,
+/// SIGTERM, `ttnr ctl quit`; all as the `Quit` command). Every way out
+/// stops the metadata provider and tells control-socket clients.
 /// Runs the same state machine as the TUI (ADR-043): playlists fail over to
 /// the next stream, a stale URL is re-resolved once, a live stream that
 /// drops reconnects with backoff, now-playing is merged by priority and
@@ -23,12 +25,6 @@ pub async fn run(
     cfg: &EngineConfig,
     media: Option<ttnr_platform::MediaLink>,
 ) -> Result<()> {
-    // Signal streams first: they catch signals from now on (also during
-    // setup) and buffer them, so none is lost while another branch of the
-    // loop's `select!` wins (issue #7; same pattern as the TUI).
-    use tokio::signal::unix::{SignalKind, signal};
-    let mut sigint = signal(SignalKind::interrupt()).context("cannot watch for Ctrl-C")?;
-    let mut sigterm = signal(SignalKind::terminate()).context("cannot watch for SIGTERM")?;
     let station = station_for(target)?;
     let mut player = MpvPlayer::new(cfg).context("cannot start the audio engine")?;
     let mut engine = player
@@ -45,6 +41,13 @@ pub async fn run(
     let (msg_tx, mut msg_rx) = mpsc::unbounded_channel::<Msg>();
     // The control socket (`ttnr now`, `ttnr ctl`) reads the published state.
     let (state_tx, state_rx) = tokio::sync::watch::channel(app.state.clone());
+    // Signal streams before the socket exists (so a signal never skips its
+    // cleanup) but after the steps that may hang (Ctrl-C still kills those).
+    // Registered at once and buffered: no signal is lost while another
+    // branch of the loop's `select!` wins (issue #7; as in the TUI).
+    use tokio::signal::unix::{SignalKind, signal};
+    let mut sigint = signal(SignalKind::interrupt()).context("cannot watch for Ctrl-C")?;
+    let mut sigterm = signal(SignalKind::terminate()).context("cannot watch for SIGTERM")?;
     let _socket_cleanup = crate::runtime::serve_control(state_rx, msg_tx.clone()).await;
     let mut runtime = Runtime::new(Arc::new(registry), ctx, msg_tx);
     let mut printer = Printer::new(&station);
@@ -119,14 +122,12 @@ pub async fn run(
                 }
             }
             _ = sigint.recv() => {
-                crate::term::say("[stopped]");
-                tracing::info!("stopped by Ctrl-C");
-                break Ok(());
+                tracing::info!("Ctrl-C");
+                Some(Msg::Command(Command::Quit))
             }
             _ = sigterm.recv() => {
-                crate::term::say("[stopped]");
-                tracing::info!("stopped by SIGTERM");
-                break Ok(());
+                tracing::info!("SIGTERM");
+                Some(Msg::Command(Command::Quit))
             }
         };
     };

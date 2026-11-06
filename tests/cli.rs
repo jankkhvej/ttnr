@@ -10,7 +10,6 @@ use std::net::TcpListener;
 use std::path::Path;
 use std::process::{Command, Output};
 
-/// Write a 1-second 48 kHz stereo 16-bit silent WAV.
 /// Wait for `child` at most `secs`; kill it and fail if it does not exit
 /// (a lost Ctrl-C must fail the test, not hang it – issue #7).
 fn wait_at_most(child: &mut std::process::Child, secs: u64) -> std::process::ExitStatus {
@@ -28,6 +27,7 @@ fn wait_at_most(child: &mut std::process::Child, secs: u64) -> std::process::Exi
     }
 }
 
+/// Write a 1-second 48 kHz stereo 16-bit silent WAV.
 fn write_wav(path: &Path) {
     let (rate, channels, secs) = (48_000u32, 2u16, 1u32);
     let data_len = rate * u32::from(channels) * 2 * secs;
@@ -656,8 +656,9 @@ fn icy_title_control_sequences_are_neutralised() {
     assert!(String::from_utf8_lossy(&out).contains("now: Evil ?]52;c;SGk=?"));
 }
 
-/// Ctrl-C right after start (setup still running) stops cleanly: the
-/// signal is watched from the start, not from the first loop iteration.
+/// Ctrl-C as soon as the control socket exists (before the first loop
+/// iteration) stops cleanly: signals are watched from then on, not from the
+/// first `select!` (issue #7), and the socket is removed.
 #[test]
 fn ctrl_c_during_startup_stops_cleanly() {
     // Accepts and never answers: `play` stays in resolution/loading.
@@ -682,11 +683,17 @@ fn ctrl_c_during_startup_stops_cleanly() {
         .stderr(std::process::Stdio::null())
         .spawn()
         .unwrap();
-    // The first line is printed after the signal streams exist.
-    let mut stdout = std::io::BufReader::new(child.stdout.take().unwrap());
-    let mut first = String::new();
-    std::io::BufRead::read_line(&mut stdout, &mut first).unwrap();
-    assert!(first.starts_with("ttnr: "), "{first:?}");
+    let has_socket = || {
+        std::fs::read_dir(state.path())
+            .unwrap()
+            .filter_map(Result::ok)
+            .any(|e| e.file_name().to_string_lossy().ends_with(".sock"))
+    };
+    let deadline = std::time::Instant::now() + std::time::Duration::from_secs(10);
+    while !has_socket() {
+        assert!(std::time::Instant::now() < deadline, "no control socket");
+        std::thread::sleep(std::time::Duration::from_millis(5));
+    }
     assert!(
         Command::new("kill")
             .args(["-INT", &child.id().to_string()])
@@ -696,10 +703,5 @@ fn ctrl_c_during_startup_stops_cleanly() {
     );
     let status = wait_at_most(&mut child, 10);
     assert!(status.success(), "Ctrl-C exits cleanly: {status:?}");
-    let sockets: Vec<_> = std::fs::read_dir(state.path())
-        .unwrap()
-        .filter_map(Result::ok)
-        .filter(|e| e.file_name().to_string_lossy().ends_with(".sock"))
-        .collect();
-    assert!(sockets.is_empty(), "control socket removed: {sockets:?}");
+    assert!(!has_socket(), "control socket removed");
 }
