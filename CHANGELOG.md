@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.1.3 – 2026-11-06
 
 ### Fixed
 - With mpv 0.42 (Homebrew since 2026-11-05) HTTP errors were no longer
