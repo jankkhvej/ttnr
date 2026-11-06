@@ -169,6 +169,15 @@ impl MpvPlayer {
             None => EngineError::Mpv(source),
         })?;
         request_log_messages(&mpv, c"warn")?;
+        let version = mpv
+            .get_property::<String>("mpv-version")
+            .unwrap_or_default();
+        if older_than_0_42(&version) {
+            tracing::warn!(
+                %version,
+                "mpv older than 0.42: CoreAudio output may fail and fall back to AVFoundation (ADR-049); brew upgrade mpv"
+            );
+        }
         for (name, format, id) in OBSERVED {
             mpv.observe_property(name, *format, *id)?;
         }
@@ -265,6 +274,20 @@ impl Drop for MpvPlayer {
 
 /// Ask mpv to deliver log messages at `level` and above as events.
 /// `libmpv2` 7.0 has no safe wrapper for this (docs/RESEARCH.md).
+/// `mpv-version` (e.g. `mpv 0.41.0`, `mpv v0.42.0-dev`) below 0.42.
+fn older_than_0_42(version: &str) -> bool {
+    let num = version
+        .split_whitespace()
+        .nth(1)
+        .unwrap_or_default()
+        .trim_start_matches('v');
+    let mut parts = num.split('.').map(|p| p.parse::<u32>().ok());
+    match (parts.next().flatten(), parts.next().flatten()) {
+        (Some(major), Some(minor)) => (major, minor) < (0, 42),
+        _ => false, // unknown: do not warn
+    }
+}
+
 fn request_log_messages(mpv: &Mpv, level: &std::ffi::CStr) -> Result<(), EngineError> {
     // SAFETY: `mpv.ctx` is a valid handle for the lifetime of `mpv`;
     // `level` is a NUL-terminated string that mpv copies before returning.
@@ -478,6 +501,15 @@ fn clamp_volume(pct: f32) -> f32 {
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn mpv_before_0_42_is_detected() {
+        assert!(super::older_than_0_42("mpv 0.41.0"));
+        assert!(!super::older_than_0_42("mpv 0.42.0"));
+        assert!(!super::older_than_0_42("mpv v0.43.0-dev-g1234"));
+        assert!(!super::older_than_0_42("mpv 1.0.0"));
+        assert!(!super::older_than_0_42("weird"));
+    }
+
     use super::*;
 
     #[test]
