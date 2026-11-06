@@ -34,8 +34,11 @@ Read on demand (large – grep / read the relevant part; not auto-loaded):
 5. **Record.** Tick the task in ROADMAP.md, append a dated entry to
    PROGRESS.md (what changed, what's next, open questions), add an ADR to
    DECISIONS.md for any non-trivial design choice.
-6. **Commit** locally with a Conventional Commit message
-   (`feat(engine): …`, `fix(bbc): …`). Never push; the owner pushes.
+6. **Commit** with a Conventional Commit message (`feat(engine): …`,
+   `fix(bbc): …`) via the GitHub PR process (owner, 2026-11-06): a GitHub
+   issue, a branch off `origin/main`, push the branch, a PR that closes the
+   issue, `/code-review` of the PR, fixes, then merge. Never push to `main`
+   directly.
 7. **Continue** with the next task. At the **end of a milestone**: stop,
    summarise what the owner should try by ear/eye (exact commands), and wait.
 
