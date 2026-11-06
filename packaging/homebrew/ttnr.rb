@@ -3,7 +3,8 @@
 #   brew tap jankkhvej/ttnr && brew trust jankkhvej/ttnr
 #   brew install jankkhvej/ttnr/ttnr
 # Checked 2026-11-04: `brew audit --strict --new --online`, install from
-# source, `brew test` (Homebrew 7.0.12, macOS 27).
+# source, `brew test` (Homebrew 7.0.12, macOS 27). v0.1.2 (2026-11-06):
+# `brew audit --strict --online` from the tap (no install).
 # On a new release: update `url` to the tag's archive and `sha256` to
 # `curl -sL <url> | shasum -a 256`.
 class Ttnr < Formula
