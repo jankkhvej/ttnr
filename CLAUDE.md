@@ -41,9 +41,10 @@ Read on demand (large – grep / read the relevant part; not auto-loaded):
    PR that closes the issue; `/code-review` of the PR; fixes; then merge it
    (`gh pr merge`; the owner allowed the agent to merge after the review).
    Never push to `main` directly – GitHub enforces it: `main` requires a
-   PR and a green `check` (CI) for everyone, admins included; no
-   force-push or deletion (issue #20). Release tags and GitHub releases only
-   when the owner asks.
+   PR whose branch is up to date with `main` and a green `check` (CI) for
+   everyone, admins included; no force-push or deletion. `check` must
+   report on every PR (no `paths-ignore`), or PRs cannot be merged
+   (issue #20). Release tags and GitHub releases only when the owner asks.
 7. **Continue** with the next task once the PR is merged (or branch off the
    unmerged branch and say so in the PR). At the **end of a milestone**:
    stop, summarise what the owner should try by ear/eye (exact commands),
