@@ -2,7 +2,7 @@
 
 use std::sync::Arc;
 
-use anyhow::{Context, Result, bail};
+use anyhow::{Context, Result, anyhow, bail};
 use tokio::sync::mpsc;
 use ttnr_core::app::{App, AppState, DEFAULT_HISTORY, Effect, Msg, Status};
 use ttnr_core::{NowPlaying, ResolveCache, ResolveCtx, SourceRegistry, Station, StreamInfo};
@@ -23,6 +23,12 @@ pub async fn run(
     cfg: &EngineConfig,
     media: Option<ttnr_platform::MediaLink>,
 ) -> Result<()> {
+    // Signal streams first: they catch signals from now on (also during
+    // setup) and buffer them, so none is lost while another branch of the
+    // loop's `select!` wins (issue #7; same pattern as the TUI).
+    use tokio::signal::unix::{SignalKind, signal};
+    let mut sigint = signal(SignalKind::interrupt()).context("cannot watch for Ctrl-C")?;
+    let mut sigterm = signal(SignalKind::terminate()).context("cannot watch for SIGTERM")?;
     let station = station_for(target)?;
     let mut player = MpvPlayer::new(cfg).context("cannot start the audio engine")?;
     let mut engine = player
@@ -46,12 +52,8 @@ pub async fn run(
     let (updater, mut remote_rx) = crate::runtime::forward_system_events(media);
     let mut published = None;
 
-    // One future for the whole loop: a new `ctrl_c()` per `select!` misses
-    // a signal delivered while another branch wins (issue #7).
-    let ctrl_c = tokio::signal::ctrl_c();
-    tokio::pin!(ctrl_c);
     let mut next = Some(Msg::Play(station));
-    loop {
+    let result = loop {
         if let Some(msg) = next.take() {
             if let Some(line) = printer.msg(&msg) {
                 crate::term::say(&line);
@@ -83,22 +85,19 @@ pub async fn run(
                 }
             }
             if app.state.quit {
-                println!("[stopped]");
-                break;
+                crate::term::say("[stopped]");
+                break Ok(());
             }
             match &app.state.status {
-                Status::Ended => break,
-                Status::Error(message) => {
-                    runtime.stop_metadata();
-                    bail!("{message}");
-                }
+                Status::Ended => break Ok(()),
+                Status::Error(message) => break Err(anyhow!("{message}")),
                 _ => {}
             }
         }
         next = tokio::select! {
             event = engine.recv() => {
                 let Some(event) = event else {
-                    bail!("audio engine stopped unexpectedly");
+                    break Err(anyhow!("audio engine stopped unexpectedly"));
                 };
                 tracing::info!(?event, "engine");
                 if matches!(event, EngineEvent::Playing) {
@@ -119,16 +118,22 @@ pub async fn run(
                     }
                 }
             }
-            _ = &mut ctrl_c => {
-                println!("[stopped]");
+            _ = sigint.recv() => {
+                crate::term::say("[stopped]");
                 tracing::info!("stopped by Ctrl-C");
-                break;
+                break Ok(());
+            }
+            _ = sigterm.recv() => {
+                crate::term::say("[stopped]");
+                tracing::info!("stopped by SIGTERM");
+                break Ok(());
             }
         };
-    }
+    };
+    // Every way out: stop the provider, tell control-socket clients.
     runtime.stop_metadata();
     state_tx.send_modify(|s| s.quit = true);
-    Ok(())
+    result
 }
 
 /// Turns the app's state changes (and a few effects/messages) into

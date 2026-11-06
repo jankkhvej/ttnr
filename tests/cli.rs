@@ -11,6 +11,23 @@ use std::path::Path;
 use std::process::{Command, Output};
 
 /// Write a 1-second 48 kHz stereo 16-bit silent WAV.
+/// Wait for `child` at most `secs`; kill it and fail if it does not exit
+/// (a lost Ctrl-C must fail the test, not hang it – issue #7).
+fn wait_at_most(child: &mut std::process::Child, secs: u64) -> std::process::ExitStatus {
+    let deadline = std::time::Instant::now() + std::time::Duration::from_secs(secs);
+    loop {
+        if let Some(status) = child.try_wait().unwrap() {
+            return status;
+        }
+        if std::time::Instant::now() > deadline {
+            let _ = child.kill();
+            let _ = child.wait();
+            panic!("no exit within {secs} s");
+        }
+        std::thread::sleep(std::time::Duration::from_millis(50));
+    }
+}
+
 fn write_wav(path: &Path) {
     let (rate, channels, secs) = (48_000u32, 2u16, 1u32);
     let data_len = rate * u32::from(channels) * 2 * secs;
@@ -500,7 +517,7 @@ fn pls_with_icy_titles() {
             .unwrap()
             .success()
     );
-    let status = child.wait().unwrap();
+    let status = wait_at_most(&mut child, 10);
     assert!(status.success(), "Ctrl-C exits cleanly: {status:?}");
 }
 
@@ -630,11 +647,59 @@ fn icy_title_control_sequences_are_neutralised() {
     let _ = Command::new("kill")
         .args(["-INT", &child.id().to_string()])
         .status();
-    let _ = child.wait();
+    wait_at_most(&mut child, 10);
     assert!(
         !out.contains(&0x1b) && !out.contains(&0x07),
         "{:?}",
         String::from_utf8_lossy(&out)
     );
     assert!(String::from_utf8_lossy(&out).contains("now: Evil ?]52;c;SGk=?"));
+}
+
+/// Ctrl-C right after start (setup still running) stops cleanly: the
+/// signal is watched from the start, not from the first loop iteration.
+#[test]
+fn ctrl_c_during_startup_stops_cleanly() {
+    // Accepts and never answers: `play` stays in resolution/loading.
+    let listener = TcpListener::bind("127.0.0.1:0").unwrap();
+    let addr = listener.local_addr().unwrap();
+    std::thread::spawn(move || {
+        let _held: Vec<_> = listener.incoming().collect();
+    });
+    let state = tempfile::tempdir().unwrap();
+    let mut child = Command::new(env!("CARGO_BIN_EXE_ttnr"))
+        .args([
+            "play",
+            &format!("http://{addr}/s.pls"),
+            "--audio-output",
+            "null",
+        ])
+        .env("XDG_STATE_HOME", state.path())
+        .env("XDG_CACHE_HOME", state.path())
+        .env("XDG_CONFIG_HOME", state.path())
+        .env("TMPDIR", state.path())
+        .stdout(std::process::Stdio::piped())
+        .stderr(std::process::Stdio::null())
+        .spawn()
+        .unwrap();
+    // The first line is printed after the signal streams exist.
+    let mut stdout = std::io::BufReader::new(child.stdout.take().unwrap());
+    let mut first = String::new();
+    std::io::BufRead::read_line(&mut stdout, &mut first).unwrap();
+    assert!(first.starts_with("ttnr: "), "{first:?}");
+    assert!(
+        Command::new("kill")
+            .args(["-INT", &child.id().to_string()])
+            .status()
+            .unwrap()
+            .success()
+    );
+    let status = wait_at_most(&mut child, 10);
+    assert!(status.success(), "Ctrl-C exits cleanly: {status:?}");
+    let sockets: Vec<_> = std::fs::read_dir(state.path())
+        .unwrap()
+        .filter_map(Result::ok)
+        .filter(|e| e.file_name().to_string_lossy().ends_with(".sock"))
+        .collect();
+    assert!(sockets.is_empty(), "control socket removed: {sockets:?}");
 }

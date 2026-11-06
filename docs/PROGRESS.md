@@ -4,7 +4,7 @@ Newest entry on top. Each entry: date · milestone/task · what changed · how t
 
 ## 2026-11-06 · Flaky test fixed, Ctrl-C fix, PR workflow
 - Workflow (owner): every change via a GitHub issue + PR, `/code-review`, merge (CLAUDE.md step 6). PRs #3 (live pause, issue #1), #4 (keep-alive race in the HTTP test server, #2), #6 (workflow docs, #5).
-- Issue #7: `ttnr play` ignored Ctrl-C about 1 in 10 runs – a new `tokio::signal::ctrl_c()` per `select!` loses a signal delivered while another branch wins; now one future for the loop (0/40 hangs under load, was 4/40).
+- Issue #7: `ttnr play` ignored Ctrl-C about 1 in 10 runs – a new `tokio::signal::ctrl_c()` per `select!` loses a signal delivered while another branch wins; now signal streams created before setup, as in the TUI (0/60 hangs under load, was 4/40); SIGTERM and Ctrl-C during start-up stop cleanly; every exit path stops metadata and tells control-socket clients; CLI tests wait with a deadline.
 - Known, not changed: the `pls_with_icy_titles` test server is single-threaded with a blocking read, so a reconnect can wait on it; harmless now that Ctrl-C always works.
 
 ## 2026-11-06 · Live radio: pause stops, small cache (memory check)

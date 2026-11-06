@@ -7,7 +7,8 @@
   stops it and resuming starts at the live edge (before, mpv kept
   buffering and played the missed minutes, out of sync with now-playing).
 - `ttnr play` sometimes ignored Ctrl-C (a signal arriving while another
-  event was handled was lost).
+  event was handled was lost); Ctrl-C during start-up and SIGTERM now also
+  stop it cleanly (control socket removed).
 - Much lower memory: mpv's demuxer cache is limited to ~10 s ahead and no
   back buffer (~35 MB instead of up to ~260 MB on long sessions).
 
