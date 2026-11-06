@@ -53,14 +53,21 @@ async fn serve(reply_for: fn(&str) -> Reply) -> String {
     format!("http://{addr}")
 }
 
-fn ok(content_type: &str, body: &[u8]) -> Reply {
+/// A complete reply. The server answers one request per connection, so it
+/// always says `Connection: close`; otherwise the client may reuse a
+/// connection the server is closing (a rare "connection closed" failure).
+fn fixed(status: &str, headers: &str, body: &[u8]) -> Reply {
     let mut r = format!(
-        "HTTP/1.1 200 OK\r\nContent-Type: {content_type}\r\nContent-Length: {}\r\nConnection: close\r\n\r\n",
+        "HTTP/1.1 {status}\r\n{headers}Content-Length: {}\r\nConnection: close\r\n\r\n",
         body.len()
     )
     .into_bytes();
     r.extend_from_slice(body);
     Reply::Fixed(r)
+}
+
+fn ok(content_type: &str, body: &[u8]) -> Reply {
+    fixed("200 OK", &format!("Content-Type: {content_type}\r\n"), body)
 }
 
 fn routes(path: &str) -> Reply {
@@ -71,12 +78,10 @@ fn routes(path: &str) -> Reply {
         ),
         "/icy-only" => Reply::Endless("HTTP/1.1 200 OK\r\nicy-metaint: 16000\r\n\r\n"),
         "/shoutcast-v1" => Reply::Endless("ICY 200 OK\r\nicy-name: Old FM\r\n\r\n"),
-        "/moved" => Reply::Fixed(
-            b"HTTP/1.1 302 Found\r\nLocation: /list.pls\r\nContent-Length: 0\r\n\r\n".to_vec(),
-        ),
+        "/moved" => fixed("302 Found", "Location: /list.pls\r\n", b""),
         "/big" => ok("text/plain", &vec![b'x'; BODY_CAP * 4]),
         "/segment.aac" => ok("audio/aac", b"ID3\x04\x00\x00\x00\x00\x00\x00audio"),
-        _ => Reply::Fixed(b"HTTP/1.1 404 Not Found\r\nContent-Length: 0\r\n\r\n".to_vec()),
+        _ => fixed("404 Not Found", "", b""),
     }
 }
 
