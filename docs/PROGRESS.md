@@ -2,6 +2,10 @@
 
 Newest entry on top. Each entry: date · milestone/task · what changed · how to try it · next step · open questions for the owner.
 
+## 2026-11-06 · CI on GitHub Actions
+- `.github/workflows/ci.yml` (ADR-050, issue #12): `macos-26`, Homebrew mpv (after `brew update`), the unchanged gate; free for this public repo. First run green in ~4 min.
+- Try: open any PR – the `CI / check` status appears. Next: branch protection requiring it; release 0.1.3.
+
 ## 2026-11-06 · Homebrew mpv 0.42: local libmpv build retired
 - Homebrew's mpv 0.42.0 has the CoreAudio fix (ADR-049); its new curl backend broke HTTP error detection (2 CLI tests failed, 1 hung) → `curl-enabled=no`. `scripts/build-libmpv.zsh`, the build-script preference and `third_party/mpv/` removed (issue #14).
 - Try: `brew upgrade mpv` (≥ 0.42), `cargo build --release`, play BBC 6 Music and a 5.1 file – log `audio output ao="coreaudio"`; volume/mute react at once.
