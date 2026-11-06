@@ -155,7 +155,8 @@ for the gate: `cargo install --locked cargo-deny`.
 | `docs/ROADMAP.md` | milestones and acceptance criteria |
 | `docs/DECISIONS.md` | architecture decision records |
 | `docs/RESEARCH.md` | verified external facts with sources |
-| `docs/PROGRESS.md` | session log |
+| `docs/PROGRESS.md` | session log (newest entries) |
+| `docs/PROGRESS-archive.md` | older session log entries |
 
 ## Licence
 

@@ -22,7 +22,6 @@
       "WebFetch"
     ],
     "deny": [
-      "Bash(git push*)",
       "Bash(sudo *)"
     ]
   }
