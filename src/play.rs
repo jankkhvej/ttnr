@@ -2,9 +2,9 @@
 
 use std::sync::Arc;
 
-use anyhow::{Context, Result, bail};
+use anyhow::{Context, Result, anyhow, bail};
 use tokio::sync::mpsc;
-use ttnr_core::app::{App, AppState, DEFAULT_HISTORY, Effect, Msg, Status};
+use ttnr_core::app::{App, AppState, Command, DEFAULT_HISTORY, Effect, Msg, Status};
 use ttnr_core::{NowPlaying, ResolveCache, ResolveCtx, SourceRegistry, Station, StreamInfo};
 use ttnr_engine::{EngineConfig, EngineEvent, MpvPlayer, Player};
 use ttnr_sources::{BbcSource, RadioBrowserSource, ReqwestHttp, StationsSource, UrlSource};
@@ -13,7 +13,9 @@ use crate::runtime::{Runtime, engine_msg};
 use crate::{config, paths, stations};
 
 /// Play `target` – a URL, a file path, a station id from `stations.toml`
-/// or `radio-browser:<uuid>` – until it ends, fails, or Ctrl-C is pressed.
+/// or `radio-browser:<uuid>` – until it ends, fails, or is stopped (Ctrl-C,
+/// SIGTERM, `ttnr ctl quit`; all as the `Quit` command). Every way out
+/// stops the metadata provider and tells control-socket clients.
 /// Runs the same state machine as the TUI (ADR-043): playlists fail over to
 /// the next stream, a stale URL is re-resolved once, a live stream that
 /// drops reconnects with backoff, now-playing is merged by priority and
@@ -39,6 +41,13 @@ pub async fn run(
     let (msg_tx, mut msg_rx) = mpsc::unbounded_channel::<Msg>();
     // The control socket (`ttnr now`, `ttnr ctl`) reads the published state.
     let (state_tx, state_rx) = tokio::sync::watch::channel(app.state.clone());
+    // Signal streams before the socket exists (so a signal never skips its
+    // cleanup) but after the steps that may hang (Ctrl-C still kills those).
+    // Registered at once and buffered: no signal is lost while another
+    // branch of the loop's `select!` wins (issue #7; as in the TUI).
+    use tokio::signal::unix::{SignalKind, signal};
+    let mut sigint = signal(SignalKind::interrupt()).context("cannot watch for Ctrl-C")?;
+    let mut sigterm = signal(SignalKind::terminate()).context("cannot watch for SIGTERM")?;
     let _socket_cleanup = crate::runtime::serve_control(state_rx, msg_tx.clone()).await;
     let mut runtime = Runtime::new(Arc::new(registry), ctx, msg_tx);
     let mut printer = Printer::new(&station);
@@ -47,7 +56,7 @@ pub async fn run(
     let mut published = None;
 
     let mut next = Some(Msg::Play(station));
-    loop {
+    let result = loop {
         if let Some(msg) = next.take() {
             if let Some(line) = printer.msg(&msg) {
                 crate::term::say(&line);
@@ -79,22 +88,19 @@ pub async fn run(
                 }
             }
             if app.state.quit {
-                println!("[stopped]");
-                break;
+                crate::term::say("[stopped]");
+                break Ok(());
             }
             match &app.state.status {
-                Status::Ended => break,
-                Status::Error(message) => {
-                    runtime.stop_metadata();
-                    bail!("{message}");
-                }
+                Status::Ended => break Ok(()),
+                Status::Error(message) => break Err(anyhow!("{message}")),
                 _ => {}
             }
         }
         next = tokio::select! {
             event = engine.recv() => {
                 let Some(event) = event else {
-                    bail!("audio engine stopped unexpectedly");
+                    break Err(anyhow!("audio engine stopped unexpectedly"));
                 };
                 tracing::info!(?event, "engine");
                 if matches!(event, EngineEvent::Playing) {
@@ -115,16 +121,20 @@ pub async fn run(
                     }
                 }
             }
-            _ = tokio::signal::ctrl_c() => {
-                println!("[stopped]");
-                tracing::info!("stopped by Ctrl-C");
-                break;
+            _ = sigint.recv() => {
+                tracing::info!("Ctrl-C");
+                Some(Msg::Command(Command::Quit))
+            }
+            _ = sigterm.recv() => {
+                tracing::info!("SIGTERM");
+                Some(Msg::Command(Command::Quit))
             }
         };
-    }
+    };
+    // Every way out: stop the provider, tell control-socket clients.
     runtime.stop_metadata();
     state_tx.send_modify(|s| s.quit = true);
-    Ok(())
+    result
 }
 
 /// Turns the app's state changes (and a few effects/messages) into
