@@ -274,3 +274,10 @@ Decision: `src/term.rs` `clean` replaces every control character (C0, DEL, C1) w
 Consequences: such titles show `?` where the control bytes were. Regression test `icy_title_control_sequences_are_neutralised` (fails without the fix).
 Amended 2026-11-04 (fresh-clone check): the gate compares only the Rust part (fixed by `Cargo.lock`); the native table depended on the machine (local libmpv build vs Homebrew's, Homebrew versions) and failed on a clean clone. The table now always lists Homebrew's libmpv dependencies (42 libraries) and is refreshed by running `scripts/notices.py`.
 
+
+## ADR-048 · 2026-11-06 · Live radio: no timeshift, pause stops, small demuxer cache
+Context: owner's report – after a ~25 min pause BBC played ~25 min behind live (diagnostics `buf 1489 s`) and the process held 260 MB. mpv kept reading while paused and kept hours of packets (defaults 150 MiB ahead, 50 MiB back plus donated forward space); now-playing (live edge, ADR-032) no longer matched the audio. The buffer was never part of metadata sync: ADR-032 delays titles, never audio. Owner: it is a live player, no seeking back. Research in RESEARCH.md (2026-11-06).
+Decision:
+- Engine: `demuxer-seekable-cache=no` (no back buffer; `demuxer-max-back-bytes=0` loses ICY titles in mpv), `cache-secs=10` (jitter margin ahead), `demuxer-max-bytes=8MiB` (cap for high-bitrate streams). Files are unaffected in practice (no seeking in ttnr).
+- Core: pausing a live stream (stream info known and not `is_finite`) stops the player and shows `Paused`; late player events are ignored, pending retries/resolutions are dropped, wake keeps it paused. Resuming resolves and plays afresh (live edge, metadata provider restarted, as after wake). Files and streams whose info is not known yet pause in mpv as before.
+Consequences: resuming costs one connect and ~1–2 s of buffering; no network and no growing memory while paused; ~35 MB instead of ~260 MB. A short pause does not keep its few seconds either (simple and always live; a grace period can be added if the owner wants one).

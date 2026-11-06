@@ -850,3 +850,62 @@ fn info_from_the_future_waits_no_longer_than_the_sync_offset() {
     c.update(Msg::Play(st));
     assert_eq!(c.state.sync_offset, ttnr_core::app::MAX_SYNC);
 }
+
+fn stream_info(seekable: bool) -> Msg {
+    Msg::Player(PlayerEvent::StreamInfo(ttnr_core::StreamInfo {
+        seekable: Some(seekable),
+        ..ttnr_core::StreamInfo::default()
+    }))
+}
+
+#[test]
+fn pausing_live_radio_stops_and_resuming_starts_at_the_live_edge() {
+    let mut a = playing_app();
+    let st = a.state.stations[0].clone();
+    a.update(stream_info(false));
+    assert_eq!(a.update(Msg::Command(Command::TogglePause)), [Effect::Stop]);
+    assert_eq!(a.state.status, Status::Paused);
+    // Late events of the stopped stream change nothing; wake keeps it paused.
+    assert_eq!(a.update(Msg::Player(PlayerEvent::Ended)), []);
+    assert_eq!(a.update(unreachable()), []);
+    assert_eq!(a.update(Msg::Woke), []);
+    assert_eq!(a.state.status, Status::Paused);
+
+    assert_eq!(
+        a.update(Msg::Command(Command::TogglePause)),
+        [Effect::Stop, Effect::Resolve(st.clone())]
+    );
+    assert_eq!(a.state.status, Status::Resolving);
+    assert_eq!(
+        a.update(resolved(&a, &["http://m1"])),
+        [play("http://m1"), Effect::StartMetadata(st)]
+    );
+    a.update(Msg::Player(PlayerEvent::Playing));
+    assert_eq!(a.state.status, Status::Playing);
+}
+
+#[test]
+fn a_file_or_unknown_stream_pauses_in_the_player() {
+    let mut f = playing_app();
+    f.update(stream_info(true));
+    assert_eq!(
+        f.update(Msg::Command(Command::TogglePause)),
+        [Effect::Pause(true)]
+    );
+    let mut u = playing_app(); // no stream info yet
+    assert_eq!(
+        u.update(Msg::Command(Command::TogglePause)),
+        [Effect::Pause(true)]
+    );
+}
+
+#[test]
+fn a_scheduled_retry_is_cancelled_by_a_live_pause() {
+    let mut a = playing_app();
+    a.update(stream_info(false));
+    a.update(Msg::Player(PlayerEvent::Buffering(None)));
+    a.update(Msg::Command(Command::TogglePause));
+    // A resolution requested before the pause does not start playback.
+    assert_eq!(a.update(resolved(&a, &["http://m1"])), []);
+    assert_eq!(a.state.status, Status::Paused);
+}

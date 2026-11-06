@@ -1,5 +1,14 @@
 # Changelog
 
+## Unreleased
+
+### Fixed
+- Live streams no longer fall behind after a pause: pausing a live station
+  stops it and resuming starts at the live edge (before, mpv kept
+  buffering and played the missed minutes, out of sync with now-playing).
+- Much lower memory: mpv's demuxer cache is limited to ~10 s ahead and no
+  back buffer (~35 MB instead of up to ~260 MB on long sessions).
+
 ## 0.1.1 – 2026-11-04
 
 ### Fixed

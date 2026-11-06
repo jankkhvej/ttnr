@@ -439,6 +439,9 @@ pub struct App {
     /// The resolution answer the app waits for; others (superseded by a
     /// reconnect or a newer request) are ignored.
     awaiting: Option<Awaiting>,
+    /// A live stream paused by the user: the player is stopped (no
+    /// buffering behind live, ADR-048) and resuming reconnects.
+    live_paused: bool,
 }
 
 /// Which resolution answer is expected.
@@ -474,6 +477,7 @@ impl App {
             last_failure: None,
             diag_config: DiagSelection::default(),
             awaiting: None,
+            live_paused: false,
         }
     }
 
@@ -660,6 +664,7 @@ impl App {
         self.retry_attempt = 0;
         self.retry_gen += 1;
         self.awaiting = Some(Awaiting::Resolve);
+        self.live_paused = false;
         vec![Effect::Stop, Effect::StopMetadata, Effect::Resolve(st)]
     }
 
@@ -764,6 +769,9 @@ impl App {
     }
 
     fn on_player(&mut self, ev: PlayerEvent) -> Vec<Effect> {
+        if self.live_paused {
+            return vec![]; // late events of the stopped stream
+        }
         match ev {
             PlayerEvent::Loading => self.state.status = Status::Loading,
             PlayerEvent::Playing => {
@@ -860,6 +868,11 @@ impl App {
             self.state.history.truncate(self.history_len);
         }
         self.state.now = Some(best);
+    }
+
+    /// The current stream is known to be live (not a file that ends).
+    fn is_live(&self) -> bool {
+        self.state.stream.as_ref().is_some_and(|s| !s.is_finite())
     }
 
     fn effective_volume(&self) -> u8 {
@@ -969,7 +982,23 @@ impl App {
         }
         match cmd {
             Command::TogglePause => match self.state.status {
+                Status::Playing | Status::Buffering(_) if self.is_live() => {
+                    // Pausing live radio would buffer behind live without
+                    // limit; stop now, start at the live edge on resume.
+                    self.live_paused = true;
+                    self.retry_gen += 1;
+                    self.awaiting = None;
+                    self.state.status = Status::Paused;
+                    vec![Effect::Stop]
+                }
                 Status::Playing | Status::Buffering(_) => vec![Effect::Pause(true)],
+                Status::Paused if self.live_paused => {
+                    self.live_paused = false;
+                    self.retry_attempt = 0;
+                    let effects = self.reconnect_now("resuming");
+                    self.state.status = Status::Resolving;
+                    effects
+                }
                 Status::Paused => vec![Effect::Pause(false)],
                 _ => vec![],
             },
