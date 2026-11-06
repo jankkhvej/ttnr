@@ -33,6 +33,9 @@ class Ttnr < Formula
     <<~EOS
       Example configuration and stations: #{opt_pkgshare}/examples
       Copy them to ~/.config/ttnr/ to start.
+
+      Needs mpv 0.42 or newer (`brew upgrade mpv`): with mpv 0.41 CoreAudio
+      output fails on macOS 27 and ttnr falls back to AVFoundation.
     EOS
   end
 

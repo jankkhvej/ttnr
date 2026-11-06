@@ -5,7 +5,7 @@ Newest entry on top. Each entry: date · milestone/task · what changed · how t
 ## 2026-11-06 · Release 0.1.3
 - Version bump, CHANGELOG 0.1.3: mpv 0.42 support (`curl-enabled=no`, HTTP errors recognised again – #15), mpv ≥ 0.42 recommended, local libmpv build retired; the embedded Info.plist now carries the crate version (was 0.1.0). Release issue #17.
 - Try: `brew upgrade mpv && brew upgrade jankkhvej/ttnr/ttnr` (after the tap update), `ttnr --version` → `ttnr 0.1.3`.
-- Next: tag, GitHub release, formula, tap; then branch protection on `main`.
+- Done: tag `v0.1.3`, GitHub release, formula (#19, with an mpv ≥ 0.42 caveat), tap commit `ttnr 0.1.3`, `brew audit --strict --online` from the tap. Next: branch protection on `main`.
 
 ## 2026-11-06 · CI on GitHub Actions
 - `.github/workflows/ci.yml` (ADR-050, issue #12): `macos-26`, Homebrew mpv (after `brew update`), the unchanged gate; free for this public repo. First run green in ~4 min.
