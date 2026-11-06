@@ -11,8 +11,14 @@ Read these before doing anything, every session:
 - @docs/ROADMAP.md — milestones, tasks and acceptance criteria
 - @docs/PROGRESS.md — where the previous session stopped
 - @docs/THEMES.md — theme design spec (PDP-11, ZX80, BBC Micro)
-- @docs/RESEARCH.md — verified external facts (with sources)
-- @docs/DECISIONS.md — architecture decision records
+
+Read on demand (large – grep / read the relevant part; not auto-loaded):
+
+- docs/RESEARCH.md – verified external facts (with sources); check before
+  relying on an external fact, append new ones
+- docs/DECISIONS.md – architecture decision records; check before a design
+  change, append new ADRs
+- docs/PROGRESS-archive.md – older progress entries
 
 ## Session workflow (follow every time)
 
@@ -25,13 +31,21 @@ Read these before doing anything, every session:
 4. **Gate.** `./scripts/check.zsh` must pass: `cargo fmt --check`,
    `cargo clippy --all-targets -- -D warnings`, `cargo test`,
    `cargo deny check` (licences/advisories).
-5. **Record.** Tick the task in ROADMAP.md, append a dated entry to
-   PROGRESS.md (what changed, what's next, open questions), add an ADR to
-   DECISIONS.md for any non-trivial design choice.
-6. **Commit** locally with a Conventional Commit message
-   (`feat(engine): …`, `fix(bbc): …`). Never push; the owner pushes.
-7. **Continue** with the next task. At the **end of a milestone**: stop,
-   summarise what the owner should try by ear/eye (exact commands), and wait.
+5. **Record.** Tick the task in ROADMAP.md, add a dated entry on top of
+   PROGRESS.md (what changed, what's next, open questions; keep about the
+   five newest entries, move older ones to PROGRESS-archive.md), add an ADR
+   to DECISIONS.md for any non-trivial design choice.
+6. **Commit** with a Conventional Commit message (`feat(engine): …`,
+   `fix(bbc): …`) via the GitHub PR process (owner, 2026-11-06): a GitHub
+   issue; `git fetch`, then a branch off `origin/main`; push the branch; a
+   PR that closes the issue; `/code-review` of the PR; fixes; then merge it
+   (`gh pr merge`; the owner allowed the agent to merge after the review).
+   Never push to `main` directly. Release tags and GitHub releases only when
+   the owner asks.
+7. **Continue** with the next task once the PR is merged (or branch off the
+   unmerged branch and say so in the PR). At the **end of a milestone**:
+   stop, summarise what the owner should try by ear/eye (exact commands),
+   and wait.
 
 ## Hard rules
 
@@ -48,7 +62,8 @@ Read these before doing anything, every session:
 - **Audio streams only.** Video is always disabled (no video output, ever).
 - **No network in unit tests.** Use recorded fixtures under `tests/fixtures/`.
   Network smoke tests live behind `--ignored` / a `net` feature.
-- **Stay inside this repo.** Don't modify files outside it. Ask the owner
+- **Stay inside this repo.** Don't modify files outside it (the GitHub
+  issues, branches and PRs of step 6 are the exception). Ask the owner
   before: installing system packages (brew), adding a new system/native
   dependency, changing the licence, renaming the project, or any large
   architectural change not covered by ARCHITECTURE.md.
