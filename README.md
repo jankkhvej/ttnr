@@ -29,9 +29,9 @@ brew install jankkhvej/ttnr/ttnr
 This builds the latest release with Homebrew's mpv (Rust is a build-time
 dependency); `brew upgrade ttnr`
 updates it, `brew install --HEAD jankkhvej/ttnr/ttnr` builds `main`.
-Homebrew's mpv 0.41.0 has a CoreAudio bug on macOS 27, so until mpv 0.42
-ttnr uses AVFoundation there (volume and mute react up to ~2 s late); the
-source build below avoids it. Example configuration:
+Use mpv 0.42 or newer (`brew upgrade mpv`): with mpv 0.41's CoreAudio bug
+on macOS 27 ttnr falls back to AVFoundation (volume and mute react up to
+~2 s late). Example configuration:
 `$(brew --prefix)/share/ttnr/examples`; man page: `man ttnr`.
 
 ### From source
@@ -42,15 +42,13 @@ Needs Rust (<https://rustup.rs>; the toolchain is pinned in
 ```zsh
 brew install mpv pkgconf ffmpeg
 git clone https://github.com/jankkhvej/ttnr.git && cd ttnr
-./scripts/build-libmpv.zsh     # recommended, see below (~20 s, no system changes)
 cargo install --path .         # installs `ttnr` into ~/.cargo/bin
 ```
 
-`scripts/build-libmpv.zsh` builds Homebrew's mpv 0.41.0 recipe plus an
-upstream CoreAudio fix into `third_party/mpv/` and `ttnr` links to it.
-Without it ttnr uses Homebrew's libmpv, whose CoreAudio output fails on
-macOS 27 for many streams; it then falls back to AVFoundation, where volume
-and mute react up to ~2 s late (ADR-015). Release builds: see
+Use mpv 0.42 or newer (`brew upgrade mpv`): mpv 0.41's CoreAudio output
+fails on macOS 27 for many streams, and ttnr then falls back to
+AVFoundation, where volume and mute react up to ~2 s late (ADR-049).
+Release builds: see
 "Release build" below. The man page is `docs/ttnr.1`
 (`man ./docs/ttnr.1`).
 
@@ -127,8 +125,8 @@ protocol – see [docs/SOURCES.md](docs/SOURCES.md) and
 cargo build --release          # target/release/ttnr
 ```
 
-The binary links libmpv by absolute path (the local build in
-`third_party/mpv/prefix` or Homebrew's), so keep that library where it is.
+The binary links Homebrew's libmpv by absolute path, so rebuild after
+`brew upgrade mpv` changes its major version.
 The Homebrew formula is `packaging/homebrew/ttnr.rb`; the tap
 repository `jankkhvej/homebrew-ttnr` carries a copy as `Formula/ttnr.rb`.
 Releases: `CHANGELOG.md`.

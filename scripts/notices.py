@@ -57,8 +57,7 @@ def rust_crates():
 
 
 def libmpv():
-    # Homebrew's libmpv: what a published build links (the optional local
-    # build in third_party/ loads a subset of the same libraries).
+    # Homebrew's libmpv: what a build links.
     prefix = run("brew", "--prefix", "mpv").strip()
     return f"{prefix}/lib/libmpv.2.dylib"
 

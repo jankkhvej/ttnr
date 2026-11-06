@@ -13,7 +13,7 @@ use crate::{EngineConfig, EngineError, Player};
 
 /// Options set before `mpv_initialize`, making the core audio-only and
 /// isolated from the user's mpv setup. Names and values verified against
-/// the mpv 0.41.0 manual (docs/RESEARCH.md).
+/// the mpv 0.41.0 manual and mpv 0.42.0's option list (docs/RESEARCH.md).
 const AUDIO_ONLY_OPTIONS: &[(&str, &str)] = &[
     ("vid", "no"),
     ("audio-display", "no"),
@@ -35,10 +35,16 @@ const AUDIO_ONLY_OPTIONS: &[(&str, &str)] = &[
     ("demuxer-max-bytes", "8MiB"),
 ];
 
+/// Options of newer mpv versions; older ones lack them ("option not
+/// found" is fine). mpv 0.42 fetches HTTP through libcurl by default; its
+/// errors (`curl: HTTP error 404`) bypass the FFmpeg log lines the error
+/// kinds are read from (ADR-010), so FFmpeg's HTTP stack stays (ADR-049).
+const NEWER_OPTIONS: &[(&str, &str)] = &[("curl-enabled", "no")];
+
 /// Switches for mpv's built-in Lua/JS scripts (none is useful headless;
 /// `auto_profiles` even warns on every file). A libmpv built without Lua
-/// (e.g. `scripts/build-libmpv.zsh`) has no such options – then there is
-/// nothing to switch off, so "option not found" is fine.
+/// has no such options – then there is nothing to switch off, so "option
+/// not found" is fine.
 const SCRIPT_OPTIONS: &[(&str, &str)] = &[
     ("ytdl", "no"),
     ("osc", "no"),
@@ -150,7 +156,7 @@ impl MpvPlayer {
                 "coreaudio-change-physical-format",
                 if cfg.match_sample_rate { "yes" } else { "no" },
             )?;
-            for (name, value) in SCRIPT_OPTIONS {
+            for (name, value) in SCRIPT_OPTIONS.iter().chain(NEWER_OPTIONS) {
                 match init.set_option(name, *value) {
                     Err(libmpv2::Error::Raw(libmpv2::mpv_error::OptionNotFound)) => {}
                     other => other.inspect_err(|_| failed = Some(name))?,
