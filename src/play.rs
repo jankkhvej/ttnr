@@ -211,6 +211,8 @@ impl Printer {
 /// (stderr, exit code).
 fn status_line(prev: Option<&Status>, status: &Status) -> Option<String> {
     Some(match status {
+        // A live stream resumes by connecting afresh (ADR-048).
+        Status::Resolving if prev == Some(&Status::Paused) => "[resumed]".into(),
         Status::Idle | Status::Resolving | Status::Error(_) => return None,
         Status::Loading => "[loading]".into(),
         Status::Playing if prev == Some(&Status::Paused) => "[resumed]".into(),
@@ -414,6 +416,13 @@ mod tests {
         assert_eq!(p.state(&s), ["[paused]"]);
         s.status = Status::Playing;
         assert_eq!(p.state(&s), ["[resumed]"]);
+        // Live radio resumes by connecting afresh (ADR-048).
+        s.status = Status::Paused;
+        p.state(&s);
+        s.status = Status::Resolving;
+        assert_eq!(p.state(&s), ["[resumed]"]);
+        s.status = Status::Playing;
+        assert_eq!(p.state(&s), ["[playing]"]);
         s.now = Some(NowPlaying {
             programme: Some("Morning".into()),
             artist: Some("A".into()),

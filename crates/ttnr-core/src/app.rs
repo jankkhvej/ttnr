@@ -508,6 +508,9 @@ impl App {
                 if self.current_key().as_deref() != Some(key.as_str()) {
                     return vec![]; // a late update from the previous station
                 }
+                if self.live_paused {
+                    return vec![]; // its provider was stopped by the pause
+                }
                 // Only the newest provider update matters (it describes now).
                 self.pending = Some(np);
                 self.generation += 1;
@@ -695,14 +698,34 @@ impl App {
 
     /// Resolve the current station again and play it (fresh failover).
     fn reconnect_now(&mut self, why: &str) -> Vec<Effect> {
+        self.resolve_again(Status::Reconnecting(why.to_owned()))
+    }
+
+    /// Resolve the current station again and play it, showing `status`.
+    fn resolve_again(&mut self, status: Status) -> Vec<Effect> {
         let Some(st) = self.state.station.clone() else {
             return vec![];
         };
         self.retry_gen += 1;
         self.failover = None;
         self.awaiting = Some(Awaiting::Resolve);
-        self.state.status = Status::Reconnecting(why.to_owned());
+        self.state.status = status;
         vec![Effect::Stop, Effect::Resolve(st)]
+    }
+
+    /// Pause live radio: stop the stream and its metadata now (pausing in
+    /// the player would buffer behind live), start afresh on resume.
+    fn live_pause(&mut self) -> Vec<Effect> {
+        self.live_paused = true;
+        // The stream worked: a failure on resume reconnects with backoff.
+        self.played = true;
+        self.retry_gen += 1;
+        self.awaiting = None;
+        self.pending = None;
+        self.state.status = Status::Paused;
+        self.state.diag.bytes_per_sec = None;
+        self.state.diag.buffered_secs = None;
+        vec![Effect::Stop, Effect::StopMetadata]
     }
 
     fn start(&mut self, url: String) -> Vec<Effect> {
@@ -769,8 +792,19 @@ impl App {
     }
 
     fn on_player(&mut self, ev: PlayerEvent) -> Vec<Effect> {
+        // Late events of the stopped stream; a failed player command
+        // (not retryable) is still shown.
         if self.live_paused {
-            return vec![]; // late events of the stopped stream
+            if !matches!(
+                ev,
+                PlayerEvent::Failed {
+                    retryable: false,
+                    ..
+                }
+            ) {
+                return vec![];
+            }
+            self.live_paused = false;
         }
         match ev {
             PlayerEvent::Loading => self.state.status = Status::Loading,
@@ -982,22 +1016,16 @@ impl App {
         }
         match cmd {
             Command::TogglePause => match self.state.status {
-                Status::Playing | Status::Buffering(_) if self.is_live() => {
-                    // Pausing live radio would buffer behind live without
-                    // limit; stop now, start at the live edge on resume.
-                    self.live_paused = true;
-                    self.retry_gen += 1;
-                    self.awaiting = None;
-                    self.state.status = Status::Paused;
-                    vec![Effect::Stop]
+                Status::Playing | Status::Buffering(_) if self.is_live() => self.live_pause(),
+                // (Re)connecting after a live stream played, e.g. resuming.
+                Status::Resolving | Status::Loading | Status::Reconnecting(_) if self.played => {
+                    self.live_pause()
                 }
                 Status::Playing | Status::Buffering(_) => vec![Effect::Pause(true)],
                 Status::Paused if self.live_paused => {
                     self.live_paused = false;
                     self.retry_attempt = 0;
-                    let effects = self.reconnect_now("resuming");
-                    self.state.status = Status::Resolving;
-                    effects
+                    self.resolve_again(Status::Resolving)
                 }
                 Status::Paused => vec![Effect::Pause(false)],
                 _ => vec![],

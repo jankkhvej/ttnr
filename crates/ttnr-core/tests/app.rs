@@ -858,16 +858,35 @@ fn stream_info(seekable: bool) -> Msg {
     }))
 }
 
+/// Station 0 playing a live stream (not seekable).
+fn live_app() -> App {
+    let mut a = playing_app();
+    a.update(stream_info(false));
+    a
+}
+
 #[test]
 fn pausing_live_radio_stops_and_resuming_starts_at_the_live_edge() {
-    let mut a = playing_app();
+    let mut a = live_app();
     let st = a.state.stations[0].clone();
-    a.update(stream_info(false));
-    assert_eq!(a.update(Msg::Command(Command::TogglePause)), [Effect::Stop]);
+    a.state.diag.bytes_per_sec = Some(16_000);
+    a.state.diag.buffered_secs = Some(12);
+    assert_eq!(
+        a.update(Msg::Command(Command::TogglePause)),
+        [Effect::Stop, Effect::StopMetadata]
+    );
     assert_eq!(a.state.status, Status::Paused);
-    // Late events of the stopped stream change nothing; wake keeps it paused.
+    assert_eq!(
+        (a.state.diag.bytes_per_sec, a.state.diag.buffered_secs),
+        (None, None),
+        "no stale transfer figures while stopped"
+    );
+    // Late events of the stopped stream and its provider change nothing;
+    // wake keeps it paused.
     assert_eq!(a.update(Msg::Player(PlayerEvent::Ended)), []);
     assert_eq!(a.update(unreachable()), []);
+    a.update(np_msg(&a, external("Unheard", SystemTime::now())));
+    assert_eq!(a.state.now, None);
     assert_eq!(a.update(Msg::Woke), []);
     assert_eq!(a.state.status, Status::Paused);
 
@@ -900,12 +919,58 @@ fn a_file_or_unknown_stream_pauses_in_the_player() {
 }
 
 #[test]
-fn a_scheduled_retry_is_cancelled_by_a_live_pause() {
-    let mut a = playing_app();
+fn a_resolution_pending_at_a_live_pause_does_not_start_playback() {
+    let mut a = live_app();
+    a.update(Msg::Woke); // reconnecting: a resolution is pending
+    a.update(Msg::Player(PlayerEvent::Buffering(None))); // late, old stream
+    a.update(Msg::Command(Command::TogglePause));
+    assert_eq!(a.update(resolved(&a, &["http://m1"])), []);
+    assert_eq!(a.state.status, Status::Paused);
+}
+
+#[test]
+fn pausing_again_while_resuming_stops_again() {
+    let mut a = live_app();
+    a.update(Msg::Command(Command::TogglePause));
+    a.update(Msg::Command(Command::TogglePause)); // resume: resolving
+    assert_eq!(
+        a.update(Msg::Command(Command::TogglePause)),
+        [Effect::Stop, Effect::StopMetadata]
+    );
+    assert_eq!(a.state.status, Status::Paused);
+    assert_eq!(a.update(resolved(&a, &["http://m1"])), [], "stale answer");
+}
+
+#[test]
+fn a_live_pause_before_the_first_playing_retries_on_resume() {
+    let mut a = app();
+    let st = a.state.stations[0].clone();
+    a.update(Msg::Play(st));
+    a.update(resolved(&a, &["http://m1"]));
     a.update(stream_info(false));
     a.update(Msg::Player(PlayerEvent::Buffering(None)));
     a.update(Msg::Command(Command::TogglePause));
-    // A resolution requested before the pause does not start playback.
-    assert_eq!(a.update(resolved(&a, &["http://m1"])), []);
-    assert_eq!(a.state.status, Status::Paused);
+    a.update(Msg::Command(Command::TogglePause));
+    let key = a.state.station.as_ref().unwrap().key();
+    let fx = a.update(Msg::Resolved {
+        key,
+        result: Err("network down".into()),
+    });
+    assert_eq!(retry_of(&fx).0, 1, "backoff, not a hard error");
+}
+
+#[test]
+fn a_failed_player_command_is_shown_during_a_live_pause() {
+    let mut a = live_app();
+    a.update(Msg::Command(Command::TogglePause));
+    a.update(Msg::Player(PlayerEvent::Failed {
+        retryable: false,
+        stale_hint: false,
+        message: "audio output failed".into(),
+    }));
+    assert!(
+        matches!(a.state.status, Status::Error(_)),
+        "{:?}",
+        a.state.status
+    );
 }
