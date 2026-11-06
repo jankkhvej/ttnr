@@ -11,8 +11,14 @@ Read these before doing anything, every session:
 - @docs/ROADMAP.md — milestones, tasks and acceptance criteria
 - @docs/PROGRESS.md — where the previous session stopped
 - @docs/THEMES.md — theme design spec (PDP-11, ZX80, BBC Micro)
-- @docs/RESEARCH.md — verified external facts (with sources)
-- @docs/DECISIONS.md — architecture decision records
+
+Read on demand (large – grep / read the relevant part; not auto-loaded):
+
+- docs/RESEARCH.md – verified external facts (with sources); check before
+  relying on an external fact, append new ones
+- docs/DECISIONS.md – architecture decision records; check before a design
+  change, append new ADRs
+- docs/PROGRESS-archive.md – older progress entries
 
 ## Session workflow (follow every time)
 
