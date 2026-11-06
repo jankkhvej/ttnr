@@ -46,6 +46,10 @@ pub async fn run(
     let (updater, mut remote_rx) = crate::runtime::forward_system_events(media);
     let mut published = None;
 
+    // One future for the whole loop: a new `ctrl_c()` per `select!` misses
+    // a signal delivered while another branch wins (issue #7).
+    let ctrl_c = tokio::signal::ctrl_c();
+    tokio::pin!(ctrl_c);
     let mut next = Some(Msg::Play(station));
     loop {
         if let Some(msg) = next.take() {
@@ -115,7 +119,7 @@ pub async fn run(
                     }
                 }
             }
-            _ = tokio::signal::ctrl_c() => {
+            _ = &mut ctrl_c => {
                 println!("[stopped]");
                 tracing::info!("stopped by Ctrl-C");
                 break;

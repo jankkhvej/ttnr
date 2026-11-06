@@ -2,6 +2,11 @@
 
 Newest entry on top. Each entry: date · milestone/task · what changed · how to try it · next step · open questions for the owner.
 
+## 2026-11-06 · Flaky test fixed, Ctrl-C fix, PR workflow
+- Workflow (owner): every change via a GitHub issue + PR, `/code-review`, merge (CLAUDE.md step 6). PRs #3 (live pause, issue #1), #4 (keep-alive race in the HTTP test server, #2), #6 (workflow docs, #5).
+- Issue #7: `ttnr play` ignored Ctrl-C about 1 in 10 runs – a new `tokio::signal::ctrl_c()` per `select!` loses a signal delivered while another branch wins; now one future for the loop (0/40 hangs under load, was 4/40).
+- Known, not changed: the `pls_with_icy_titles` test server is single-threaded with a blocking read, so a reconnect can wait on it; harmless now that Ctrl-C always works.
+
 ## 2026-11-06 · Live radio: pause stops, small cache (memory check)
 - Owner asked for a memory check of a long-running release build: no leak (`leaks`: 80 bytes), but 260 MB held by mpv's demuxer cache, and after a ~25 min pause playback ran ~25 min behind live (`buf 1489 s`).
 - Fix (ADR-048): pausing a live stream stops it, resuming starts at the live edge; mpv cache `demuxer-seekable-cache=no`, `cache-secs=10`, `demuxer-max-bytes=8MiB`. Measured 33–34 MB playing and paused on BBC 6 Music.
