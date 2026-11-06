@@ -498,12 +498,19 @@ fn sticky(current: &StreamInfo, sent: &StreamInfo) -> StreamInfo {
     }
 }
 
-/// Recognise FFmpeg network errors in mpv log lines. Formats observed with
-/// mpv 0.41.0 / FFmpeg 9.0.2 (docs/RESEARCH.md):
+/// Recognise network errors in mpv log lines. FFmpeg's formats, observed
+/// with mpv 0.41.0 and 0.42.0 / FFmpeg 9.0.2 (docs/RESEARCH.md):
 /// `[ffmpeg] http: HTTP error 403 Forbidden`,
 /// `[ffmpeg] tcp: Connection to tcp://host:port failed: …`,
 /// `[ffmpeg] tcp: Failed to resolve hostname …`.
+/// mpv 0.42's curl backend (off, `curl-enabled=no`; ADR-049) logs
+/// `[curl] HTTP error 404`: recognised too, should it ever be on.
 fn parse_net_failure(prefix: &str, text: &str) -> Option<NetFailure> {
+    if prefix == "curl" {
+        let rest = text.strip_prefix("HTTP error ")?;
+        let status = rest.split_whitespace().next()?.parse().ok()?;
+        return Some(NetFailure::Http(status));
+    }
     if prefix != "ffmpeg" {
         return None;
     }
@@ -598,6 +605,29 @@ mod tests {
             RawEvent::EndFile(EndReason::Stop),
         ]);
         assert_eq!(out, [E::Stopped]);
+    }
+
+    #[test]
+    fn http_status_from_the_curl_backend() {
+        let line = RawEvent::Log {
+            prefix: "curl".into(),
+            text: "HTTP error 404".into(),
+        };
+        let out = run([
+            RawEvent::StartFile,
+            line,
+            RawEvent::EndFile(EndReason::Error(mpv_error::LoadingFailed)),
+        ]);
+        assert!(
+            matches!(
+                &out[1],
+                E::Error {
+                    kind: ErrorKind::Http404,
+                    ..
+                }
+            ),
+            "{out:?}"
+        );
     }
 
     #[test]

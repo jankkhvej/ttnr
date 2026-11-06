@@ -13,7 +13,7 @@ use crate::{EngineConfig, EngineError, Player};
 
 /// Options set before `mpv_initialize`, making the core audio-only and
 /// isolated from the user's mpv setup. Names and values verified against
-/// the mpv 0.41.0 manual (docs/RESEARCH.md).
+/// the mpv 0.41.0 manual and mpv 0.42.0's option list (docs/RESEARCH.md).
 const AUDIO_ONLY_OPTIONS: &[(&str, &str)] = &[
     ("vid", "no"),
     ("audio-display", "no"),

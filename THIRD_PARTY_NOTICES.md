@@ -24,7 +24,7 @@ version 2 or later instead, which the combined work does (ADR-045).
 | gettext | 1.0 | GPL-3.0-or-later AND LGPL-2.1-or-later | https://www.gnu.org/software/gettext/ |
 | glib | 2.90.1 | LGPL-2.1-or-later | https://docs.gtk.org/glib/ |
 | graphite2 | 1.3.15 | MIT OR MPL-2.0 OR LGPL-2.1-or-later OR GPL-2.0-or-later | https://graphite.sil.org/ |
-| harfbuzz | 15.0.0 | MIT | https://github.com/harfbuzz/harfbuzz |
+| harfbuzz | 15.1.0 | MIT | https://github.com/harfbuzz/harfbuzz |
 | jpeg-turbo | 3.2.1 | IJG AND Zlib AND BSD-3-Clause | https://www.libjpeg-turbo.org/ |
 | lame | 4.0 | LGPL-2.0-or-later | https://lame.sourceforge.io/ |
 | libarchive | 3.8.11 | BSD-2-Clause | https://www.libarchive.org |
@@ -40,9 +40,9 @@ version 2 or later instead, which the combined work does (ADR-045).
 | libvpx | 1.17.0 | BSD-3-Clause | https://www.webmproject.org/code/ |
 | little-cms2 | 2.19.1 | MIT | https://www.littlecms.com/ |
 | luajit | 2.1.1793383622 | MIT | https://luajit.org/luajit.html |
-| lz4 | 1.10.0 | BSD-2-Clause | https://lz4.github.io/lz4/ |
+| lz4 | 1.11.0 | BSD-2-Clause | https://lz4.github.io/lz4/ |
 | mpg123 | 1.33.7 | LGPL-2.1-only | https://www.mpg123.de/ |
-| mpv | 0.41.0 | GPL-2.0-or-later AND LGPL-2.1-or-later | https://mpv.io |
+| mpv | 0.42.0 | GPL-2.0-or-later AND LGPL-2.1-or-later | https://mpv.io |
 | mujs | 1.3.11 | ISC | https://www.mujs.com/ |
 | openssl@4 | 4.1.0 | Apache-2.0 | https://openssl-library.org |
 | opus | 1.6.1 | BSD-3-Clause | https://www.opus-codec.org/ |

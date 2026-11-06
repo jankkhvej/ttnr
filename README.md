@@ -29,9 +29,9 @@ brew install jankkhvej/ttnr/ttnr
 This builds the latest release with Homebrew's mpv (Rust is a build-time
 dependency); `brew upgrade ttnr`
 updates it, `brew install --HEAD jankkhvej/ttnr/ttnr` builds `main`.
-Homebrew's mpv 0.41.0 has a CoreAudio bug on macOS 27, so until mpv 0.42
-ttnr uses AVFoundation there (volume and mute react up to ~2 s late); the
-source build below avoids it. Example configuration:
+Use mpv 0.42 or newer (`brew upgrade mpv`): with mpv 0.41's CoreAudio bug
+on macOS 27 ttnr falls back to AVFoundation (volume and mute react up to
+~2 s late). Example configuration:
 `$(brew --prefix)/share/ttnr/examples`; man page: `man ttnr`.
 
 ### From source
