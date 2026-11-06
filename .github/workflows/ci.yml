@@ -1,0 +1,61 @@
+# Quality gate on every PR and push to main: the same ./scripts/check.zsh
+# as locally (fmt, clippy, tests with generated fixtures, cargo deny,
+# third-party notices). A standard macOS runner is free for public
+# repositories; larger runners are not (docs/RESEARCH.md, 2026-11-06).
+# Actions are pinned to commit SHAs (tag in the comment).
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    runs-on: macos-26
+    timeout-minutes: 60
+    env:
+      HOMEBREW_NO_INSTALL_CLEANUP: "1"
+      HOMEBREW_NO_ENV_HINTS: "1"
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      # libmpv (ttnr-engine links it via pkg-config) and ffmpeg (fixtures).
+      # CI uses Homebrew's mpv; the local build of scripts/build-libmpv.zsh
+      # only fixes audible AVFoundation output, the tests use ao=null.
+      - name: Homebrew dependencies
+        run: brew install mpv ffmpeg pkgconf
+
+      - name: Rust toolchain (rust-toolchain.toml)
+        run: rustup show active-toolchain || rustup toolchain install
+
+      - uses: taiki-e/install-action@c509219cf42fba86913069efd0ade2458c59337b # v2.90.1
+        with:
+          tool: cargo-deny@0.20.2
+
+      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: |
+            ~/.cargo/registry/index
+            ~/.cargo/registry/cache
+            ~/.cargo/git/db
+            target
+          key: cargo-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('rust-toolchain.toml', 'Cargo.lock') }}
+          restore-keys: cargo-${{ runner.os }}-${{ runner.arch }}-
+
+      - name: Versions
+        run: |
+          sw_vers
+          rustc --version
+          pkg-config --modversion mpv
+          ffmpeg -hide_banner -version | head -1
+
+      - name: Quality gate
+        run: ./scripts/check.zsh
