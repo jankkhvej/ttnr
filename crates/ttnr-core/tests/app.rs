@@ -960,17 +960,65 @@ fn a_live_pause_before_the_first_playing_retries_on_resume() {
 }
 
 #[test]
-fn a_failed_player_command_is_shown_during_a_live_pause() {
+fn any_player_failure_during_a_live_pause_is_ignored() {
     let mut a = live_app();
     a.update(Msg::Command(Command::TogglePause));
     a.update(Msg::Player(PlayerEvent::Failed {
         retryable: false,
         stale_hint: false,
-        message: "audio output failed".into(),
+        message: "unsupported".into(),
     }));
-    assert!(
-        matches!(a.state.status, Status::Error(_)),
-        "{:?}",
-        a.state.status
+    assert_eq!(a.state.status, Status::Paused);
+    let st = a.state.stations[0].clone();
+    assert_eq!(
+        a.update(Msg::Command(Command::TogglePause)),
+        [Effect::Stop, Effect::Resolve(st)],
+        "still resumes"
+    );
+}
+
+#[test]
+fn transfer_figures_queued_before_a_live_pause_are_dropped() {
+    let mut a = live_app();
+    a.update(Msg::Command(Command::ToggleDiagnostics));
+    a.update(Msg::Command(Command::TogglePause));
+    a.update(Msg::Transfer {
+        bytes_per_sec: Some(16_000),
+        buffered_secs: Some(12),
+    });
+    assert_eq!(a.state.diag.bytes_per_sec, None);
+}
+
+#[test]
+fn early_partial_info_or_a_reconnecting_file_pauses_in_the_player() {
+    // Format known, `seekable` not yet: not known to be live.
+    let mut a = playing_app();
+    a.update(Msg::Player(PlayerEvent::StreamInfo(
+        ttnr_core::StreamInfo {
+            codec: Some("flac".into()),
+            ..ttnr_core::StreamInfo::default()
+        },
+    )));
+    assert_eq!(
+        a.update(Msg::Command(Command::TogglePause)),
+        [Effect::Pause(true)]
+    );
+    // A file that played and is reconnecting is not stopped by a pause.
+    let mut f = playing_app();
+    f.update(stream_info(true));
+    f.update(unreachable());
+    assert!(matches!(f.state.status, Status::Reconnecting(_)));
+    assert_eq!(f.update(Msg::Command(Command::TogglePause)), []);
+}
+
+#[test]
+fn liveness_survives_a_reconnect() {
+    let mut a = live_app();
+    a.update(Msg::Woke); // reconnecting; the stream info is cleared on start
+    a.update(resolved(&a, &["http://m1"]));
+    assert_eq!(a.state.stream, None);
+    assert_eq!(
+        a.update(Msg::Command(Command::TogglePause)),
+        [Effect::Stop, Effect::StopMetadata]
     );
 }

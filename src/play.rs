@@ -134,6 +134,8 @@ struct Printer {
     /// The station's own URL (not repeated as `stream:`).
     own_url: Option<String>,
     status: Option<Status>,
+    /// Key of the station the last status belonged to.
+    station: Option<String>,
     format: String,
     programme: Option<String>,
     track: Option<String>,
@@ -172,12 +174,16 @@ impl Printer {
     /// Lines for what changed since the last call.
     fn state(&mut self, s: &AppState) -> Vec<String> {
         let mut lines = Vec::new();
+        let station = s.station.as_ref().map(Station::key);
         if self.status.as_ref() != Some(&s.status) {
-            if let Some(line) = status_line(self.status.as_ref(), &s.status) {
+            // A station change is no resume, even from `Paused`.
+            let prev = self.status.as_ref().filter(|_| station == self.station);
+            if let Some(line) = status_line(prev, &s.status) {
                 lines.push(line);
             }
             self.status = Some(s.status.clone());
         }
+        self.station = station;
         let format = s
             .stream
             .as_ref()
@@ -423,6 +429,12 @@ mod tests {
         assert_eq!(p.state(&s), ["[resumed]"]);
         s.status = Status::Playing;
         assert_eq!(p.state(&s), ["[playing]"]);
+        // Another station started while paused is not resumed.
+        s.status = Status::Paused;
+        p.state(&s);
+        s.station = Some(Station::from_url("http://other/s"));
+        s.status = Status::Resolving;
+        assert!(p.state(&s).is_empty(), "{:?}", p.state(&s));
         s.now = Some(NowPlaying {
             programme: Some("Morning".into()),
             artist: Some("A".into()),
