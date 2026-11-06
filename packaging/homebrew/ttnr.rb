@@ -33,10 +33,6 @@ class Ttnr < Formula
     <<~EOS
       Example configuration and stations: #{opt_pkgshare}/examples
       Copy them to ~/.config/ttnr/ to start.
-
-      mpv 0.41.0's CoreAudio output fails on macOS 27 for many streams; ttnr
-      then uses AVFoundation, where volume and mute react up to ~2 s late.
-      This goes away with mpv 0.42 (upstream fix mpv-player/mpv#18679).
     EOS
   end
 
