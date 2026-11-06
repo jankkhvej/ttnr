@@ -3,7 +3,9 @@
 Newest entry on top. Each entry: date · milestone/task · what changed · how to try it · next step · open questions for the owner.
 
 ## 2026-11-06 · Release 0.1.2
-- Version bump, CHANGELOG 0.1.2 (live pause from the live edge and small mpv cache – #3; `ttnr play` Ctrl-C/SIGTERM – #8), issue #9. Next: tag `v0.1.2`, GitHub release, formula `url`/`sha256`, tap update.
+- Version bump, CHANGELOG 0.1.2 (live pause from the live edge and small mpv cache – #3; `ttnr play` Ctrl-C/SIGTERM – #8), man page (pausing live radio). Tracked in the release issue #9.
+- Try: `brew upgrade jankkhvej/ttnr/ttnr` (after the tap update) or `cargo install --path . --locked`, then `ttnr --version` → `ttnr 0.1.2`; pause a live station for a minute and resume.
+- Next: tag `v0.1.2`, GitHub release, formula `url`/`sha256`, tap update. Open: CI, branch protection, release automation (proposed to the owner).
 
 ## 2026-11-06 · Flaky test fixed, Ctrl-C fix, PR workflow
 - Workflow (owner): every change via a GitHub issue + PR, `/code-review`, merge (CLAUDE.md step 6). PRs #3 (live pause, issue #1), #4 (keep-alive race in the HTTP test server, #2), #6 (workflow docs, #5).

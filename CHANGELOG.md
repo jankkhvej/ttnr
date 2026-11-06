@@ -6,6 +6,8 @@
 - Live streams no longer fall behind after a pause: pausing a live station
   stops it and resuming starts at the live edge (before, mpv kept
   buffering and played the missed minutes, out of sync with now-playing).
+  Resuming reconnects (about 1–2 s of buffering). A live HLS stream with a
+  rewind window that mpv reports as seekable still pauses in mpv.
 - `ttnr play` sometimes ignored Ctrl-C (a signal arriving while another
   event was handled was lost); Ctrl-C during start-up and SIGTERM now also
   stop it cleanly (control socket removed).
