@@ -2,6 +2,12 @@
 
 Newest entry on top. Each entry: date · milestone/task · what changed · how to try it · next step · open questions for the owner.
 
+## 2026-11-06 · Live radio: pause stops, small cache (memory check)
+- Owner asked for a memory check of a long-running release build: no leak (`leaks`: 80 bytes), but 260 MB held by mpv's demuxer cache, and after a ~25 min pause playback ran ~25 min behind live (`buf 1489 s`).
+- Fix (ADR-048): pausing a live stream stops it, resuming starts at the live edge; mpv cache `demuxer-seekable-cache=no`, `cache-secs=10`, `demuxer-max-bytes=8MiB`. Measured 33–34 MB playing and paused on BBC 6 Music.
+- Tests: core pause/resume (live, file, unknown stream, pending resolution, pause while resuming, first-buffering pause, failed command; guard mutations fail); ICY test caught that `demuxer-max-back-bytes=0` loses ICY titles. Review of PR #3: metadata provider stopped too, `[resumed]` in `ttnr play`.
+- Try: `cargo install --path .` (or the release build), play BBC 6 Music, press `i`: `buf` stays around 10–20 s; pause for a minute, resume – short buffering, then live. Owner: no grace period for short pauses. Known: live HLS with a DVR window that mpv reports as seekable still pauses in mpv (ADR-048).
+
 ## 2026-11-04 · Release 0.1.0 published; 0.1.1 prepared
 - 0.1.0: GitHub release, tap github.com/jankkhvej/homebrew-ttnr (formula verified: strict audit, source install, `brew test`, fresh install from the public tap; all cleaned up afterwards).
 - 0.1.1: the exec spawn fix (`dd56d89`) found after tagging 0.1.0; version bump, CHANGELOG, local tag `v0.1.1`. Next: owner pushes the tag and creates the release; then the formula's url/sha256 and the tap update.

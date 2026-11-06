@@ -26,6 +26,13 @@ const AUDIO_ONLY_OPTIONS: &[(&str, &str)] = &[
     ("input-media-keys", "no"),
     ("idle", "yes"),
     ("audio-client-name", "ttnr"),
+    // Live radio needs no seeking back and only a jitter margin ahead; the
+    // defaults (150 MiB ahead, 50 MiB back plus unused forward space) held
+    // hours of audio. A non-seekable cache keeps no back buffer;
+    // `demuxer-max-back-bytes=0` instead loses ICY titles (ADR-048).
+    ("demuxer-seekable-cache", "no"),
+    ("cache-secs", "10"),
+    ("demuxer-max-bytes", "8MiB"),
 ];
 
 /// Switches for mpv's built-in Lua/JS scripts (none is useful headless;

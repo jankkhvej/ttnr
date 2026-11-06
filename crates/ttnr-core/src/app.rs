@@ -439,6 +439,12 @@ pub struct App {
     /// The resolution answer the app waits for; others (superseded by a
     /// reconnect or a newer request) are ignored.
     awaiting: Option<Awaiting>,
+    /// A live stream paused by the user: the player is stopped (no
+    /// buffering behind live, ADR-048) and resuming reconnects.
+    live_paused: bool,
+    /// The current station's stream is known to be live (survives
+    /// reconnects; reset by choosing a station).
+    live: bool,
 }
 
 /// Which resolution answer is expected.
@@ -474,6 +480,8 @@ impl App {
             last_failure: None,
             diag_config: DiagSelection::default(),
             awaiting: None,
+            live_paused: false,
+            live: false,
         }
     }
 
@@ -503,6 +511,9 @@ impl App {
             Msg::NowPlaying { key, np } => {
                 if self.current_key().as_deref() != Some(key.as_str()) {
                     return vec![]; // a late update from the previous station
+                }
+                if self.live_paused {
+                    return vec![]; // its provider was stopped by the pause
                 }
                 // Only the newest provider update matters (it describes now).
                 self.pending = Some(np);
@@ -544,6 +555,9 @@ impl App {
                 bytes_per_sec,
                 buffered_secs,
             } => {
+                if self.live_paused {
+                    return vec![]; // queued before the stop
+                }
                 let shown = self.state.diag.shown;
                 if shown.network || shown.download {
                     self.state.diag.bytes_per_sec = bytes_per_sec;
@@ -660,6 +674,8 @@ impl App {
         self.retry_attempt = 0;
         self.retry_gen += 1;
         self.awaiting = Some(Awaiting::Resolve);
+        self.live_paused = false;
+        self.live = false;
         vec![Effect::Stop, Effect::StopMetadata, Effect::Resolve(st)]
     }
 
@@ -690,14 +706,34 @@ impl App {
 
     /// Resolve the current station again and play it (fresh failover).
     fn reconnect_now(&mut self, why: &str) -> Vec<Effect> {
+        self.resolve_again(Status::Reconnecting(why.to_owned()))
+    }
+
+    /// Resolve the current station again and play it, showing `status`.
+    fn resolve_again(&mut self, status: Status) -> Vec<Effect> {
         let Some(st) = self.state.station.clone() else {
             return vec![];
         };
         self.retry_gen += 1;
         self.failover = None;
         self.awaiting = Some(Awaiting::Resolve);
-        self.state.status = Status::Reconnecting(why.to_owned());
+        self.state.status = status;
         vec![Effect::Stop, Effect::Resolve(st)]
+    }
+
+    /// Pause live radio: stop the stream and its metadata now (pausing in
+    /// the player would buffer behind live), start afresh on resume.
+    fn live_pause(&mut self) -> Vec<Effect> {
+        self.live_paused = true;
+        // The stream worked: a failure on resume reconnects with backoff.
+        self.played = true;
+        self.retry_gen += 1;
+        self.awaiting = None;
+        self.pending = None;
+        self.state.status = Status::Paused;
+        self.state.diag.bytes_per_sec = None;
+        self.state.diag.buffered_secs = None;
+        vec![Effect::Stop, Effect::StopMetadata]
     }
 
     fn start(&mut self, url: String) -> Vec<Effect> {
@@ -764,6 +800,11 @@ impl App {
     }
 
     fn on_player(&mut self, ev: PlayerEvent) -> Vec<Effect> {
+        // Late events of the stopped stream (a failure cannot be told from
+        // a failed player command; the next start reports problems anew).
+        if self.live_paused {
+            return vec![];
+        }
         match ev {
             PlayerEvent::Loading => self.state.status = Status::Loading,
             PlayerEvent::Playing => {
@@ -778,7 +819,15 @@ impl App {
                     self.state.status = Status::Playing;
                 }
             }
-            PlayerEvent::StreamInfo(info) => self.state.stream = Some(info),
+            PlayerEvent::StreamInfo(info) => {
+                // Only a definite answer: early info may lack `seekable`.
+                if info.seekable == Some(false) && !info.is_finite() {
+                    self.live = true;
+                } else if info.is_finite() {
+                    self.live = false;
+                }
+                self.state.stream = Some(info);
+            }
             PlayerEvent::Tags(tags) => match NowPlaying::from_tags(&tags, SystemTime::now()) {
                 Some(np) => self.show_now(np),
                 // An empty StreamTitle (ads, jingles, speech) clears the
@@ -860,6 +909,13 @@ impl App {
             self.state.history.truncate(self.history_len);
         }
         self.state.now = Some(best);
+    }
+
+    /// The current stream is known to be live (not a file that ends).
+    /// Pausing uses this; `Ended` instead treats unknown info as live
+    /// (a reconnect is the safe guess there, stopping is not here).
+    fn is_live(&self) -> bool {
+        self.live
     }
 
     fn effective_volume(&self) -> u8 {
@@ -969,7 +1025,19 @@ impl App {
         }
         match cmd {
             Command::TogglePause => match self.state.status {
+                Status::Playing | Status::Buffering(_) if self.is_live() => self.live_pause(),
+                // (Re)connecting after a live stream played, e.g. resuming.
+                Status::Resolving | Status::Loading | Status::Reconnecting(_)
+                    if self.played && self.is_live() =>
+                {
+                    self.live_pause()
+                }
                 Status::Playing | Status::Buffering(_) => vec![Effect::Pause(true)],
+                Status::Paused if self.live_paused => {
+                    self.live_paused = false;
+                    self.retry_attempt = 0;
+                    self.resolve_again(Status::Resolving)
+                }
                 Status::Paused => vec![Effect::Pause(false)],
                 _ => vec![],
             },
