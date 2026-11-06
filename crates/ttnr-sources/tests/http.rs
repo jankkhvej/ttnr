@@ -38,6 +38,11 @@ async fn serve(reply_for: fn(&str) -> Reply) -> String {
                 match reply_for(&path) {
                     Reply::Fixed(bytes) => {
                         let _ = sock.write_all(&bytes).await;
+                        // One request per connection: replies must say
+                        // `Connection: close`. Closing a moment later makes a
+                        // missing one fail every time (the client would reuse
+                        // the connection) instead of as a rare race.
+                        tokio::time::sleep(std::time::Duration::from_millis(20)).await;
                     }
                     Reply::Endless(head) => {
                         if sock.write_all(head.as_bytes()).await.is_err() {
@@ -72,11 +77,11 @@ fn routes(path: &str) -> Reply {
         "/icy-only" => Reply::Endless("HTTP/1.1 200 OK\r\nicy-metaint: 16000\r\n\r\n"),
         "/shoutcast-v1" => Reply::Endless("ICY 200 OK\r\nicy-name: Old FM\r\n\r\n"),
         "/moved" => Reply::Fixed(
-            b"HTTP/1.1 302 Found\r\nLocation: /list.pls\r\nContent-Length: 0\r\n\r\n".to_vec(),
+            b"HTTP/1.1 302 Found\r\nLocation: /list.pls\r\nContent-Length: 0\r\nConnection: close\r\n\r\n".to_vec(),
         ),
         "/big" => ok("text/plain", &vec![b'x'; BODY_CAP * 4]),
         "/segment.aac" => ok("audio/aac", b"ID3\x04\x00\x00\x00\x00\x00\x00audio"),
-        _ => Reply::Fixed(b"HTTP/1.1 404 Not Found\r\nContent-Length: 0\r\n\r\n".to_vec()),
+        _ => Reply::Fixed(b"HTTP/1.1 404 Not Found\r\nContent-Length: 0\r\nConnection: close\r\n\r\n".to_vec()),
     }
 }
 
