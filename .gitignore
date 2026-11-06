@@ -1,7 +1,8 @@
 /target
+# Retired local libmpv build (ADR-049); kept ignored for old checkouts.
+/third_party/mpv/
 **/*.rs.bk
 .DS_Store
 /tests/fixtures/generated/
 .claude/settings.local.json
-/third_party/mpv/
 *.snap.new

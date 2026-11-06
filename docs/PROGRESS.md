@@ -2,6 +2,11 @@
 
 Newest entry on top. Each entry: date · milestone/task · what changed · how to try it · next step · open questions for the owner.
 
+## 2026-11-06 · Homebrew mpv 0.42: local libmpv build retired
+- Homebrew's mpv 0.42.0 has the CoreAudio fix (ADR-049); its new curl backend broke HTTP error detection (2 CLI tests failed, 1 hung) → `curl-enabled=no`. `scripts/build-libmpv.zsh`, the build-script preference and `third_party/mpv/` removed (issue #14).
+- Try: `brew upgrade mpv` (≥ 0.42), `cargo build --release`, play BBC 6 Music and a 5.1 file – log `audio output ao="coreaudio"`; volume/mute react at once.
+- Next: release 0.1.3 (0.1.2 from the tap builds against mpv 0.42 without `curl-enabled=no`), then CI (#13). Open: the curl backend as a follow-up.
+
 ## 2026-11-06 · Release 0.1.2
 - Version bump, CHANGELOG 0.1.2 (live pause from the live edge and small mpv cache – #3; `ttnr play` Ctrl-C/SIGTERM – #8), man page (pausing live radio). Tracked in the release issue #9.
 - Try: `brew upgrade jankkhvej/ttnr/ttnr` (after the tap update) or `cargo install --path . --locked`, then `ttnr --version` → `ttnr 0.1.2`; pause a live station for a minute and resume.

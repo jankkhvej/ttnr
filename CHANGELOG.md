@@ -1,5 +1,16 @@
 # Changelog
 
+## Unreleased
+
+### Fixed
+- With mpv 0.42 (Homebrew since 2026-11-05) HTTP errors were no longer
+  recognised (no re-resolve on 403/404, playlist failover could hang):
+  ttnr now keeps FFmpeg's HTTP stack (`curl-enabled=no`).
+
+### Changed
+- mpv 0.42 or newer is recommended (its CoreAudio output works on macOS
+  27); `scripts/build-libmpv.zsh` and the local libmpv build are gone.
+
 ## 0.1.2 – 2026-11-06
 
 ### Fixed

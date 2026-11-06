@@ -302,3 +302,16 @@ fn icy_titles_become_tags() {
     assert_eq!(tags.icy_name.as_deref(), Some("Test FM"));
     collect_until(&mut rx, |e| title(e, "Artist Two - Song B"));
 }
+
+/// mpv 0.42's curl backend stays off (ADR-049): its errors would bypass
+/// the FFmpeg log lines the error kinds come from. mpv 0.41 has no such
+/// option (nothing to check there).
+#[test]
+fn the_curl_backend_is_off() {
+    let p = null_player();
+    let version = p.property_string("mpv-version").unwrap_or_default();
+    match p.property_string("curl-enabled") {
+        Some(v) => assert_eq!(v, "no", "{version}"),
+        None => assert!(version.contains("0.41"), "no curl-enabled in {version}"),
+    }
+}
